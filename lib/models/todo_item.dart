@@ -5,6 +5,7 @@ class TodoItem {
   DateTime? dueDate;
   int level;
   bool isCompleted;
+  bool isGolden;
 
   TodoItem({
     required this.id,
@@ -13,5 +14,6 @@ class TodoItem {
     this.dueDate,
     this.level = 1,
     this.isCompleted = false,
+    this.isGolden = false,
   });
 }

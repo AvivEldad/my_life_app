@@ -6,6 +6,7 @@ class TodoCard extends StatelessWidget {
   final VoidCallback onToggle;
   final VoidCallback onEdit;
   final VoidCallback onDelete;
+  final VoidCallback onToggleGolden;
 
   const TodoCard({
     super.key,
@@ -13,59 +14,47 @@ class TodoCard extends StatelessWidget {
     required this.onToggle,
     required this.onEdit,
     required this.onDelete,
+    required this.onToggleGolden,
   });
 
   @override
   Widget build(BuildContext context) {
     return Card(
       margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(12),
+        side: todo.isGolden 
+            ? const BorderSide(color: Colors.amber, width: 2) 
+            : BorderSide.none,
+      ),
+      elevation: todo.isGolden ? 8 : 1,
       child: ListTile(
-        onTap: onEdit, // לחיצה על כל הכרטיסייה תפתח עריכה
+        onTap: onEdit,
         leading: Checkbox(
           value: todo.isCompleted,
           onChanged: (_) => onToggle(),
+          activeColor: Colors.amber,
         ),
         title: Text(
           todo.title,
           style: TextStyle(
-            fontWeight: FontWeight.bold,
+            fontWeight: todo.isGolden ? FontWeight.bold : FontWeight.normal,
             decoration: todo.isCompleted ? TextDecoration.lineThrough : null,
           ),
         ),
-        subtitle: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            if (todo.description != null && todo.description!.isNotEmpty)
-              Text(
-                todo.description!,
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-                style: const TextStyle(fontSize: 13, color: Colors.grey),
-              ),
-            Row(
-              children: [
-                Text('רמה: ${todo.level}', style: const TextStyle(fontSize: 12)),
-                if (todo.dueDate != null) ...[
-                  const SizedBox(width: 12),
-                  const Icon(Icons.calendar_today, size: 12, color: Colors.amber),
-                  const SizedBox(width: 4),
-                  Text(
-                    '${todo.dueDate!.day}/${todo.dueDate!.month}/${todo.dueDate!.year}',
-                    style: const TextStyle(fontSize: 12),
-                  ),
-                ],
-              ],
-            ),
-          ],
-        ),
+        subtitle: Text('רמה: ${todo.level}'),
         trailing: Row(
           mainAxisSize: MainAxisSize.min,
           children: [
-            IconButton(icon: const Icon(Icons.edit, size: 20), onPressed: onEdit),
             IconButton(
-              icon: const Icon(Icons.delete, size: 20, color: Colors.redAccent),
-              onPressed: onDelete,
+              icon: Icon(
+                todo.isGolden ? Icons.monetization_on : Icons.monetization_on_outlined,
+                color: todo.isGolden ? Colors.amber : Colors.grey,
+              ),
+              onPressed: onToggleGolden,
             ),
+            IconButton(icon: const Icon(Icons.edit, size: 20), onPressed: onEdit),
+            IconButton(icon: const Icon(Icons.delete, size: 20, color: Colors.redAccent), onPressed: onDelete),
           ],
         ),
       ),
