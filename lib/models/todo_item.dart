@@ -1,3 +1,7 @@
+import 'package:flutter/material.dart';
+
+enum RecurrenceType { none, daily, weekly, monthly }
+
 class TodoItem {
   final String id;
   String title;
@@ -6,6 +10,9 @@ class TodoItem {
   int level;
   bool isCompleted;
   bool isGolden;
+  RecurrenceType recurrence;
+  TimeOfDay? reminderTime;
+  int? repeatValue;
 
   TodoItem({
     required this.id,
@@ -15,5 +22,8 @@ class TodoItem {
     this.level = 1,
     this.isCompleted = false,
     this.isGolden = false,
+    this.recurrence = RecurrenceType.none,
+    this.reminderTime,
+    this.repeatValue,
   });
 }
