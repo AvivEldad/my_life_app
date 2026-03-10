@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import '../models/todo_item.dart';
 import '../widgets/todo_card.dart';
-import '../services/notification_service.dart'; // ייבוא של שירות ההתראות
+//import '../services/notification_service.dart'; // ייבוא של שירות ההתראות
 
 class TodoHomePage extends StatefulWidget {
   const TodoHomePage({super.key});
@@ -29,7 +29,8 @@ class _TodoHomePageState extends State<TodoHomePage> {
   void _deleteTask(TodoItem todo) {
     setState(() {
       if (todo.recurrence != RecurrenceType.none) {
-        NotificationService.cancelNotification(todo.id);
+        //NotificationService.cancelNotification(todo.id);
+        Text('hello');
       }
       _tasks.removeWhere((t) => t.id == todo.id);
     });
@@ -156,7 +157,7 @@ class _TodoHomePageState extends State<TodoHomePage> {
                     todo.recurrence = type;
                     todo.reminderTime = time;
                     todo.repeatValue = repeatValue;
-                    NotificationService.scheduleNotification(todo); // עדכון התראה קיימת
+                    //NotificationService.scheduleNotification(todo); // עדכון התראה קיימת
                   } else {
                     final newTask = TodoItem(
                       id: DateTime.now().toString(),
@@ -166,7 +167,7 @@ class _TodoHomePageState extends State<TodoHomePage> {
                       repeatValue: repeatValue,
                     );
                     _tasks.insert(0, newTask);
-                    NotificationService.scheduleNotification(newTask); // תזמון התראה חדשה
+                    //NotificationService.scheduleNotification(newTask); // תזמון התראה חדשה
                   }
                 });
                 Navigator.pop(context);

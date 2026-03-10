@@ -4,7 +4,7 @@ import 'screens/home_page.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
-  await NotificationService.init(); // אתחול כאן
+  //await NotificationService.init(); // אתחול כאן
   runApp(const TaskApp());
 }
 
