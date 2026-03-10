@@ -6,7 +6,8 @@ class TodoCard extends StatelessWidget {
   final VoidCallback onToggle;
   final VoidCallback onEdit;
   final VoidCallback onDelete;
-  final VoidCallback onToggleGolden;
+  final VoidCallback? onToggleGolden;
+  final bool isLocked;
 
   const TodoCard({
     super.key,
@@ -14,70 +15,53 @@ class TodoCard extends StatelessWidget {
     required this.onToggle,
     required this.onEdit,
     required this.onDelete,
-    required this.onToggleGolden,
+    this.onToggleGolden,
+    this.isLocked = false,
   });
-
-  String _getRecurrenceDetails(TodoItem item, BuildContext context) {
-    String time = item.reminderTime?.format(context) ?? "";
-    switch (item.recurrence) {
-      case RecurrenceType.daily: return 'כל יום ב-$time';
-      case RecurrenceType.weekly:
-        List<String> days = ['', 'א\'', 'ב\'', 'ג\'', 'ד\'', 'ה\'', 'ו\'', 'ש\''];
-        return 'כל יום ${days[item.repeatValue ?? 1]} ב-$time';
-      case RecurrenceType.monthly:
-        return 'ב-${item.repeatValue} לכל חודש ב-$time';
-      default: return '';
-    }
-  }
 
   @override
   Widget build(BuildContext context) {
-    return Card(
-      margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(12),
-        side: todo.isGolden ? const BorderSide(color: Colors.amber, width: 2) : BorderSide.none,
-      ),
-      elevation: todo.isGolden ? 8 : 1,
-      child: ListTile(
-        onTap: onEdit,
-        leading: Checkbox(value: todo.isCompleted, onChanged: (_) => onToggle(), activeColor: Colors.amber),
-        title: Text(
-          todo.title,
-          style: TextStyle(
-            fontWeight: todo.isGolden ? FontWeight.bold : FontWeight.normal,
-            decoration: todo.isCompleted ? TextDecoration.lineThrough : null,
+    return Opacity(
+      opacity: isLocked ? 0.5 : 1.0,
+      child: Card(
+        margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(12),
+          side: todo.isGolden ? const BorderSide(color: Colors.amber, width: 2) : BorderSide.none,
+        ),
+        child: ListTile(
+          onTap: isLocked ? null : onEdit,
+          leading: Checkbox(
+            value: todo.isCompleted,
+            onChanged: isLocked ? null : (_) => onToggle(),
+            activeColor: Colors.amber,
           ),
-        ),
-        subtitle: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            if (todo.description != null && todo.description!.isNotEmpty)
-              Text(todo.description!, style: const TextStyle(fontSize: 13, color: Colors.grey)),
-            Row(
-              children: [
-                Text('רמה: ${todo.level}', style: const TextStyle(fontSize: 12)),
-                const SizedBox(width: 8),
-                if (todo.recurrence != RecurrenceType.none)
-                  Text(_getRecurrenceDetails(todo, context), style: const TextStyle(fontSize: 12, color: Colors.blueAccent))
-                else if (todo.dueDate != null)
-                  Text('עד: ${todo.dueDate!.day}/${todo.dueDate!.month}', style: const TextStyle(fontSize: 12, color: Colors.redAccent)),
-              ],
+          title: Text(
+            todo.title,
+            style: TextStyle(
+              fontWeight: todo.isGolden ? FontWeight.bold : FontWeight.normal,
+              decoration: todo.isCompleted ? TextDecoration.lineThrough : null,
             ),
-          ],
-        ),
-        trailing: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            // הצגת המטבע רק אם זו משימה רגילה
-            if (todo.recurrence == RecurrenceType.none)
-              IconButton(
-                icon: Icon(todo.isGolden ? Icons.monetization_on : Icons.monetization_on_outlined, color: todo.isGolden ? Colors.amber : Colors.grey),
-                onPressed: onToggleGolden,
+          ),
+          subtitle: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              if (todo.description != null && todo.description!.isNotEmpty)
+                Text(todo.description!, style: const TextStyle(fontSize: 12, color: Colors.grey)),
+              Row(
+                children: [
+                  Text('רמה: ${todo.level}', style: const TextStyle(fontSize: 11, color: Colors.amber)),
+                  if (todo.dueDate != null) ...[
+                    const SizedBox(width: 10),
+                    const Icon(Icons.calendar_today, size: 10, color: Colors.grey),
+                    const SizedBox(width: 4),
+                    Text('${todo.dueDate!.day}/${todo.dueDate!.month}', style: const TextStyle(fontSize: 11, color: Colors.grey)),
+                  ],
+                ],
               ),
-            IconButton(icon: const Icon(Icons.edit, size: 20), onPressed: onEdit),
-            IconButton(icon: const Icon(Icons.delete, size: 20, color: Colors.redAccent), onPressed: onDelete),
-          ],
+            ],
+          ),
+          trailing: isLocked ? const Icon(Icons.lock_outline) : IconButton(icon: const Icon(Icons.delete, color: Colors.redAccent), onPressed: onDelete),
         ),
       ),
     );

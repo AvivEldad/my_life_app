@@ -1,10 +1,13 @@
 import 'package:flutter/material.dart';
 import '../models/todo_item.dart';
 import '../widgets/todo_card.dart';
-import '../services/notification_service.dart'; // ייבוא של שירות ההתראות
+import '../models/project_model.dart';
+import '../services/task_service.dart';
 
 class TodoHomePage extends StatefulWidget {
-  const TodoHomePage({super.key});
+  final bool showRecurring;
+
+  const TodoHomePage({super.key, required this.showRecurring});
 
   @override
   State<TodoHomePage> createState() => _TodoHomePageState();
@@ -12,7 +15,16 @@ class TodoHomePage extends StatefulWidget {
 
 class _TodoHomePageState extends State<TodoHomePage> {
   final List<TodoItem> _tasks = [];
-  int _selectedIndex = 0;
+
+  void _handleSort(String type) {
+    setState(() {
+      if (type == 'level') {
+        _tasks.replaceRange(0, _tasks.length, TaskService.sortByLevel(_tasks));
+      } else {
+        _tasks.replaceRange(0, _tasks.length, TaskService.sortByDueDate(_tasks));
+      }
+    });
+  }
 
   void _toggleGolden(TodoItem todo) {
     setState(() {
@@ -25,17 +37,12 @@ class _TodoHomePageState extends State<TodoHomePage> {
     });
   }
 
-  // פונקציית מחיקה שגם מבטלת התראה
   void _deleteTask(TodoItem todo) {
     setState(() {
-      if (todo.recurrence != RecurrenceType.none) {
-        NotificationService.cancelNotification(todo.id);
-      }
       _tasks.removeWhere((t) => t.id == todo.id);
     });
   }
 
-  // --- דיאלוג משימה רגילה ---
   void _showRegularTaskDialog({TodoItem? todo}) {
     final isEditing = todo != null;
     final titleController = TextEditingController(text: todo?.title ?? '');
@@ -47,7 +54,7 @@ class _TodoHomePageState extends State<TodoHomePage> {
       context: context,
       builder: (context) => StatefulBuilder(
         builder: (context, setDialogState) => AlertDialog(
-          title: Text(isEditing ? 'עריכת משימה' : 'משימה רגילה חדשה'),
+          title: Text(isEditing ? 'עריכת משימה' : 'משימה חדשה'),
           content: SingleChildScrollView(
             child: Column(
               mainAxisSize: MainAxisSize.min,
@@ -55,23 +62,22 @@ class _TodoHomePageState extends State<TodoHomePage> {
                 TextField(controller: titleController, textAlign: TextAlign.right, decoration: const InputDecoration(hintText: 'כותרת')),
                 TextField(controller: descController, textAlign: TextAlign.right, decoration: const InputDecoration(hintText: 'תיאור')),
                 ListTile(
-                  contentPadding: EdgeInsets.zero,
-                  title: Text(selectedDate == null ? 'תאריך יעד (אופציונלי)' : '${selectedDate!.day}/${selectedDate!.month}'),
+                  title: Text(selectedDate == null ? 'תאריך יעד' : '${selectedDate!.day}/${selectedDate!.month}'),
                   trailing: const Icon(Icons.calendar_today),
                   onTap: () async {
-                    DateTime? picked = await showDatePicker(context: context, initialDate: selectedDate ?? DateTime.now(), firstDate: DateTime.now(), lastDate: DateTime(2100));
+                    DateTime? picked = await showDatePicker(context: context, initialDate: DateTime.now(), firstDate: DateTime.now(), lastDate: DateTime(2100));
                     if (picked != null) setDialogState(() => selectedDate = picked);
                   },
                 ),
+                const Text('רמת קושי'),
                 Slider(value: level.toDouble(), min: 1, max: 5, divisions: 4, activeColor: Colors.amber, onChanged: (v) => setDialogState(() => level = v.toInt())),
               ],
             ),
           ),
           actions: [
-            if (isEditing) IconButton(icon: const Icon(Icons.delete, color: Colors.redAccent), onPressed: () => _deleteTask(todo)),
             TextButton(onPressed: () => Navigator.pop(context), child: const Text('ביטול')),
             ElevatedButton(
-              onPressed: titleController.text.isEmpty ? null : () {
+              onPressed: () {
                 setState(() {
                   if (isEditing) {
                     todo.title = titleController.text;
@@ -79,12 +85,12 @@ class _TodoHomePageState extends State<TodoHomePage> {
                     todo.dueDate = selectedDate;
                     todo.level = level;
                   } else {
-                    _tasks.insert(0, TodoItem(id: DateTime.now().toString(), title: titleController.text, description: descController.text, dueDate: selectedDate, level: level));
+                    _tasks.add(TodoItem(id: DateTime.now().toString(), title: titleController.text, description: descController.text, dueDate: selectedDate, level: level));
                   }
                 });
                 Navigator.pop(context);
               },
-              child: Text(isEditing ? 'שמור' : 'צור'),
+              child: const Text('שמור'),
             ),
           ],
         ),
@@ -92,81 +98,70 @@ class _TodoHomePageState extends State<TodoHomePage> {
     );
   }
 
-  // --- דיאלוג משימה מחזורית עם תמיכה בהתראות ---
   void _showRecurringTaskDialog({TodoItem? todo}) {
     final isEditing = todo != null;
     final titleController = TextEditingController(text: todo?.title ?? '');
     RecurrenceType type = todo?.recurrence ?? RecurrenceType.daily;
-    TimeOfDay? time = todo?.reminderTime;
     int? repeatValue = todo?.repeatValue ?? 1;
+    TimeOfDay? time = todo?.reminderTime;
 
     showDialog(
       context: context,
       builder: (context) => StatefulBuilder(
         builder: (context, setDialogState) => AlertDialog(
-          title: Text(isEditing ? 'עריכת טקס' : 'טקס מחזורי חדש'),
-          content: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              TextField(controller: titleController, textAlign: TextAlign.right, decoration: const InputDecoration(hintText: 'כותרת')),
-              const SizedBox(height: 15),
-              DropdownButton<RecurrenceType>(
-                value: type,
-                isExpanded: true,
-                items: const [
-                  DropdownMenuItem(value: RecurrenceType.daily, child: Text('כל יום')),
-                  DropdownMenuItem(value: RecurrenceType.weekly, child: Text('כל שבוע')),
-                  DropdownMenuItem(value: RecurrenceType.monthly, child: Text('כל חודש')),
-                ],
-                onChanged: (v) => setDialogState(() { type = v!; repeatValue = 1; }),
-              ),
-              if (type == RecurrenceType.weekly)
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: List.generate(7, (index) {
-                    int dayNum = index + 1;
-                    bool isSelected = repeatValue == dayNum;
-                    return GestureDetector(
-                      onTap: () => setDialogState(() => repeatValue = dayNum),
-                      child: CircleAvatar(
-                        radius: 16,
-                        backgroundColor: isSelected ? Colors.amber : Colors.grey[700],
-                        child: Text(['א','ב','ג','ד','ה','ו','ש'][index], style: TextStyle(color: isSelected ? Colors.black : Colors.white, fontSize: 12)),
-                      ),
-                    );
-                  }),
+          title: Text(isEditing ? 'עריכת טקס' : 'טקס חדש'),
+          content: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                TextField(controller: titleController, textAlign: TextAlign.right, decoration: const InputDecoration(hintText: 'מה הטקס?')),
+                DropdownButton<RecurrenceType>(
+                  value: type,
+                  isExpanded: true,
+                  items: const [
+                    DropdownMenuItem(value: RecurrenceType.daily, child: Text('כל יום')),
+                    DropdownMenuItem(value: RecurrenceType.weekly, child: Text('כל שבוע')),
+                    DropdownMenuItem(value: RecurrenceType.monthly, child: Text('כל חודש')),
+                  ],
+                  onChanged: (v) => setDialogState(() { type = v!; repeatValue = 1; }),
                 ),
-              ListTile(
-                title: Text(time == null ? 'חובה לבחור שעה' : 'תזכורת ב: ${time!.format(context)}'),
-                trailing: const Icon(Icons.access_time, color: Colors.amber),
-                onTap: () async {
-                  TimeOfDay? picked = await showTimePicker(context: context, initialTime: time ?? TimeOfDay.now());
-                  if (picked != null) setDialogState(() => time = picked);
-                },
-              ),
-            ],
+                if (type == RecurrenceType.weekly)
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceAround,
+                    children: List.generate(7, (index) => GestureDetector(
+                      onTap: () => setDialogState(() => repeatValue = index + 1),
+                      child: CircleAvatar(radius: 14, backgroundColor: repeatValue == index + 1 ? Colors.amber : Colors.grey, child: Text(['א','ב','ג','ד','ה','ו','ש'][index])),
+                    )),
+                  ),
+                if (type == RecurrenceType.monthly)
+                  DropdownButton<int>(
+                    value: repeatValue,
+                    isExpanded: true,
+                    items: List.generate(31, (i) => DropdownMenuItem(value: i + 1, child: Text('יום ${i + 1} בחודש'))),
+                    onChanged: (v) => setDialogState(() => repeatValue = v),
+                  ),
+                ListTile(
+                  title: Text(time == null ? 'בחר שעה' : time!.format(context)),
+                  onTap: () async {
+                    TimeOfDay? p = await showTimePicker(context: context, initialTime: TimeOfDay.now());
+                    if (p != null) setDialogState(() => time = p);
+                  },
+                ),
+              ],
+            ),
           ),
           actions: [
             TextButton(onPressed: () => Navigator.pop(context), child: const Text('ביטול')),
             ElevatedButton(
-              onPressed: (titleController.text.isEmpty || time == null) ? null : () {
+              onPressed: () {
                 setState(() {
                   if (isEditing) {
                     todo.title = titleController.text;
                     todo.recurrence = type;
-                    todo.reminderTime = time;
                     todo.repeatValue = repeatValue;
-                    NotificationService.scheduleNotification(todo); // עדכון התראה קיימת
+                    todo.reminderTime = time;
                   } else {
-                    final newTask = TodoItem(
-                      id: DateTime.now().toString(),
-                      title: titleController.text,
-                      recurrence: type,
-                      reminderTime: time,
-                      repeatValue: repeatValue,
-                    );
-                    _tasks.insert(0, newTask);
-                    NotificationService.scheduleNotification(newTask); // תזמון התראה חדשה
+                    _tasks.add(TodoItem(id: DateTime.now().toString(), title: titleController.text, recurrence: type, repeatValue: repeatValue, reminderTime: time));
                   }
                 });
                 Navigator.pop(context);
@@ -181,57 +176,47 @@ class _TodoHomePageState extends State<TodoHomePage> {
 
   @override
   Widget build(BuildContext context) {
-    final currentTasks = _tasks.where((t) => _selectedIndex == 0 ? t.recurrence == RecurrenceType.none : t.recurrence != RecurrenceType.none).toList();
-    final goldenTask = currentTasks.where((t) => t.isGolden).toList();
-    final otherTasks = currentTasks.where((t) => !t.isGolden).toList();
+    final currentTasks = _tasks.where((t) => widget.showRecurring ? t.recurrence != RecurrenceType.none : t.recurrence == RecurrenceType.none).toList();
+    final golden = currentTasks.where((t) => t.isGolden).toList();
+    final others = currentTasks.where((t) => !t.isGolden).toList();
 
     return Scaffold(
-      appBar: AppBar(title: Text(_selectedIndex == 0 ? 'המשימות שלי' : 'הטקסים שלי')),
+      appBar: AppBar(
+        title: Text(widget.showRecurring ? 'Rituals' : 'Quests'),
+        actions: [
+          if (!widget.showRecurring)
+            PopupMenuButton<String>(
+              icon: const Icon(Icons.sort),
+              onSelected: _handleSort,
+              itemBuilder: (context) => [
+                const PopupMenuItem(value: 'level', child: Text('מיין לפי רמה')),
+                const PopupMenuItem(value: 'date', child: Text('מיין לפי תאריך')),
+              ],
+            ),
+        ],
+      ),
       body: Column(
         children: [
-          if (_selectedIndex == 0 && goldenTask.isNotEmpty) ...[
-            TodoCard(
-              todo: goldenTask.first,
-              onToggle: () => setState(() => goldenTask.first.isCompleted = !goldenTask.first.isCompleted),
-              onEdit: () => _showRegularTaskDialog(todo: goldenTask.first),
-              onDelete: () => _deleteTask(goldenTask.first),
-              onToggleGolden: () => _toggleGolden(goldenTask.first),
-            ),
+          if (golden.isNotEmpty) ...[
+            TodoCard(todo: golden.first, onToggle: () => setState(() => golden.first.isCompleted = !golden.first.isCompleted), onEdit: () => _showRegularTaskDialog(todo: golden.first), onDelete: () => _deleteTask(golden.first), onToggleGolden: () => _toggleGolden(golden.first)),
             const Divider(),
           ],
           Expanded(
-            child: ReorderableListView.builder(
-              itemCount: otherTasks.length,
-              onReorder: (oldIdx, newIdx) {
-                setState(() {
-                  if (newIdx > oldIdx) newIdx -= 1;
-                  final item = otherTasks.removeAt(oldIdx);
-                  _tasks.remove(item);
-                  _tasks.insert(newIdx, item);
-                });
-              },
-              itemBuilder: (context, index) => ReorderableDragStartListener(
-                key: ValueKey(otherTasks[index].id),
-                index: index,
-                child: TodoCard(
-                  todo: otherTasks[index],
-                  onToggle: () => setState(() => otherTasks[index].isCompleted = !otherTasks[index].isCompleted),
-                  onEdit: () => _selectedIndex == 0 ? _showRegularTaskDialog(todo: otherTasks[index]) : _showRecurringTaskDialog(todo: otherTasks[index]),
-                  onDelete: () => _deleteTask(otherTasks[index]),
-                  onToggleGolden: () => _toggleGolden(otherTasks[index]),
-                ),
+            child: ListView.builder(
+              itemCount: others.length,
+              itemBuilder: (context, index) => TodoCard(
+                todo: others[index],
+                onToggle: () => setState(() => others[index].isCompleted = !others[index].isCompleted),
+                onEdit: () => widget.showRecurring ? _showRecurringTaskDialog(todo: others[index]) : _showRegularTaskDialog(todo: others[index]),
+                onDelete: () => _deleteTask(others[index]),
+                onToggleGolden: widget.showRecurring ? null : () => _toggleGolden(others[index]),
               ),
             ),
           ),
         ],
       ),
-      bottomNavigationBar: BottomNavigationBar(
-        currentIndex: _selectedIndex,
-        onTap: (i) => setState(() => _selectedIndex = i),
-        items: const [BottomNavigationBarItem(icon: Icon(Icons.list), label: 'משימות'), BottomNavigationBarItem(icon: Icon(Icons.sync), label: 'טקסים')],
-      ),
       floatingActionButton: FloatingActionButton(
-        onPressed: () => _selectedIndex == 0 ? _showRegularTaskDialog() : _showRecurringTaskDialog(),
+        onPressed: widget.showRecurring ? _showRecurringTaskDialog : _showRegularTaskDialog,
         child: const Icon(Icons.add),
       ),
     );
