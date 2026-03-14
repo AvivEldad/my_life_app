@@ -7,6 +7,7 @@ class ProjectItem {
   DateTime? dueDate;
   int level;
   List<TodoItem> subtasks;
+  String? categoryId;
 
   ProjectItem({
     required this.id,
@@ -15,6 +16,7 @@ class ProjectItem {
     this.dueDate,
     this.level = 1,
     List<TodoItem>? subtasks,
+    this.categoryId,
   }) : subtasks = subtasks ?? [];
 
   int get completedCount => subtasks.where((t) => t.isCompleted).length;

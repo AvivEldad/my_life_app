@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import '../models/todo_item.dart';
 import '../models/project_item.dart';
 import '../widgets/todo_card.dart';
+import '../models/category_item.dart';
+import 'categories_page.dart';
 import '../services/task_service.dart';
 //import '../services/notification_service.dart';
 
@@ -19,6 +21,9 @@ class _TodoHomePageState extends State<TodoHomePage> {
 
   // Tracks which project cards are expanded
   final Set<String> _expandedProjects = <String>{};
+
+  // Categories
+  final List<CategoryItem> _categories = [];
 
 
   // ─── Toggle golden (tasks only) ──────────────────────────────────
@@ -57,6 +62,7 @@ class _TodoHomePageState extends State<TodoHomePage> {
     final descController = TextEditingController(text: todo?.description ?? '');
     DateTime? selectedDate = todo?.dueDate;
     int level = todo?.level ?? 1;
+    String? categoryId = todo?.categoryId;
 
     showDialog(
       context: context,
@@ -79,6 +85,7 @@ class _TodoHomePageState extends State<TodoHomePage> {
                   },
                 ),
                 Slider(value: level.toDouble(), min: 1, max: 5, divisions: 4, activeColor: Colors.amber, onChanged: (v) => setDialogState(() => level = v.toInt())),
+                _buildCategoryDropdown(categoryId, (v) => setDialogState(() => categoryId = v)),
               ],
             ),
           ),
@@ -93,8 +100,9 @@ class _TodoHomePageState extends State<TodoHomePage> {
                     todo.description = descController.text;
                     todo.dueDate = selectedDate;
                     todo.level = level;
+                    todo.categoryId = categoryId;
                   } else {
-                    _tasks.insert(0, TodoItem(id: DateTime.now().toString(), title: titleController.text, description: descController.text, dueDate: selectedDate, level: level));
+                    _tasks.insert(0, TodoItem(id: DateTime.now().toString(), title: titleController.text, description: descController.text, dueDate: selectedDate, level: level, categoryId: categoryId));
                   }
                 });
                 Navigator.pop(context);
@@ -116,6 +124,7 @@ class _TodoHomePageState extends State<TodoHomePage> {
     TimeOfDay? time = todo?.reminderTime;
     int? repeatValue = todo?.repeatValue ?? 1;
     int level = todo?.level ?? 1;
+    String? categoryId = todo?.categoryId;
 
     showDialog(
       context: context,
@@ -203,6 +212,7 @@ class _TodoHomePageState extends State<TodoHomePage> {
                   activeColor: Colors.amber,
                   onChanged: (v) => setDialogState(() => level = v.toInt()),
                 ),
+                _buildCategoryDropdown(categoryId, (v) => setDialogState(() => categoryId = v)),
               ],
             ),
           ),
@@ -218,6 +228,7 @@ class _TodoHomePageState extends State<TodoHomePage> {
                     todo.reminderTime = time;
                     todo.repeatValue = repeatValue;
                     todo.level = level;
+                    todo.categoryId = categoryId;
                     //NotificationService.scheduleNotification(todo);
                   } else {
                     final newTask = TodoItem(
@@ -228,6 +239,7 @@ class _TodoHomePageState extends State<TodoHomePage> {
                       reminderTime: time,
                       repeatValue: repeatValue,
                       level: level,
+                      categoryId: categoryId,
                     );
                     _tasks.insert(0, newTask);
                     //NotificationService.scheduleNotification(newTask);
@@ -250,6 +262,7 @@ class _TodoHomePageState extends State<TodoHomePage> {
     final descController = TextEditingController(text: project?.description ?? '');
     DateTime? selectedDate = project?.dueDate;
     int level = project?.level ?? 1;
+    String? categoryId = project?.categoryId;
 
     showDialog(
       context: context,
@@ -272,6 +285,7 @@ class _TodoHomePageState extends State<TodoHomePage> {
                   },
                 ),
                 Slider(value: level.toDouble(), min: 1, max: 5, divisions: 4, activeColor: Colors.amber, onChanged: (v) => setDialogState(() => level = v.toInt())),
+                _buildCategoryDropdown(categoryId, (v) => setDialogState(() => categoryId = v)),
               ],
             ),
           ),
@@ -286,6 +300,7 @@ class _TodoHomePageState extends State<TodoHomePage> {
                     project.description = descController.text;
                     project.dueDate = selectedDate;
                     project.level = level;
+                    project.categoryId = categoryId;
                   } else {
                     _projects.insert(0, ProjectItem(
                       id: DateTime.now().toString(),
@@ -293,6 +308,7 @@ class _TodoHomePageState extends State<TodoHomePage> {
                       description: descController.text,
                       dueDate: selectedDate,
                       level: level,
+                      categoryId: categoryId,
                     ));
                   }
                 });
@@ -407,183 +423,218 @@ class _TodoHomePageState extends State<TodoHomePage> {
   Widget _buildProjectCard(ProjectItem project) {
     final isExpanded = _expandedProjects.contains(project.id);
     final activeIdx = project.activeSubtaskIndex;
+    final stripeColor = _categories.where((c) => c.id == project.categoryId).firstOrNull?.color;
+
+    final cardContent = Column(
+      children: [
+        // ── Project header ──
+        InkWell(
+          borderRadius: BorderRadius.circular(12),
+          onTap: () => setState(() {
+            if (isExpanded) {
+              _expandedProjects.remove(project.id);
+            } else {
+              _expandedProjects.add(project.id);
+            }
+          }),
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(8, 12, 14, 12),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.end,
+              children: [
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Row(
+                      children: [
+                        Icon(
+                          isExpanded ? Icons.expand_less : Icons.expand_more,
+                          color: Colors.grey[400],
+                        ),
+                        IconButton(
+                          icon: const Icon(Icons.edit, size: 18),
+                          onPressed: () => _showProjectDialog(project: project),
+                          padding: EdgeInsets.zero,
+                          constraints: const BoxConstraints(),
+                        ),
+                        const SizedBox(width: 6),
+                        IconButton(
+                          icon: const Icon(Icons.delete, size: 18, color: Colors.redAccent),
+                          onPressed: () => _deleteProject(project),
+                          padding: EdgeInsets.zero,
+                          constraints: const BoxConstraints(),
+                          tooltip: 'מחק פרויקט',
+                        ),
+                        const SizedBox(width: 6),
+                        IconButton(
+                          icon: const Icon(Icons.add_task, size: 18, color: Colors.amber),
+                          onPressed: () => _showSubtaskDialog(project: project),
+                          padding: EdgeInsets.zero,
+                          constraints: const BoxConstraints(),
+                          tooltip: 'הוסף משימה',
+                        ),
+                      ],
+                    ),
+                    Row(
+                      children: [
+                        Text(
+                          '${project.completedCount}/${project.subtasks.length}',
+                          style: TextStyle(color: Colors.grey[400], fontSize: 13),
+                        ),
+                        const SizedBox(width: 8),
+                        Text(
+                          project.title,
+                          style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+                if (project.description.isNotEmpty)
+                  Padding(
+                    padding: const EdgeInsets.only(top: 4, bottom: 6),
+                    child: Text(
+                      project.description,
+                      style: TextStyle(color: Colors.grey[400], fontSize: 13),
+                    ),
+                  ),
+                const SizedBox(height: 8),
+                ClipRRect(
+                  borderRadius: BorderRadius.circular(8),
+                  child: LinearProgressIndicator(
+                    value: project.progress,
+                    minHeight: 8,
+                    backgroundColor: Colors.grey[800],
+                    valueColor: AlwaysStoppedAnimation<Color>(
+                      project.progress == 1.0 ? Colors.green : Colors.amber,
+                    ),
+                  ),
+                ),
+                if (project.dueDate != null)
+                  Padding(
+                    padding: const EdgeInsets.only(top: 6),
+                    child: Text(
+                      'יעד: ${project.dueDate!.day}/${project.dueDate!.month}/${project.dueDate!.year}',
+                      style: TextStyle(color: Colors.grey[500], fontSize: 12),
+                    ),
+                  ),
+              ],
+            ),
+          ),
+        ),
+
+        // ── Expanded subtask list ──
+        if (isExpanded) ...[
+          if (project.subtasks.isEmpty)
+            Padding(
+              padding: const EdgeInsets.all(12),
+              child: Text('אין משימות עדיין', style: TextStyle(color: Colors.grey[500])),
+            )
+          else ...[
+            const Divider(height: 1),
+            ...List.generate(project.subtasks.length, (i) {
+              final subtask = project.subtasks[i];
+              final isActive = i == activeIdx;
+              final isLocked = !subtask.isCompleted && !isActive;
+
+              return ListTile(
+                contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 2),
+                leading: isLocked
+                    ? const Padding(
+                        padding: EdgeInsets.all(12),
+                        child: Icon(Icons.lock, size: 18, color: Colors.grey),
+                      )
+                    : Checkbox(
+                        value: subtask.isCompleted,
+                        activeColor: Colors.amber,
+                        onChanged: (_) => setState(() => subtask.isCompleted = !subtask.isCompleted),
+                      ),
+                title: Text(
+                  subtask.title,
+                  textAlign: TextAlign.right,
+                  style: TextStyle(
+                    decoration: subtask.isCompleted ? TextDecoration.lineThrough : null,
+                    color: isLocked
+                        ? Colors.grey[600]
+                        : subtask.isCompleted
+                            ? Colors.grey
+                            : null,
+                  ),
+                ),
+                subtitle: (subtask.description?.isNotEmpty ?? false) || subtask.dueDate != null
+                    ? Text(
+                        [
+                          if (subtask.description?.isNotEmpty ?? false) subtask.description!,
+                          if (subtask.dueDate != null) '${subtask.dueDate!.day}/${subtask.dueDate!.month}',
+                        ].join(' · '),
+                        textAlign: TextAlign.right,
+                        style: TextStyle(color: isLocked ? Colors.grey[700] : null),
+                      )
+                    : null,
+                trailing: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    if (isActive)
+                      const Icon(Icons.play_arrow, size: 16, color: Colors.amber),
+                    IconButton(
+                      icon: const Icon(Icons.edit, size: 16),
+                      onPressed: () => _showSubtaskDialog(project: project, todo: subtask),
+                      padding: EdgeInsets.zero,
+                      constraints: const BoxConstraints(),
+                    ),
+                    IconButton(
+                      icon: const Icon(Icons.delete, size: 16, color: Colors.redAccent),
+                      onPressed: () => setState(() => project.subtasks.removeWhere((t) => t.id == subtask.id)),
+                      padding: EdgeInsets.zero,
+                      constraints: const BoxConstraints(),
+                    ),
+                  ],
+                ),
+              );
+            }),
+            const SizedBox(height: 8),
+          ],
+        ],
+      ],
+    );
 
     return Card(
       margin: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-      child: Column(
-        children: [
-          // ── Project header ──
-          InkWell(
-            borderRadius: BorderRadius.circular(12),
-            onTap: () => setState(() {
-              if (isExpanded) {
-                _expandedProjects.remove(project.id);
-              } else {
-                _expandedProjects.add(project.id);
-              }
-            }),
-            child: Padding(
-              padding: const EdgeInsets.fromLTRB(8, 12, 14, 12),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.end,
+      clipBehavior: Clip.antiAlias,
+      child: stripeColor == null
+          ? cardContent
+          : IntrinsicHeight(
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      // Left: chevron + edit + delete + add subtask
-                      Row(
-                        children: [
-                          Icon(
-                            isExpanded ? Icons.expand_less : Icons.expand_more,
-                            color: Colors.grey[400],
-                          ),
-                          IconButton(
-                            icon: const Icon(Icons.edit, size: 18),
-                            onPressed: () => _showProjectDialog(project: project),
-                            padding: EdgeInsets.zero,
-                            constraints: const BoxConstraints(),
-                          ),
-                          const SizedBox(width: 6),
-                          IconButton(
-                            icon: const Icon(Icons.delete, size: 18, color: Colors.redAccent),
-                            onPressed: () => _deleteProject(project),
-                            padding: EdgeInsets.zero,
-                            constraints: const BoxConstraints(),
-                            tooltip: 'מחק פרויקט',
-                          ),
-                          const SizedBox(width: 6),
-                          IconButton(
-                            icon: const Icon(Icons.add_task, size: 18, color: Colors.amber),
-                            onPressed: () => _showSubtaskDialog(project: project),
-                            padding: EdgeInsets.zero,
-                            constraints: const BoxConstraints(),
-                            tooltip: 'הוסף משימה',
-                          ),
-                        ],
-                      ),
-                      // Right: title + counter
-                      Row(
-                        children: [
-                          Text(
-                            '${project.completedCount}/${project.subtasks.length}',
-                            style: TextStyle(color: Colors.grey[400], fontSize: 13),
-                          ),
-                          const SizedBox(width: 8),
-                          Text(
-                            project.title,
-                            style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
-                          ),
-                        ],
-                      ),
-                    ],
-                  ),
-                  if (project.description.isNotEmpty)
-                    Padding(
-                      padding: const EdgeInsets.only(top: 4, bottom: 6),
-                      child: Text(
-                        project.description,
-                        style: TextStyle(color: Colors.grey[400], fontSize: 13),
-                      ),
-                    ),
-                  const SizedBox(height: 8),
-                  ClipRRect(
-                    borderRadius: BorderRadius.circular(8),
-                    child: LinearProgressIndicator(
-                      value: project.progress,
-                      minHeight: 8,
-                      backgroundColor: Colors.grey[800],
-                      valueColor: AlwaysStoppedAnimation<Color>(
-                        project.progress == 1.0 ? Colors.green : Colors.amber,
-                      ),
-                    ),
-                  ),
-                  if (project.dueDate != null)
-                    Padding(
-                      padding: const EdgeInsets.only(top: 6),
-                      child: Text(
-                        'יעד: ${project.dueDate!.day}/${project.dueDate!.month}/${project.dueDate!.year}',
-                        style: TextStyle(color: Colors.grey[500], fontSize: 12),
-                      ),
-                    ),
+                  Container(width: 5, color: stripeColor),
+                  Expanded(child: cardContent),
                 ],
               ),
             ),
-          ),
+    );
+  }
 
-          // ── Expanded subtask list ──
-          if (isExpanded) ...[
-            if (project.subtasks.isEmpty)
-              Padding(
-                padding: const EdgeInsets.all(12),
-                child: Text('אין משימות עדיין', style: TextStyle(color: Colors.grey[500])),
-              )
-            else ...[
-              const Divider(height: 1),
-              ...List.generate(project.subtasks.length, (i) {
-                final subtask = project.subtasks[i];
-                final isActive = i == activeIdx;
-                final isLocked = !subtask.isCompleted && !isActive;
-
-                return ListTile(
-                  contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 2),
-                  leading: isLocked
-                      ? const Padding(
-                          padding: EdgeInsets.all(12),
-                          child: Icon(Icons.lock, size: 18, color: Colors.grey),
-                        )
-                      : Checkbox(
-                          value: subtask.isCompleted,
-                          activeColor: Colors.amber,
-                          onChanged: (_) => setState(() => subtask.isCompleted = !subtask.isCompleted),
-                        ),
-                  title: Text(
-                    subtask.title,
-                    textAlign: TextAlign.right,
-                    style: TextStyle(
-                      decoration: subtask.isCompleted ? TextDecoration.lineThrough : null,
-                      color: isLocked
-                          ? Colors.grey[600]
-                          : subtask.isCompleted
-                              ? Colors.grey
-                              : null,
-                    ),
-                  ),
-                  subtitle: (subtask.description?.isNotEmpty ?? false) || subtask.dueDate != null
-                      ? Text(
-                          [
-                            if (subtask.description?.isNotEmpty ?? false) subtask.description!,
-                            if (subtask.dueDate != null) '${subtask.dueDate!.day}/${subtask.dueDate!.month}',
-                          ].join(' · '),
-                          textAlign: TextAlign.right,
-                          style: TextStyle(color: isLocked ? Colors.grey[700] : null),
-                        )
-                      : null,
-                  trailing: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      if (isActive)
-                        const Icon(Icons.play_arrow, size: 16, color: Colors.amber),
-                      IconButton(
-                        icon: const Icon(Icons.edit, size: 16),
-                        onPressed: () => _showSubtaskDialog(project: project, todo: subtask),
-                        padding: EdgeInsets.zero,
-                        constraints: const BoxConstraints(),
-                      ),
-                      IconButton(
-                        icon: const Icon(Icons.delete, size: 16, color: Colors.redAccent),
-                        onPressed: () => setState(() => project.subtasks.removeWhere((t) => t.id == subtask.id)),
-                        padding: EdgeInsets.zero,
-                        constraints: const BoxConstraints(),
-                      ),
-                    ],
-                  ),
-                );
-              }),
-              const SizedBox(height: 8),
+  // ─── Category dropdown widget ─────────────────────────────────────
+  Widget _buildCategoryDropdown(String? categoryId, void Function(String?) onChanged) {
+    if (_categories.isEmpty) return const SizedBox.shrink();
+    return DropdownButtonFormField<String?>(
+      value: categoryId,
+      decoration: const InputDecoration(hintText: 'קטגוריה (אופציונלי)'),
+      items: [
+        const DropdownMenuItem(value: null, child: Text('ללא קטגוריה')),
+        ..._categories.map((c) => DropdownMenuItem(
+          value: c.id,
+          child: Row(
+            children: [
+              Container(width: 14, height: 14, decoration: BoxDecoration(color: c.color, shape: BoxShape.circle)),
+              const SizedBox(width: 8),
+              Text(c.name),
             ],
-          ],
-        ],
-      ),
+          ),
+        )),
+      ],
+      onChanged: onChanged,
     );
   }
 
@@ -683,6 +734,23 @@ class _TodoHomePageState extends State<TodoHomePage> {
                     Navigator.pop(context);
                   },
                 )),
+                const Divider(height: 1),
+                ListTile(
+                  leading: const Icon(Icons.label_outline),
+                  title: const Text('קטגוריות'),
+                  onTap: () {
+                    Navigator.pop(context);
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (_) => CategoriesPage(
+                          categories: _categories,
+                          onChanged: () => setState(() {}),
+                        ),
+                      ),
+                    );
+                  },
+                ),
                 const Spacer(),
                 const Divider(height: 1),
                 // Settings (placeholder)
@@ -706,6 +774,7 @@ class _TodoHomePageState extends State<TodoHomePage> {
                   if (_selectedIndex == 0 && goldenTask.isNotEmpty) ...[
                     TodoCard(
                       todo: goldenTask.first,
+                      category: _categories.where((c) => c.id == goldenTask.first.categoryId).firstOrNull,
                       onToggle: () => setState(() => goldenTask.first.isCompleted = !goldenTask.first.isCompleted),
                       onEdit: () => _showRegularTaskDialog(todo: goldenTask.first),
                       onDelete: () => _deleteTask(goldenTask.first),
@@ -729,7 +798,8 @@ class _TodoHomePageState extends State<TodoHomePage> {
                         index: index,
                         child: TodoCard(
                           todo: otherTasks[index],
-                          onToggle: () => setState(() => otherTasks[index].isCompleted = !otherTasks[index].isCompleted),
+                          category: _categories.where((c) => c.id == otherTasks[index].categoryId).firstOrNull,
+                      onToggle: () => setState(() => otherTasks[index].isCompleted = !otherTasks[index].isCompleted),
                           onEdit: () => _selectedIndex == 0
                               ? _showRegularTaskDialog(todo: otherTasks[index])
                               : _showRecurringTaskDialog(todo: otherTasks[index]),

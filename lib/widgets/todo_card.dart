@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../models/todo_item.dart';
+import '../models/category_item.dart';
 
 class TodoCard extends StatelessWidget {
   final TodoItem todo;
@@ -8,6 +9,8 @@ class TodoCard extends StatelessWidget {
   final VoidCallback onDelete;
   final VoidCallback onToggleGolden;
 
+  final CategoryItem? category;
+
   const TodoCard({
     super.key,
     required this.todo,
@@ -15,6 +18,7 @@ class TodoCard extends StatelessWidget {
     required this.onEdit,
     required this.onDelete,
     required this.onToggleGolden,
+    this.category,
   });
 
   String _getRecurrenceDetails(TodoItem item, BuildContext context) {
@@ -32,14 +36,9 @@ class TodoCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Card(
-      margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(12),
-        side: todo.isGolden ? const BorderSide(color: Colors.amber, width: 2) : BorderSide.none,
-      ),
-      elevation: todo.isGolden ? 8 : 1,
-      child: ListTile(
+    final stripeColor = category?.color;
+
+    final tile = ListTile(
         onTap: onEdit,
         leading: Checkbox(value: todo.isCompleted, onChanged: (_) => onToggle(), activeColor: Colors.amber),
         title: Text(
@@ -79,7 +78,27 @@ class TodoCard extends StatelessWidget {
             IconButton(icon: const Icon(Icons.delete, size: 20, color: Colors.redAccent), onPressed: onDelete),
           ],
         ),
+    );
+
+    return Card(
+      margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(12),
+        side: todo.isGolden ? const BorderSide(color: Colors.amber, width: 2) : BorderSide.none,
       ),
+      elevation: todo.isGolden ? 8 : 1,
+      clipBehavior: Clip.antiAlias,
+      child: stripeColor == null
+          ? tile
+          : IntrinsicHeight(
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  Container(width: 5, color: stripeColor),
+                  Expanded(child: tile),
+                ],
+              ),
+            ),
     );
   }
 }

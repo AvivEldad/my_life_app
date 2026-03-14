@@ -13,6 +13,7 @@ class TodoItem {
   RecurrenceType recurrence;
   TimeOfDay? reminderTime;
   int? repeatValue;
+  String? categoryId;
 
   TodoItem({
     required this.id,
@@ -25,5 +26,6 @@ class TodoItem {
     this.recurrence = RecurrenceType.none,
     this.reminderTime,
     this.repeatValue,
+    this.categoryId,
   });
 }
