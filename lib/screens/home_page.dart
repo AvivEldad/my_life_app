@@ -5,6 +5,7 @@ import '../widgets/todo_card.dart';
 import '../models/category_item.dart';
 import 'categories_page.dart';
 import 'daily_list_page.dart';
+import 'strikes_page.dart';
 import '../services/task_service.dart';
 //import '../services/notification_service.dart';
 
@@ -744,6 +745,18 @@ class _TodoHomePageState extends State<TodoHomePage> {
                     Navigator.push(
                       context,
                       MaterialPageRoute(builder: (_) => const DailyListPage()),
+                    );
+                  },
+                ),
+                const Divider(height: 1),
+                ListTile(
+                  leading: const Icon(Icons.local_fire_department),
+                  title: const Text('סטריקים'),
+                  onTap: () {
+                    Navigator.pop(context);
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(builder: (_) => const StrikesPage()),
                     );
                   },
                 ),
