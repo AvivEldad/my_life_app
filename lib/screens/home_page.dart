@@ -7,7 +7,7 @@ import 'categories_page.dart';
 import 'daily_list_page.dart';
 import 'strikes_page.dart';
 import '../services/task_service.dart';
-//import '../services/notification_service.dart';
+import '../services/notification_service.dart';
 
 class TodoHomePage extends StatefulWidget {
   const TodoHomePage({super.key});
