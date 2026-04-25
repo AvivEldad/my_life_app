@@ -20,14 +20,46 @@ class ProjectItem {
   }) : subtasks = subtasks ?? [];
 
   int get completedCount => subtasks.where((t) => t.isCompleted).length;
-  double get progress => subtasks.isEmpty ? 0.0 : completedCount / subtasks.length;
+  double get progress =>
+      subtasks.isEmpty ? 0.0 : completedCount / subtasks.length;
 
-  /// Index of the first subtask that is not yet completed.
-  /// Returns -1 if all are done (or list is empty).
   int get activeSubtaskIndex {
     for (int i = 0; i < subtasks.length; i++) {
       if (!subtasks[i].isCompleted) return i;
     }
     return -1;
+  }
+
+  Map<String, dynamic> toMap() {
+    return {
+      'title': title,
+      'description': description,
+      'dueDate': dueDate?.millisecondsSinceEpoch,
+      'level': level,
+      'categoryId': categoryId,
+      'subtasks': subtasks.map((s) => {'id': s.id, ...s.toMap()}).toList(),
+    };
+  }
+
+  factory ProjectItem.fromMap(String id, Map<String, dynamic> map) {
+    final rawSubtasks = (map['subtasks'] as List<dynamic>?) ?? [];
+    final subtasks = rawSubtasks.map((s) {
+      final sMap = Map<String, dynamic>.from(s as Map);
+      final sid = sMap.remove('id') as String? ??
+          DateTime.now().millisecondsSinceEpoch.toString();
+      return TodoItem.fromMap(sid, sMap);
+    }).toList();
+
+    return ProjectItem(
+      id: id,
+      title: map['title'] as String? ?? '',
+      description: map['description'] as String? ?? '',
+      dueDate: map['dueDate'] != null
+          ? DateTime.fromMillisecondsSinceEpoch(map['dueDate'] as int)
+          : null,
+      level: (map['level'] as int?) ?? 1,
+      subtasks: subtasks,
+      categoryId: map['categoryId'] as String?,
+    );
   }
 }

@@ -1,30 +1,82 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import '../models/todo_item.dart';
+import '../models/project_item.dart';
+import '../models/category_item.dart';
 
 class DatabaseService {
-  final CollectionReference _db = FirebaseFirestore.instance.collection('todo_items');
+  static final _db = FirebaseFirestore.instance;
 
-  // The "Pipe" for the StreamBuilder
-  Stream<List<TodoItem>> get tasksStream {
-    return _db.snapshots().map((snapshot) {
-      return snapshot.docs.map((doc) {
-        return TodoItem.fromMap(doc.id, doc.data() as Map<String, dynamic>);
-      }).toList();
+  static final _tasksCol = _db.collection('tasks');
+  static final _projectsCol = _db.collection('projects');
+  static final _categoriesCol = _db.collection('categories');
+
+  // ─── Load all data at startup ─────────────────────────────────────
+  static Future<List<TodoItem>> loadTasks() async {
+    final snap = await _tasksCol.orderBy('createdAt', descending: true).get();
+    return snap.docs
+        .map((d) => TodoItem.fromMap(d.id, d.data()))
+        .toList();
+  }
+
+  static Future<List<ProjectItem>> loadProjects() async {
+    final snap = await _projectsCol.orderBy('createdAt', descending: true).get();
+    return snap.docs
+        .map((d) => ProjectItem.fromMap(d.id, d.data()))
+        .toList();
+  }
+
+  static Future<List<CategoryItem>> loadCategories() async {
+    final snap = await _categoriesCol.get();
+    return snap.docs
+        .map((d) => CategoryItem.fromMap(d.id, d.data()))
+        .toList();
+  }
+
+  // ─── Tasks ────────────────────────────────────────────────────────
+  static Future<String> addTask(TodoItem item) async {
+    final doc = await _tasksCol.add({
+      ...item.toMap(),
+      'createdAt': FieldValue.serverTimestamp(),
     });
+    return doc.id;
   }
 
-  // SAVE
-  Future<void> saveTask(TodoItem item) async {
-    await _db.add(item.toMap());
+  static Future<void> updateTask(TodoItem item) async {
+    await _tasksCol.doc(item.id).update(item.toMap());
   }
 
-  // UPDATE
-  Future<void> updateTask(TodoItem item) async {
-    await _db.doc(item.id).update(item.toMap());
+  static Future<void> deleteTask(String id) async {
+    await _tasksCol.doc(id).delete();
   }
 
-  // DELETE
-  Future<void> deleteTask(String id) async {
-    await _db.doc(id).delete();
+  // ─── Projects ─────────────────────────────────────────────────────
+  static Future<String> addProject(ProjectItem item) async {
+    final doc = await _projectsCol.add({
+      ...item.toMap(),
+      'createdAt': FieldValue.serverTimestamp(),
+    });
+    return doc.id;
+  }
+
+  static Future<void> updateProject(ProjectItem item) async {
+    await _projectsCol.doc(item.id).update(item.toMap());
+  }
+
+  static Future<void> deleteProject(String id) async {
+    await _projectsCol.doc(id).delete();
+  }
+
+  // ─── Categories ───────────────────────────────────────────────────
+  static Future<String> addCategory(CategoryItem item) async {
+    final doc = await _categoriesCol.add(item.toMap());
+    return doc.id;
+  }
+
+  static Future<void> updateCategory(CategoryItem item) async {
+    await _categoriesCol.doc(item.id).update(item.toMap());
+  }
+
+  static Future<void> deleteCategory(String id) async {
+    await _categoriesCol.doc(id).delete();
   }
 }

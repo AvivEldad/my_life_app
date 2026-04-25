@@ -3,12 +3,14 @@ import '../models/category_item.dart';
 
 class CategoriesPage extends StatefulWidget {
   final List<CategoryItem> categories;
-  final VoidCallback onChanged;
+  final Future<void> Function(CategoryItem, bool isNew) onSaved;
+  final Future<void> Function(String id) onDeleted;
 
   const CategoriesPage({
     super.key,
     required this.categories,
-    required this.onChanged,
+    required this.onSaved,
+    required this.onDeleted,
   });
 
   @override
@@ -45,14 +47,11 @@ class _CategoriesPageState extends State<CategoriesPage> {
                   return GestureDetector(
                     onTap: () => setDialogState(() => selectedColor = color),
                     child: Container(
-                      width: 36,
-                      height: 36,
+                      width: 36, height: 36,
                       decoration: BoxDecoration(
                         color: color,
                         shape: BoxShape.circle,
-                        border: isSelected
-                            ? Border.all(color: Colors.white, width: 3)
-                            : null,
+                        border: isSelected ? Border.all(color: Colors.white, width: 3) : null,
                         boxShadow: isSelected
                             ? [BoxShadow(color: color.withOpacity(0.6), blurRadius: 6)]
                             : null,
@@ -71,34 +70,31 @@ class _CategoriesPageState extends State<CategoriesPage> {
               IconButton(
                 icon: const Icon(Icons.delete, color: Colors.redAccent),
                 onPressed: () {
-                  setState(() => widget.categories.removeWhere((c) => c.id == category.id));
-                  widget.onChanged();
+                  widget.categories.removeWhere((c) => c.id == category.id);
+                  widget.onDeleted(category.id);
+                  setState(() {});
                   Navigator.pop(context);
                 },
               ),
-            TextButton(
-              onPressed: () => Navigator.pop(context),
-              child: const Text('ביטול'),
-            ),
+            TextButton(onPressed: () => Navigator.pop(context), child: const Text('ביטול')),
             ElevatedButton(
-              onPressed: nameController.text.isEmpty
-                  ? null
-                  : () {
-                      setState(() {
-                        if (isEditing) {
-                          category.name = nameController.text;
-                          category.color = selectedColor;
-                        } else {
-                          widget.categories.add(CategoryItem(
-                            id: DateTime.now().toString(),
-                            name: nameController.text,
-                            color: selectedColor,
-                          ));
-                        }
-                      });
-                      widget.onChanged();
-                      Navigator.pop(context);
-                    },
+              onPressed: nameController.text.isEmpty ? null : () {
+                if (isEditing) {
+                  category.name = nameController.text;
+                  category.color = selectedColor;
+                  widget.onSaved(category, false);
+                } else {
+                  final newCat = CategoryItem(
+                    id: DateTime.now().millisecondsSinceEpoch.toString(),
+                    name: nameController.text,
+                    color: selectedColor,
+                  );
+                  widget.categories.add(newCat);
+                  widget.onSaved(newCat, true);
+                }
+                setState(() {});
+                Navigator.pop(context);
+              },
               child: Text(isEditing ? 'שמור' : 'צור'),
             ),
           ],
@@ -112,9 +108,7 @@ class _CategoriesPageState extends State<CategoriesPage> {
     return Directionality(
       textDirection: TextDirection.rtl,
       child: Scaffold(
-        appBar: AppBar(
-          title: const Text('קטגוריות'),
-        ),
+        appBar: AppBar(title: const Text('קטגוריות')),
         body: widget.categories.isEmpty
             ? Center(
                 child: Text(
@@ -131,12 +125,8 @@ class _CategoriesPageState extends State<CategoriesPage> {
                     margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
                     child: ListTile(
                       leading: Container(
-                        width: 28,
-                        height: 28,
-                        decoration: BoxDecoration(
-                          color: c.color,
-                          shape: BoxShape.circle,
-                        ),
+                        width: 28, height: 28,
+                        decoration: BoxDecoration(color: c.color, shape: BoxShape.circle),
                       ),
                       title: Text(c.name, style: const TextStyle(fontSize: 16)),
                       trailing: Row(
@@ -150,7 +140,7 @@ class _CategoriesPageState extends State<CategoriesPage> {
                             icon: const Icon(Icons.delete, size: 20, color: Colors.redAccent),
                             onPressed: () {
                               setState(() => widget.categories.removeWhere((cat) => cat.id == c.id));
-                              widget.onChanged();
+                              widget.onDeleted(c.id);
                             },
                           ),
                         ],
