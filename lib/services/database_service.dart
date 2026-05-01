@@ -2,6 +2,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import '../models/todo_item.dart';
 import '../models/project_item.dart';
 import '../models/category_item.dart';
+import '../models/mantra_item.dart';
 
 class DatabaseService {
   static final _db = FirebaseFirestore.instance;
@@ -9,6 +10,7 @@ class DatabaseService {
   static final _tasksCol = _db.collection('tasks');
   static final _projectsCol = _db.collection('projects');
   static final _categoriesCol = _db.collection('categories');
+  static final _mantrasCol = _db.collection('mantras');
 
   // ─── Load all data at startup ─────────────────────────────────────
   static Future<List<TodoItem>> loadTasks() async {
@@ -79,4 +81,24 @@ class DatabaseService {
   static Future<void> deleteCategory(String id) async {
     await _categoriesCol.doc(id).delete();
   }
+
+
+  // ─── Mantras ───────────────────────────────────────────────────
+    static Future<List<MantraItem>> loadMantras() async {
+      final snap = await _mantrasCol.get();
+      return snap.docs.map((d) => MantraItem.fromMap(d.id, d.data())).toList();
+    }
+
+    static Future<String> addMantra(MantraItem item) async {
+      final doc = await _mantrasCol.add(item.toMap());
+      return doc.id;
+    }
+
+    static Future<void> updateMantra(MantraItem item) async {
+      await _mantrasCol.doc(item.id).update(item.toMap());
+    }
+
+    static Future<void> deleteMantra(String id) async {
+      await _mantrasCol.doc(id).delete();
+    }
 }

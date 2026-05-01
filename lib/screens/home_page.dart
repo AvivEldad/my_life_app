@@ -8,6 +8,7 @@ import '../services/database_service.dart';
 import 'categories_page.dart';
 import 'daily_list_page.dart';
 import 'strikes_page.dart';
+import 'mantras_page.dart';
 
 class TodoHomePage extends StatefulWidget {
   const TodoHomePage({super.key});
@@ -172,6 +173,15 @@ class _TodoHomePageState extends State<TodoHomePage> {
                         MaterialPageRoute(builder: (_) => const StrikesPage()));
                   },
                 ),
+                const Divider(height: 1),
+                ListTile(
+                    leading: const Icon(Icons.auto_awesome),
+                    title: const Text('מנטרות'),
+                    onTap: () {
+                      Navigator.pop(context);
+                      Navigator.push(context, MaterialPageRoute(builder: (_) => const MantrasPage()));
+                    },
+                  ),
                 const Divider(height: 1),
                 ListTile(
                   leading: const Icon(Icons.label_outline),
