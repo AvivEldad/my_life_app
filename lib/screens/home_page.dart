@@ -1,10 +1,12 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 import '../models/todo_item.dart';
 import '../models/project_item.dart';
 import '../models/category_item.dart';
 import '../screens/tasks_tab.dart';
 import '../screens/projects_tab.dart';
 import '../services/database_service.dart';
+import '../services/coin_service.dart'; // Ensure correct path
 import 'categories_page.dart';
 import 'daily_list_page.dart';
 import 'strikes_page.dart';
@@ -17,7 +19,8 @@ class TodoHomePage extends StatefulWidget {
   State<TodoHomePage> createState() => _TodoHomePageState();
 }
 
-class _TodoHomePageState extends State<TodoHomePage> {
+// Added 'WidgetsBindingObserver' to safely intercept system app lifecycle changes
+class _TodoHomePageState extends State<TodoHomePage> with WidgetsBindingObserver {
   final List<TodoItem> _tasks = [];
   final List<ProjectItem> _projects = [];
   final List<CategoryItem> _categories = [];
@@ -31,7 +34,24 @@ class _TodoHomePageState extends State<TodoHomePage> {
   @override
   void initState() {
     super.initState();
+    // Register lifecycle listener
+    WidgetsBinding.instance.addObserver(this);
     _loadData();
+  }
+
+  @override
+  void dispose() {
+    // Unregister lifecycle listener to completely guard memory leaks
+    WidgetsBinding.instance.removeObserver(this);
+    super.dispose();
+  }
+
+  // Intercepting background-to-foreground app wakes
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.resumed && !_loading) {
+      _runOptimizedBleedCheck();
+    }
   }
 
   Future<void> _loadData() async {
@@ -47,9 +67,26 @@ class _TodoHomePageState extends State<TodoHomePage> {
         _categories.addAll(results[2] as List<CategoryItem>);
         _loading = false;
       });
+
+      // Data is ready, run the initial startup penalty bleed verification pass
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        _runOptimizedBleedCheck();
+      });
     } catch (e) {
       setState(() => _loading = false);
       debugPrint('Error loading data: $e');
+    }
+  }
+
+  // The optimization checkpoint helper method
+  void _runOptimizedBleedCheck() {
+    // Filter down to get uncompleted tasks
+    final uncompletedTasks = _tasks.where((task) => !task.isCompleted).toList();
+
+    // Pass items into the service layer for database timestamp gated calculation
+    if (mounted) {
+      Provider.of<CoinService>(context, listen: false)
+          .processActiveBleedPenalties(uncompletedTasks);
     }
   }
 
@@ -57,7 +94,6 @@ class _TodoHomePageState extends State<TodoHomePage> {
   Future<void> onTaskSaved(TodoItem task, {bool isNew = false}) async {
     if (isNew) {
       final id = await DatabaseService.addTask(task);
-      // Update the in-memory id with the Firestore-generated one
       final index = _tasks.indexOf(task);
       if (index >= 0) {
         _tasks[index] = TodoItem.fromMap(id, task.toMap());
@@ -127,7 +163,6 @@ class _TodoHomePageState extends State<TodoHomePage> {
       child: Scaffold(
         appBar: AppBar(title: Text(_titles[_selectedIndex])),
 
-        // ── Drawer ──────────────────────────────────────────────────
         drawer: Drawer(
           child: SafeArea(
             child: Column(
@@ -213,7 +248,6 @@ class _TodoHomePageState extends State<TodoHomePage> {
           ),
         ),
 
-        // ── Body ─────────────────────────────────────────────────────
         body: IndexedStack(
           index: _selectedIndex,
           children: [
@@ -243,7 +277,6 @@ class _TodoHomePageState extends State<TodoHomePage> {
           ],
         ),
 
-        // ── Bottom nav ───────────────────────────────────────────────
         bottomNavigationBar: BottomNavigationBar(
           currentIndex: _selectedIndex,
           onTap: (i) => setState(() => _selectedIndex = i),

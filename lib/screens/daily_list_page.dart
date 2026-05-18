@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import '../services/coin_service.dart';
+import 'package:provider/provider.dart';
 
 class DailyTask {
   final String id;
@@ -78,7 +80,20 @@ class _DailyListPageState extends State<DailyListPage> with WidgetsBindingObserv
   }
 
   void _toggleTask(DailyTask task) {
-    setState(() => task.isCompleted = !task.isCompleted);
+    // Look up the CoinService directly using the widget's context
+    final coinService = Provider.of<CoinService>(context, listen: false);
+
+    setState(() {
+      task.isCompleted = !task.isCompleted;
+      
+      if (task.isCompleted) {
+        // Add exact quarter coin on completing a daily list task
+        coinService.addCoins(0.25);
+      } else {
+        // Deduct exactly what was given if unchecked
+        coinService.deductCoins(0.25);
+      }
+    });
   }
 
   void _deleteTask(String id) {
