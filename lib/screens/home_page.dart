@@ -1,3 +1,4 @@
+import '../widgets/coins_progress_bar.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../models/todo_item.dart';
@@ -6,11 +7,12 @@ import '../models/category_item.dart';
 import '../screens/tasks_tab.dart';
 import '../screens/projects_tab.dart';
 import '../services/database_service.dart';
-import '../services/coin_service.dart'; // Ensure correct path
+import '../services/coin_service.dart';
 import 'categories_page.dart';
 import 'daily_list_page.dart';
 import 'strikes_page.dart';
 import 'mantras_page.dart';
+import 'prizes_page.dart';
 
 class TodoHomePage extends StatefulWidget {
   const TodoHomePage({super.key});
@@ -147,8 +149,9 @@ class _TodoHomePageState extends State<TodoHomePage> with WidgetsBindingObserver
     setState(() => _categories.removeWhere((c) => c.id == id));
   }
 
-  @override
+@override
   Widget build(BuildContext context) {
+    // 1. Show a loading circle while fetching from Firebase
     if (_loading) {
       return const Directionality(
         textDirection: TextDirection.rtl,
@@ -158,6 +161,7 @@ class _TodoHomePageState extends State<TodoHomePage> with WidgetsBindingObserver
       );
     }
 
+    // 2. The main layout once loaded
     return Directionality(
       textDirection: TextDirection.rtl,
       child: Scaffold(
@@ -210,13 +214,13 @@ class _TodoHomePageState extends State<TodoHomePage> with WidgetsBindingObserver
                 ),
                 const Divider(height: 1),
                 ListTile(
-                    leading: const Icon(Icons.auto_awesome),
-                    title: const Text('מנטרות'),
-                    onTap: () {
-                      Navigator.pop(context);
-                      Navigator.push(context, MaterialPageRoute(builder: (_) => const MantrasPage()));
-                    },
-                  ),
+                  leading: const Icon(Icons.auto_awesome),
+                  title: const Text('מנטרות'),
+                  onTap: () {
+                    Navigator.pop(context);
+                    Navigator.push(context, MaterialPageRoute(builder: (_) => const MantrasPage()));
+                  },
+                ),
                 const Divider(height: 1),
                 ListTile(
                   leading: const Icon(Icons.label_outline),
@@ -235,6 +239,16 @@ class _TodoHomePageState extends State<TodoHomePage> with WidgetsBindingObserver
                     );
                   },
                 ),
+                const Divider(height: 1),
+                // NEW: Prizes Page Link in Drawer
+                ListTile(
+                  leading: const Icon(Icons.stars, color: Colors.amber),
+                  title: const Text('חנות פרסים ומטרות'),
+                  onTap: () {
+                    Navigator.pop(context);
+                    Navigator.push(context, MaterialPageRoute(builder: (_) => const PrizesPage()));
+                  },
+                ),
                 const Spacer(),
                 const Divider(height: 1),
                 ListTile(
@@ -248,31 +262,39 @@ class _TodoHomePageState extends State<TodoHomePage> with WidgetsBindingObserver
           ),
         ),
 
-        body: IndexedStack(
-          index: _selectedIndex,
+        // 3. THE MAIN BODY WITH THE COINS BAR
+        body: Column(
           children: [
-            TasksTab(
-              tasks: _tasks,
-              categories: _categories,
-              isRituals: false,
-              onTaskSaved: (t, isNew) => onTaskSaved(t, isNew: isNew),
-              onTaskDeleted: onTaskDeleted,
-              onChanged: () => setState(() {}),
-            ),
-            TasksTab(
-              tasks: _tasks,
-              categories: _categories,
-              isRituals: true,
-              onTaskSaved: (t, isNew) => onTaskSaved(t, isNew: isNew),
-              onTaskDeleted: onTaskDeleted,
-              onChanged: () => setState(() {}),
-            ),
-            ProjectsTab(
-              projects: _projects,
-              categories: _categories,
-              onProjectSaved: (p, isNew) => onProjectSaved(p, isNew: isNew),
-              onProjectDeleted: onProjectDeleted,
-              onChanged: () => setState(() {}),
+            const CoinsProgressBar(), // Displays the bar constantly
+            Expanded(
+              child: IndexedStack(
+                index: _selectedIndex,
+                children: [
+                  TasksTab(
+                    tasks: _tasks,
+                    categories: _categories,
+                    isRituals: false,
+                    onTaskSaved: (t, isNew) => onTaskSaved(t, isNew: isNew),
+                    onTaskDeleted: onTaskDeleted,
+                    onChanged: () => setState(() {}),
+                  ),
+                  TasksTab(
+                    tasks: _tasks,
+                    categories: _categories,
+                    isRituals: true,
+                    onTaskSaved: (t, isNew) => onTaskSaved(t, isNew: isNew),
+                    onTaskDeleted: onTaskDeleted,
+                    onChanged: () => setState(() {}),
+                  ),
+                  ProjectsTab(
+                    projects: _projects,
+                    categories: _categories,
+                    onProjectSaved: (p, isNew) => onProjectSaved(p, isNew: isNew),
+                    onProjectDeleted: onProjectDeleted,
+                    onChanged: () => setState(() {}),
+                  ),
+                ],
+              ),
             ),
           ],
         ),

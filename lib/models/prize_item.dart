@@ -1,8 +1,8 @@
 class PrizeItem {
   final String id;
-  final String title;
-  final double cost;
-  final bool isRedeemed;
+  String title;
+  double cost;
+  bool isRedeemed;
 
   PrizeItem({
     required this.id,
