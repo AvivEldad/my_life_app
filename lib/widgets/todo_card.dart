@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 import '../models/todo_item.dart';
 import '../models/category_item.dart';
+import '../services/coin_service.dart';
 
 class TodoCard extends StatelessWidget {
   final TodoItem todo;
@@ -33,6 +35,28 @@ class TodoCard extends StatelessWidget {
       default: return '';
     }
   }
+
+  void _onTaskCheckboxToggled(TodoItem task, BuildContext context) {
+  final coinService = Provider.of<CoinService>(context, listen: false);
+
+  // 1. Check if we are checking it off as COMPLETED
+  final enteringCompletion = !task.isCompleted;
+
+  // 2. Use the task details to run the calculation logic
+  final rewardAmount = coinService.calculateStandardTaskReward(
+    level: task.level,       // 1 - 5 range rating
+    isGolden: task.isGolden, // Multiplier modifier boolean flag
+    dueDate: task.dueDate,   // Optional time bonus comparison targets
+  );
+
+  // 3. Process the wallet balance adjusters
+  if (enteringCompletion) {
+    coinService.addCoins(rewardAmount);
+  } else {
+    // Refund/deduct what was granted if toggled back down
+    coinService.deductCoins(rewardAmount);
+  }
+}
 
   @override
   Widget build(BuildContext context) {

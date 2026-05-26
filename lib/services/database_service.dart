@@ -3,6 +3,7 @@ import '../models/todo_item.dart';
 import '../models/project_item.dart';
 import '../models/category_item.dart';
 import '../models/mantra_item.dart';
+import '../models/prize_item.dart';
 
 class DatabaseService {
   static final _db = FirebaseFirestore.instance;
@@ -11,6 +12,8 @@ class DatabaseService {
   static final _projectsCol = _db.collection('projects');
   static final _categoriesCol = _db.collection('categories');
   static final _mantrasCol = _db.collection('mantras');
+  static final CollectionReference _gamificationRef = FirebaseFirestore.instance.collection('gamification');
+  static final CollectionReference _prizesRef = FirebaseFirestore.instance.collection('prizes');
 
   // ─── Load all data at startup ─────────────────────────────────────
   static Future<List<TodoItem>> loadTasks() async {
@@ -101,4 +104,51 @@ class DatabaseService {
     static Future<void> deleteMantra(String id) async {
       await _mantrasCol.doc(id).delete();
     }
+
+    static Future<Map<String, dynamic>?> loadEconomy() async {
+  final doc = await _gamificationRef.doc('wallet').get();
+  if (doc.exists) {
+    return doc.data() as Map<String, dynamic>;
+  }
+  return null;
+}
+
+static Future<void> updateEconomy(double totalCoins, DateTime? lastCheck) async {
+  await _gamificationRef.doc('wallet').set({
+    'totalCoins': totalCoins,
+    'lastPenaltyCheck': lastCheck?.toIso8601String(),
+  }, SetOptions(merge: true));
+}static Future<List<PrizeItem>> loadPrizes() async {
+  final snapshot = await _prizesRef.get();
+  return snapshot.docs.map((doc) {
+    final data = doc.data() as Map<String, dynamic>;
+    return PrizeItem(
+      id: doc.id,
+      title: data['title'] ?? '',
+      cost: (data['cost'] ?? 0).toDouble(),
+      isRedeemed: data['isRedeemed'] ?? false,
+    );
+  }).toList();
+}
+
+static Future<String> addPrize(PrizeItem prize) async {
+  final docRef = await _prizesRef.add({
+    'title': prize.title,
+    'cost': prize.cost,
+    'isRedeemed': prize.isRedeemed,
+  });
+  return docRef.id;
+}
+
+static Future<void> updatePrize(PrizeItem prize) async {
+  await _prizesRef.doc(prize.id).update({
+    'title': prize.title,
+    'cost': prize.cost,
+    'isRedeemed': prize.isRedeemed,
+  });
+}
+
+static Future<void> deletePrize(String id) async {
+  await _prizesRef.doc(id).delete();
+}
 }
