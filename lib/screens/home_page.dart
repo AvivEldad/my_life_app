@@ -1,4 +1,4 @@
-import '../widgets/coins_progress_bar.dart';
+import '../widgets/xp_progress_bar.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../models/todo_item.dart';
@@ -13,6 +13,7 @@ import 'daily_list_page.dart';
 import 'strikes_page.dart';
 import 'mantras_page.dart';
 import 'prizes_page.dart';
+import 'binder_page.dart';
 
 class TodoHomePage extends StatefulWidget {
   const TodoHomePage({super.key});
@@ -240,6 +241,15 @@ class _TodoHomePageState extends State<TodoHomePage> with WidgetsBindingObserver
                   },
                 ),
                 const Divider(height: 1),
+                ListTile(
+                  leading: const Icon(Icons.book, color: Colors.blueAccent),
+                  title: const Text('קלסר הפוקימונים'),
+                  onTap: () {
+                    Navigator.pop(context);
+                    Navigator.push(context, MaterialPageRoute(builder: (_) => const BinderPage()));
+                  },
+                ),
+                const Divider(height: 1),
                 // NEW: Prizes Page Link in Drawer
                 ListTile(
                   leading: const Icon(Icons.stars, color: Colors.amber),
@@ -265,7 +275,7 @@ class _TodoHomePageState extends State<TodoHomePage> with WidgetsBindingObserver
         // 3. THE MAIN BODY WITH THE COINS BAR
         body: Column(
           children: [
-            const CoinsProgressBar(), // Displays the bar constantly
+            const XpProgressBar(), // Displays the bar constantly
             Expanded(
               child: IndexedStack(
                 index: _selectedIndex,
