@@ -105,31 +105,40 @@ class DatabaseService {
       await _mantrasCol.doc(id).delete();
     }
 
-    static Future<Map<String, dynamic>?> loadEconomy() async {
-  final doc = await _gamificationRef.doc('wallet').get();
-  if (doc.exists) {
-    return doc.data() as Map<String, dynamic>;
+  static Future<Map<String, dynamic>?> loadEconomy() async {
+    final doc = await _gamificationRef.doc('wallet').get();
+    if (doc.exists) {
+      return doc.data() as Map<String, dynamic>;
+    }
+    return null;
   }
-  return null;
-}
 
-static Future<void> updateEconomy(double totalCoins, DateTime? lastCheck) async {
-  await _gamificationRef.doc('wallet').set({
-    'totalCoins': totalCoins,
-    'lastPenaltyCheck': lastCheck?.toIso8601String(),
-  }, SetOptions(merge: true));
-}static Future<List<PrizeItem>> loadPrizes() async {
-  final snapshot = await _prizesRef.get();
-  return snapshot.docs.map((doc) {
-    final data = doc.data() as Map<String, dynamic>;
-    return PrizeItem(
-      id: doc.id,
-      title: data['title'] ?? '',
-      cost: (data['cost'] ?? 0).toDouble(),
-      isRedeemed: data['isRedeemed'] ?? false,
-    );
-  }).toList();
-}
+  static Future<void> updateEconomy(
+    double totalCoins, 
+    DateTime? lastCheck, 
+    int xp, 
+    List<int> unlockedPokemon
+  ) async {
+    await _gamificationRef.doc('wallet').set({
+      'totalCoins': totalCoins,
+      'lastPenaltyCheck': lastCheck?.toIso8601String(),
+      'xp': xp,
+      'unlockedPokemon': unlockedPokemon,
+    }, SetOptions(merge: true));
+  }
+
+static Future<List<PrizeItem>> loadPrizes() async {
+    final snapshot = await _prizesRef.get();
+    return snapshot.docs.map((doc) {
+      final data = doc.data() as Map<String, dynamic>;
+      return PrizeItem(
+        id: doc.id,
+        title: data['title'] ?? '',
+        cost: (data['cost'] ?? 0).toDouble(),
+        isRedeemed: data['isRedeemed'] ?? false,
+      );
+    }).toList();
+  }
 
 static Future<String> addPrize(PrizeItem prize) async {
   final docRef = await _prizesRef.add({

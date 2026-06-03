@@ -1,11 +1,11 @@
 import 'package:flutter/material.dart';
-import 'package:provider/provider.dart';
+import 'package:provider/provider.dart'; // Added Provider import
 import '../models/todo_item.dart';
 import '../models/category_item.dart';
 import '../services/coin_service.dart';
 
 class TodoCard extends StatelessWidget {
-  final TodoItem todo;
+  final TodoItem todo; // Your variable is 'todo'
   final VoidCallback onToggle;
   final VoidCallback onEdit;
   final VoidCallback onDelete;
@@ -36,27 +36,38 @@ class TodoCard extends StatelessWidget {
     }
   }
 
-  void _onTaskCheckboxToggled(TodoItem task, BuildContext context) {
-  final coinService = Provider.of<CoinService>(context, listen: false);
+  // Updated function: Uses 'todo' instead of 'task' and only requires context
+  void _onTaskCheckboxToggled(BuildContext context) {
+    final coinService = Provider.of<CoinService>(context, listen: false);
 
-  // 1. Check if we are checking it off as COMPLETED
-  final enteringCompletion = !task.isCompleted;
+    // 1. Check if we are checking it off as COMPLETED
+    final enteringCompletion = !todo.isCompleted;
 
-  // 2. Use the task details to run the calculation logic
-  final rewardAmount = coinService.calculateStandardTaskReward(
-    level: task.level,       // 1 - 5 range rating
-    isGolden: task.isGolden, // Multiplier modifier boolean flag
-    dueDate: task.dueDate,   // Optional time bonus comparison targets
-  );
+    // 2. Use the task details to run the calculation logic
+    final rewardAmount = coinService.calculateStandardTaskReward(
+      level: todo.level,       
+      isGolden: todo.isGolden, 
+      dueDate: todo.dueDate,   
+    );
+    
+    // 3. Calculate XP
+    final xpAmount = coinService.calculateTaskXP(
+      level: todo.level,
+      isGolden: todo.isGolden,
+    );
 
-  // 3. Process the wallet balance adjusters
-  if (enteringCompletion) {
-    coinService.addCoins(rewardAmount);
-  } else {
-    // Refund/deduct what was granted if toggled back down
-    coinService.deductCoins(rewardAmount);
+    // 4. Process the wallet balance adjusters
+    if (enteringCompletion) {
+      coinService.addCoins(rewardAmount);
+      coinService.addXP(xpAmount);
+    } else {
+      // Refund/deduct what was granted if toggled back down
+      coinService.deductCoins(rewardAmount);
+    }
+
+    // 5. Trigger the parent save sequence (flips the visual checkmark and saves to DB)
+    onToggle();
   }
-}
 
   @override
   Widget build(BuildContext context) {
@@ -64,7 +75,12 @@ class TodoCard extends StatelessWidget {
 
     final tile = ListTile(
         onTap: onEdit,
-        leading: Checkbox(value: todo.isCompleted, onChanged: (_) => onToggle(), activeColor: Colors.amber),
+        // Linked the Checkbox to our new function!
+        leading: Checkbox(
+          value: todo.isCompleted, 
+          onChanged: (_) => _onTaskCheckboxToggled(context), 
+          activeColor: Colors.amber
+        ),
         title: Text(
           todo.title,
           style: TextStyle(
@@ -92,7 +108,6 @@ class TodoCard extends StatelessWidget {
         trailing: Row(
           mainAxisSize: MainAxisSize.min,
           children: [
-            // הצגת המטבע רק אם זו משימה רגילה
             if (todo.recurrence == RecurrenceType.none)
               IconButton(
                 icon: Icon(todo.isGolden ? Icons.monetization_on : Icons.monetization_on_outlined, color: todo.isGolden ? Colors.amber : Colors.grey),
