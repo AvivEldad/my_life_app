@@ -133,6 +133,7 @@ class _TasksTabState extends State<TasksTab> {
           // Task list
           Expanded(
             child: ReorderableListView.builder(
+              physics: const AlwaysScrollableScrollPhysics(),
               itemCount: others.length,
               onReorder: (oldIdx, newIdx) {
                 if (newIdx > oldIdx) newIdx -= 1;
@@ -143,7 +144,7 @@ class _TasksTabState extends State<TasksTab> {
                 widget.tasks.insert(insertAt < 0 ? 0 : insertAt, item);
                 widget.onChanged();
               },
-              itemBuilder: (context, index) => ReorderableDragStartListener(
+              itemBuilder: (context, index) => ReorderableDelayedDragStartListener(
                 key: ValueKey(others[index].id),
                 index: index,
                 child: TodoCard(

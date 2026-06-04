@@ -15,15 +15,15 @@ import 'mantras_page.dart';
 import 'prizes_page.dart';
 import 'binder_page.dart';
 
-class TodoHomePage extends StatefulWidget {
-  const TodoHomePage({super.key});
+class HomePage extends StatefulWidget {
+  const HomePage({super.key});
 
   @override
-  State<TodoHomePage> createState() => _TodoHomePageState();
+  State<HomePage> createState() => _HomePageState();
 }
 
 // Added 'WidgetsBindingObserver' to safely intercept system app lifecycle changes
-class _TodoHomePageState extends State<TodoHomePage> with WidgetsBindingObserver {
+class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
   final List<TodoItem> _tasks = [];
   final List<ProjectItem> _projects = [];
   final List<CategoryItem> _categories = [];
