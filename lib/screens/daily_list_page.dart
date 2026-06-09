@@ -110,15 +110,6 @@ class _DailyListPageState extends State<DailyListPage> with WidgetsBindingObserv
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: Colors.black,
-      appBar: AppBar(
-        title: const Text(
-          'משימות יומיות',
-          style: TextStyle(fontWeight: FontWeight.bold, color: Colors.white),
-        ),
-        centerTitle: true,
-        backgroundColor: Colors.black,
-        elevation: 0,
-      ),
       body: Directionality(
         textDirection: TextDirection.rtl,
         child: Column(

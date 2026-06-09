@@ -22,12 +22,13 @@ class HomePage extends StatefulWidget {
   State<HomePage> createState() => _HomePageState();
 }
 
-// Added 'WidgetsBindingObserver' to safely intercept system app lifecycle changes
 class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
   final List<TodoItem> _tasks = [];
   final List<ProjectItem> _projects = [];
   final List<CategoryItem> _categories = [];
-  int _selectedIndex = 0;
+  
+  int _selectedIndex = 0; // Controls the BottomNavigationBar
+  int _currentDrawerIndex = 0; // Controls the Master IndexedStack
   bool _loading = true;
 
   static const _titles = ['המשימות שלי', 'הטקסים שלי', 'הפרויקטים שלי'];
@@ -37,19 +38,16 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
   @override
   void initState() {
     super.initState();
-    // Register lifecycle listener
     WidgetsBinding.instance.addObserver(this);
     _loadData();
   }
 
   @override
   void dispose() {
-    // Unregister lifecycle listener to completely guard memory leaks
     WidgetsBinding.instance.removeObserver(this);
     super.dispose();
   }
 
-  // Intercepting background-to-foreground app wakes
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
     if (state == AppLifecycleState.resumed && !_loading) {
@@ -71,7 +69,6 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
         _loading = false;
       });
 
-      // Data is ready, run the initial startup penalty bleed verification pass
       WidgetsBinding.instance.addPostFrameCallback((_) {
         _runOptimizedBleedCheck();
       });
@@ -81,12 +78,8 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
     }
   }
 
-  // The optimization checkpoint helper method
   void _runOptimizedBleedCheck() {
-    // Filter down to get uncompleted tasks
     final uncompletedTasks = _tasks.where((task) => !task.isCompleted).toList();
-
-    // Pass items into the service layer for database timestamp gated calculation
     if (mounted) {
       Provider.of<CoinService>(context, listen: false)
           .processActiveBleedPenalties(uncompletedTasks);
@@ -150,9 +143,22 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
     setState(() => _categories.removeWhere((c) => c.id == id));
   }
 
-@override
+  // Dynamically calculate AppBar Title based on current view
+  String get _currentAppBarTitle {
+    if (_currentDrawerIndex == 0) return _titles[_selectedIndex];
+    switch (_currentDrawerIndex) {
+      case 1: return 'רשימה יומית';
+      case 2: return 'סטרייקים';
+      case 3: return 'מנטרות';
+      case 4: return 'קטגוריות';
+      case 5: return 'ביינדר';
+      case 6: return 'פרסים';
+      default: return 'Life App';
+    }
+  }
+
+  @override
   Widget build(BuildContext context) {
-    // 1. Show a loading circle while fetching from Firebase
     if (_loading) {
       return const Directionality(
         textDirection: TextDirection.rtl,
@@ -162,12 +168,10 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
       );
     }
 
-    // 2. The main layout once loaded
     return Directionality(
       textDirection: TextDirection.rtl,
       child: Scaffold(
-        appBar: AppBar(title: Text(_titles[_selectedIndex])),
-
+        appBar: AppBar(title: Text(_currentAppBarTitle)),
         drawer: Drawer(
           child: SafeArea(
             child: Column(
@@ -180,16 +184,20 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
                 ),
                 const Divider(height: 1),
                 const SizedBox(height: 8),
+                // Home Items (Map to BottomNavigationBar index)
                 ...List.generate(3, (i) => ListTile(
-                  leading: Icon(_icons[i], color: _selectedIndex == i ? Colors.amber : null),
+                  leading: Icon(_icons[i], color: (_currentDrawerIndex == 0 && _selectedIndex == i) ? Colors.amber : null),
                   title: Text(_labels[i],
                       style: TextStyle(
-                        fontWeight: _selectedIndex == i ? FontWeight.bold : FontWeight.normal,
-                        color: _selectedIndex == i ? Colors.amber : null,
+                        fontWeight: (_currentDrawerIndex == 0 && _selectedIndex == i) ? FontWeight.bold : FontWeight.normal,
+                        color: (_currentDrawerIndex == 0 && _selectedIndex == i) ? Colors.amber : null,
                       )),
-                  selected: _selectedIndex == i,
+                  selected: (_currentDrawerIndex == 0 && _selectedIndex == i),
                   onTap: () {
-                    setState(() => _selectedIndex = i);
+                    setState(() {
+                      _currentDrawerIndex = 0;
+                      _selectedIndex = i;
+                    });
                     Navigator.pop(context);
                   },
                 )),
@@ -197,66 +205,60 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
                 ListTile(
                   leading: const Icon(Icons.today),
                   title: const Text('רשימה יומית'),
+                  selected: _currentDrawerIndex == 1,
                   onTap: () {
+                    setState(() => _currentDrawerIndex = 1);
                     Navigator.pop(context);
-                    Navigator.push(context,
-                        MaterialPageRoute(builder: (_) => const DailyListPage()));
                   },
                 ),
                 const Divider(height: 1),
                 ListTile(
                   leading: const Icon(Icons.local_fire_department),
-                  title: const Text('סטריקים'),
+                  title: const Text('סטרייקים'),
+                  selected: _currentDrawerIndex == 2,
                   onTap: () {
+                    setState(() => _currentDrawerIndex = 2);
                     Navigator.pop(context);
-                    Navigator.push(context,
-                        MaterialPageRoute(builder: (_) => const StrikesPage()));
                   },
                 ),
                 const Divider(height: 1),
                 ListTile(
                   leading: const Icon(Icons.auto_awesome),
                   title: const Text('מנטרות'),
+                  selected: _currentDrawerIndex == 3,
                   onTap: () {
+                    setState(() => _currentDrawerIndex = 3);
                     Navigator.pop(context);
-                    Navigator.push(context, MaterialPageRoute(builder: (_) => const MantrasPage()));
                   },
                 ),
                 const Divider(height: 1),
                 ListTile(
                   leading: const Icon(Icons.label_outline),
                   title: const Text('קטגוריות'),
+                  selected: _currentDrawerIndex == 4,
                   onTap: () {
+                    setState(() => _currentDrawerIndex = 4);
                     Navigator.pop(context);
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(
-                        builder: (_) => CategoriesPage(
-                          categories: _categories,
-                          onSaved: (c, isNew) => onCategorySaved(c, isNew: isNew),
-                          onDeleted: onCategoryDeleted,
-                        ),
-                      ),
-                    );
                   },
                 ),
                 const Divider(height: 1),
                 ListTile(
                   leading: const Icon(Icons.book, color: Colors.blueAccent),
-                  title: const Text('קלסר הפוקימונים'),
+                  title: const Text('ביינדר'),
+                  selected: _currentDrawerIndex == 5,
                   onTap: () {
+                    setState(() => _currentDrawerIndex = 5);
                     Navigator.pop(context);
-                    Navigator.push(context, MaterialPageRoute(builder: (_) => const BinderPage()));
                   },
                 ),
                 const Divider(height: 1),
-                // NEW: Prizes Page Link in Drawer
                 ListTile(
                   leading: const Icon(Icons.stars, color: Colors.amber),
-                  title: const Text('חנות פרסים ומטרות'),
+                  title: const Text('פרסים'),
+                  selected: _currentDrawerIndex == 6,
                   onTap: () {
+                    setState(() => _currentDrawerIndex = 6);
                     Navigator.pop(context);
-                    Navigator.push(context, MaterialPageRoute(builder: (_) => const PrizesPage()));
                   },
                 ),
                 const Spacer(),
@@ -272,44 +274,73 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
           ),
         ),
 
-        // 3. THE MAIN BODY WITH THE COINS BAR
-        body: Column(
+        // MASTER ROUTER: Swaps out the entire body without pushing to the stack
+        body: IndexedStack(
+          index: _currentDrawerIndex,
           children: [
-            const XpProgressBar(), // Displays the bar constantly
-            Expanded(
-              child: IndexedStack(
-                index: _selectedIndex,
-                children: [
-                  TasksTab(
-                    tasks: _tasks,
-                    categories: _categories,
-                    isRituals: false,
-                    onTaskSaved: (t, isNew) => onTaskSaved(t, isNew: isNew),
-                    onTaskDeleted: onTaskDeleted,
-                    onChanged: () => setState(() {}),
+            // Index 0: Main Tasks/Rituals/Projects Hub
+            Column(
+              children: [
+                const XpProgressBar(),
+                Expanded(
+                  child: IndexedStack(
+                    index: _selectedIndex,
+                    children: [
+                      TasksTab(
+                        tasks: _tasks,
+                        categories: _categories,
+                        isRituals: false,
+                        onTaskSaved: (t, isNew) => onTaskSaved(t, isNew: isNew),
+                        onTaskDeleted: onTaskDeleted,
+                        onChanged: () => setState(() {}),
+                      ),
+                      TasksTab(
+                        tasks: _tasks,
+                        categories: _categories,
+                        isRituals: true,
+                        onTaskSaved: (t, isNew) => onTaskSaved(t, isNew: isNew),
+                        onTaskDeleted: onTaskDeleted,
+                        onChanged: () => setState(() {}),
+                      ),
+                      ProjectsTab(
+                        projects: _projects,
+                        categories: _categories,
+                        onProjectSaved: (p, isNew) => onProjectSaved(p, isNew: isNew),
+                        onProjectDeleted: onProjectDeleted,
+                        onChanged: () => setState(() {}),
+                      ),
+                    ],
                   ),
-                  TasksTab(
-                    tasks: _tasks,
-                    categories: _categories,
-                    isRituals: true,
-                    onTaskSaved: (t, isNew) => onTaskSaved(t, isNew: isNew),
-                    onTaskDeleted: onTaskDeleted,
-                    onChanged: () => setState(() {}),
-                  ),
-                  ProjectsTab(
-                    projects: _projects,
-                    categories: _categories,
-                    onProjectSaved: (p, isNew) => onProjectSaved(p, isNew: isNew),
-                    onProjectDeleted: onProjectDeleted,
-                    onChanged: () => setState(() {}),
-                  ),
-                ],
-              ),
+                ),
+              ],
             ),
+            
+            // Index 1: Daily List
+            const DailyListPage(),
+            
+            // Index 2: Strikes
+            const StrikesPage(),
+            
+            // Index 3: Mantras
+            const MantrasPage(),
+            
+            // Index 4: Categories
+            CategoriesPage(
+              categories: _categories,
+              onSaved: (c, isNew) => onCategorySaved(c, isNew: isNew),
+              onDeleted: onCategoryDeleted,
+            ),
+            
+            // Index 5: Binder
+            const BinderPage(),
+            
+            // Index 6: Prizes
+            const PrizesPage(),
           ],
         ),
 
-        bottomNavigationBar: BottomNavigationBar(
+        // Hide BottomNavigationBar unless we are on the Home Hub (Index 0)
+        bottomNavigationBar: _currentDrawerIndex == 0 ? BottomNavigationBar(
           currentIndex: _selectedIndex,
           onTap: (i) => setState(() => _selectedIndex = i),
           items: const [
@@ -317,7 +348,7 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
             BottomNavigationBarItem(icon: Icon(Icons.sync), label: 'טקסים'),
             BottomNavigationBarItem(icon: Icon(Icons.folder_outlined), label: 'פרויקטים'),
           ],
-        ),
+        ) : null,
       ),
     );
   }

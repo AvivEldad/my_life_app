@@ -16,10 +16,6 @@ class BinderPage extends StatelessWidget {
     return Directionality(
       textDirection: TextDirection.rtl,
       child: Scaffold(
-        appBar: AppBar(
-          title: const Text('קלסר 151'),
-          backgroundColor: Colors.blue[900],
-        ),
         body: Consumer<CoinService>(
           builder: (context, coinService, child) {
             final unlocked = coinService.unlockedPokemon;

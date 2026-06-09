@@ -89,9 +89,6 @@ class _PrizesPageState extends State<PrizesPage> {
     return Directionality(
       textDirection: TextDirection.rtl,
       child: Scaffold(
-        appBar: AppBar(
-          title: const Text('חנות פרסים ומטרות'),
-        ),
         floatingActionButton: FloatingActionButton(
           onPressed: () => _showPrizeDialog(),
           backgroundColor: Colors.amber,

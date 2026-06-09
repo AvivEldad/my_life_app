@@ -108,7 +108,6 @@ class _CategoriesPageState extends State<CategoriesPage> {
     return Directionality(
       textDirection: TextDirection.rtl,
       child: Scaffold(
-        appBar: AppBar(title: const Text('קטגוריות')),
         body: widget.categories.isEmpty
             ? Center(
                 child: Text(

@@ -135,9 +135,6 @@ class _StrikesPageState extends State<StrikesPage> with WidgetsBindingObserver {
     return Directionality(
       textDirection: TextDirection.rtl,
       child: Scaffold(
-        appBar: AppBar(
-          title: const Text('סטריקים'),
-        ),
         body: _goals.isEmpty
             ? Center(
                 child: Text(

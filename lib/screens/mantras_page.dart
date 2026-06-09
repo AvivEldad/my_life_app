@@ -96,12 +96,6 @@ class _MantrasPageState extends State<MantrasPage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('מנטרות'),
-        actions: [
-          IconButton(icon: const Icon(Icons.list), onPressed: _showManageSheet),
-        ],
-      ),
       body: _loading
           ? const Center(child: CircularProgressIndicator())
           : _mantras.isEmpty
