@@ -48,203 +48,124 @@ class _DailyListPageState extends State<DailyListPage> with WidgetsBindingObserv
     super.dispose();
   }
 
-  // Called when app resumes from background — check if midnight passed
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
     if (state == AppLifecycleState.resumed) {
-      _checkAndClearIfNewDay();
+      setState(() {
+        _checkAndClearIfNewDay();
+      });
     }
   }
 
   void _checkAndClearIfNewDay() {
     final today = _todayString();
-    if (today != _listDate) {
-      setState(() {
-        _tasks.clear();
-        _listDate = today;
-      });
+    if (_listDate != today) {
+      _tasks.clear();
+      _listDate = today;
     }
   }
 
-  void _addTask(String summary) {
-    final text = summary.trim();
-    if (text.isEmpty) return;
+  void _addTask(String text) {
+    if (text.trim().isEmpty) return;
     setState(() {
       _tasks.add(DailyTask(
         id: DateTime.now().millisecondsSinceEpoch.toString(),
-        summary: text,
+        summary: text.trim(),
       ));
     });
     _inputController.clear();
-    _inputFocus.requestFocus();
   }
 
-  void _toggleTask(DailyTask task) {
-    // Look up the CoinService directly using the widget's context
-    final coinService = Provider.of<CoinService>(context, listen: false);
-
+  void _toggleTask(String id) {
     setState(() {
-      task.isCompleted = !task.isCompleted;
-      
-      if (task.isCompleted) {
-        // Add exact quarter coin on completing a daily list task
-        coinService.addCoins(0.25);
-      } else {
-        // Deduct exactly what was given if unchecked
-        coinService.deductCoins(0.25);
+      final index = _tasks.indexWhere((t) => t.id == id);
+      if (index != -1) {
+        final task = _tasks[index];
+        task.isCompleted = !task.isCompleted;
+        
+        final coinService = Provider.of<CoinService>(context, listen: false);
+        if (task.isCompleted) {
+          coinService.addCoins(5);
+          HapticFeedback.lightImpact();
+        } else {
+          coinService.deductCoins(5);
+        }
       }
     });
   }
 
   void _deleteTask(String id) {
-    setState(() => _tasks.removeWhere((t) => t.id == id));
-  }
-
-  String _formattedDate() {
-    final now = DateTime.now();
-    const weekdays = ['שני', 'שלישי', 'רביעי', 'חמישי', 'שישי', 'שבת', 'ראשון'];
-    const months = ['', 'ינואר', 'פברואר', 'מרץ', 'אפריל', 'מאי', 'יוני', 'יולי', 'אוגוסט', 'ספטמבר', 'אוקטובר', 'נובמבר', 'דצמבר'];
-    return '${weekdays[now.weekday - 1]}, ${now.day} ב${months[now.month]}';
+    setState(() {
+      final index = _tasks.indexWhere((t) => t.id == id);
+      if (index != -1) {
+        if (_tasks[index].isCompleted) {
+          Provider.of<CoinService>(context, listen: false).deductCoins(5);
+        }
+        _tasks.removeAt(index);
+      }
+    });
   }
 
   @override
   Widget build(BuildContext context) {
-    final completed = _tasks.where((t) => t.isCompleted).length;
-    final total = _tasks.length;
-
-    return Directionality(
-      textDirection: TextDirection.rtl,
-      child: Scaffold(
-        appBar: AppBar(
-          title: const Text('רשימה יומית'),
-          actions: [
-            if (_tasks.isNotEmpty)
-              IconButton(
-                icon: const Icon(Icons.delete_sweep),
-                tooltip: 'נקה הכל',
-                onPressed: () => showDialog(
-                  context: context,
-                  builder: (_) => AlertDialog(
-                    title: const Text('נקה רשימה'),
-                    content: const Text('האם למחוק את כל המשימות?'),
-                    actions: [
-                      TextButton(onPressed: () => Navigator.pop(context), child: const Text('ביטול')),
-                      ElevatedButton(
-                        onPressed: () {
-                          setState(() => _tasks.clear());
-                          Navigator.pop(context);
-                        },
-                        child: const Text('נקה'),
-                      ),
-                    ],
-                  ),
-                ),
-              ),
-          ],
+    return Scaffold(
+      backgroundColor: Colors.black,
+      appBar: AppBar(
+        title: const Text(
+          'משימות יומיות',
+          style: TextStyle(fontWeight: FontWeight.bold, color: Colors.white),
         ),
-        body: Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
+        centerTitle: true,
+        backgroundColor: Colors.black,
+        elevation: 0,
+      ),
+      body: Directionality(
+        textDirection: TextDirection.rtl,
+        child: Column(
           children: [
-            // Date header + progress
-            Padding(
-              padding: const EdgeInsets.fromLTRB(20, 16, 20, 8),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.end,
-                children: [
-                  Text(
-                    _formattedDate(),
-                    style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.grey[300]),
-                  ),
-                  if (total > 0) ...[
-                    const SizedBox(height: 8),
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: [
-                        Text('$completed/$total', style: TextStyle(color: Colors.grey[500], fontSize: 13)),
-                        ClipRRect(
-                          borderRadius: BorderRadius.circular(4),
-                          child: SizedBox(
-                            width: MediaQuery.of(context).size.width * 0.6,
-                            child: LinearProgressIndicator(
-                              value: completed / total,
-                              minHeight: 6,
-                              backgroundColor: Colors.grey[800],
-                              valueColor: AlwaysStoppedAnimation<Color>(
-                                completed == total ? Colors.green : Colors.amber,
-                              ),
-                            ),
-                          ),
-                        ),
-                      ],
-                    ),
-                  ],
-                ],
-              ),
-            ),
-            const Divider(height: 1),
-
-            // Task list
+            // List view section
             Expanded(
               child: _tasks.isEmpty
                   ? Center(
                       child: Text(
-                        'אין משימות להיום\nהתחל לכתוב למטה',
+                        'אין משימות להיום.\nלחץ על כפתור הפלוס כדי להוסיף!',
                         textAlign: TextAlign.center,
-                        style: TextStyle(color: Colors.grey[600]),
+                        style: TextStyle(color: Colors.grey[600], fontSize: 16),
                       ),
                     )
                   : ListView.builder(
-                      padding: const EdgeInsets.symmetric(vertical: 8),
+                      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
                       itemCount: _tasks.length,
                       itemBuilder: (context, index) {
                         final task = _tasks[index];
                         return Dismissible(
-                          key: ValueKey(task.id),
+                          key: Key(task.id),
                           direction: DismissDirection.startToEnd,
                           background: Container(
                             alignment: Alignment.centerRight,
                             padding: const EdgeInsets.only(right: 20),
-                            color: Colors.redAccent,
+                            color: Colors.red,
                             child: const Icon(Icons.delete, color: Colors.white),
                           ),
-                          onDismissed: (_) => _deleteTask(task.id),
-                          child: InkWell(
-                            onTap: () => _toggleTask(task),
-                            child: Padding(
-                              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-                              child: Row(
-                                children: [
-                                  // Checkbox
-                                  AnimatedContainer(
-                                    duration: const Duration(milliseconds: 200),
-                                    width: 22,
-                                    height: 22,
-                                    decoration: BoxDecoration(
-                                      shape: BoxShape.rectangle,
-                                      borderRadius: BorderRadius.circular(4),
-                                      border: Border.all(
-                                        color: task.isCompleted ? Colors.amber : Colors.grey[500]!,
-                                        width: 2,
-                                      ),
-                                      color: task.isCompleted ? Colors.amber : Colors.transparent,
-                                    ),
-                                    child: task.isCompleted
-                                        ? const Icon(Icons.check, size: 14, color: Colors.black)
-                                        : null,
-                                  ),
-                                  const SizedBox(width: 14),
-                                  // Summary
-                                  Expanded(
-                                    child: Text(
-                                      task.summary,
-                                      style: TextStyle(
-                                        fontSize: 16,
-                                        decoration: task.isCompleted ? TextDecoration.lineThrough : null,
-                                        color: task.isCompleted ? Colors.grey[600] : null,
-                                      ),
-                                    ),
-                                  ),
-                                ],
+                          onDismissed: (direction) => _deleteTask(task.id),
+                          child: Card(
+                            color: const Color(0xFF1E1E1E),
+                            margin: const EdgeInsets.only(bottom: 8),
+                            child: ListTile(
+                              leading: Checkbox(
+                                value: task.isCompleted,
+                                activeColor: Colors.amber,
+                                checkColor: Colors.black,
+                                onChanged: (value) => _toggleTask(task.id),
+                              ),
+                              title: Text(
+                                task.summary,
+                                style: TextStyle(
+                                  color: task.isCompleted ? Colors.grey : Colors.white,
+                                  decoration: task.isCompleted
+                                      ? TextDecoration.lineThrough
+                                      : TextDecoration.none,
+                                ),
                               ),
                             ),
                           ),
@@ -252,41 +173,63 @@ class _DailyListPageState extends State<DailyListPage> with WidgetsBindingObserv
                       },
                     ),
             ),
-
-            // Input row at the bottom
-            const Divider(height: 1),
-            Padding(
-              padding: EdgeInsets.only(
-                left: 16,
-                right: 16,
-                top: 10,
-                bottom: MediaQuery.of(context).viewInsets.bottom + 12,
-              ),
-              child: Row(
-                children: [
-                  Expanded(
-                    child: TextField(
-                      controller: _inputController,
-                      focusNode: _inputFocus,
-                      textAlign: TextAlign.right,
-                      decoration: InputDecoration(
-                        hintText: 'הוסף משימה...',
-                        border: InputBorder.none,
-                        hintStyle: TextStyle(color: Colors.grey[600]),
-                      ),
-                      textInputAction: TextInputAction.done,
-                      onSubmitted: _addTask,
-                    ),
-                  ),
-                  IconButton(
-                    icon: const Icon(Icons.add_circle, color: Colors.amber),
-                    onPressed: () => _addTask(_inputController.text),
-                  ),
-                ],
-              ),
-            ),
           ],
         ),
+      ),
+      floatingActionButton: FloatingActionButton(
+        backgroundColor: Colors.amber,
+        onPressed: () {
+          showDialog(
+            context: context,
+            builder: (context) => AlertDialog(
+              backgroundColor: const Color(0xFF1E1E1E),
+              title: const Text(
+                'הוסף משימה חדשה',
+                textAlign: TextAlign.right,
+                style: TextStyle(color: Colors.white),
+              ),
+              content: TextField(
+                controller: _inputController,
+                autofocus: true,
+                textAlign: TextAlign.right,
+                style: const TextStyle(color: Colors.white),
+                decoration: InputDecoration(
+                  hintText: 'מה ברצונך לעשות היום?',
+                  hintStyle: TextStyle(color: Colors.grey[600]),
+                  enabledBorder: const UnderlineInputBorder(
+                    borderSide: BorderSide(color: Colors.amber),
+                  ),
+                  focusedBorder: const UnderlineInputBorder(
+                    borderSide: BorderSide(color: Colors.amber, width: 2),
+                  ),
+                ),
+                textInputAction: TextInputAction.done,
+                onSubmitted: (value) {
+                  if (value.trim().isNotEmpty) {
+                    _addTask(value);
+                  }
+                  Navigator.pop(context);
+                },
+              ),
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.pop(context),
+                  child: const Text('ביטול', style: TextStyle(color: Colors.grey)),
+                ),
+                TextButton(
+                  onPressed: () {
+                    if (_inputController.text.trim().isNotEmpty) {
+                      _addTask(_inputController.text);
+                    }
+                    Navigator.pop(context);
+                  },
+                  child: const Text('הוסף', style: TextStyle(color: Colors.amber)),
+                ),
+              ],
+            ),
+          );
+        },
+        child: const Icon(Icons.add, color: Colors.black, size: 28),
       ),
     );
   }
