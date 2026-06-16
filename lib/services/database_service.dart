@@ -4,6 +4,7 @@ import '../models/project_item.dart';
 import '../models/category_item.dart';
 import '../models/mantra_item.dart';
 import '../models/prize_item.dart';
+import '../models/strike_item.dart';
 
 class DatabaseService {
   static final _db = FirebaseFirestore.instance;
@@ -12,6 +13,7 @@ class DatabaseService {
   static final _projectsCol = _db.collection('projects');
   static final _categoriesCol = _db.collection('categories');
   static final _mantrasCol = _db.collection('mantras');
+  static final _strikesCol = _db.collection('strikes');
   static final CollectionReference _gamificationRef = FirebaseFirestore.instance.collection('gamification');
   static final CollectionReference _prizesRef = FirebaseFirestore.instance.collection('prizes');
 
@@ -104,6 +106,27 @@ class DatabaseService {
     static Future<void> deleteMantra(String id) async {
       await _mantrasCol.doc(id).delete();
     }
+
+    // ─── Strikes ───────────────────────────────────────────────────
+    // ─── Strikes ───────────────────────────────────────────────────
+    static Future<List<StrikeItem>> loadStrikes() async {
+      final snap = await _strikesCol.get();
+      return snap.docs.map((d) => StrikeItem.fromMap(d.id, d.data())).toList();
+    }
+
+    static Future<String> addStrike(StrikeItem item) async {
+      final doc = await _strikesCol.add(item.toMap());
+      return doc.id;
+    }
+
+    static Future<void> updateStrike(StrikeItem item) async {
+      await _strikesCol.doc(item.id).update(item.toMap());
+    }
+
+    static Future<void> deleteStrike(String id) async {
+      await _strikesCol.doc(id).delete();
+    }
+
 
   static Future<Map<String, dynamic>?> loadEconomy() async {
     final doc = await _gamificationRef.doc('wallet').get();

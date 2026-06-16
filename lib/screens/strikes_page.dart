@@ -1,26 +1,6 @@
 import 'package:flutter/material.dart';
-
-class StrikeGoal {
-  final String id;
-  String title;
-  int streak;
-  String lastIncrementDate; // 'yyyy-M-d'
-
-  StrikeGoal({
-    required this.id,
-    required this.title,
-    this.streak = 0,
-    String? lastIncrementDate,
-  }) : lastIncrementDate = lastIncrementDate ?? '';
-
-  static String todayString() {
-    final now = DateTime.now();
-    return '${now.year}-${now.month}-${now.day}';
-  }
-
-  // Whether the streak was already incremented today
-  bool get incrementedToday => lastIncrementDate == todayString();
-}
+import '../models/strike_item.dart';
+import '../services/database_service.dart';
 
 class StrikesPage extends StatefulWidget {
   const StrikesPage({super.key});
@@ -30,12 +10,14 @@ class StrikesPage extends StatefulWidget {
 }
 
 class _StrikesPageState extends State<StrikesPage> with WidgetsBindingObserver {
-  final List<StrikeGoal> _goals = [];
+  List<StrikeItem> _goals = [];
+  bool _isLoading = true; 
 
   @override
   void initState() {
     super.initState();
     WidgetsBinding.instance.addObserver(this);
+    _loadGoalsFromDb(); 
   }
 
   @override
@@ -44,7 +26,21 @@ class _StrikesPageState extends State<StrikesPage> with WidgetsBindingObserver {
     super.dispose();
   }
 
-  // Auto-increment all goals once per day when app is opened
+  Future<void> _loadGoalsFromDb() async {
+    setState(() => _isLoading = true);
+    try {
+      final goals = await DatabaseService.loadStrikes();
+      setState(() {
+        _goals = goals;
+        _isLoading = false;
+      });
+      _autoIncrementAll(); 
+    } catch (e) {
+      print("Error loading strikes: $e");
+      setState(() => _isLoading = false);
+    }
+  }
+
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
     if (state == AppLifecycleState.resumed) {
@@ -53,25 +49,31 @@ class _StrikesPageState extends State<StrikesPage> with WidgetsBindingObserver {
   }
 
   void _autoIncrementAll() {
+    bool hasChanges = false;
+    
     setState(() {
       for (final goal in _goals) {
         if (!goal.incrementedToday) {
           goal.streak++;
-          goal.lastIncrementDate = StrikeGoal.todayString();
+          goal.lastIncrementDate = StrikeItem.todayString();
+          DatabaseService.updateStrike(goal); // עדכון ב-Firebase
+          hasChanges = true;
         }
       }
     });
   }
 
-  void _resetGoal(StrikeGoal goal) {
+  void _resetGoal(StrikeItem goal) {
     setState(() {
       goal.streak = 0;
       goal.lastIncrementDate = '';
     });
+    DatabaseService.updateStrike(goal);
   }
 
-  void _deleteGoal(StrikeGoal goal) {
+  void _deleteGoal(StrikeItem goal) {
     setState(() => _goals.removeWhere((g) => g.id == goal.id));
+    DatabaseService.deleteStrike(goal.id);
   }
 
   void _showAddDialog() {
@@ -81,12 +83,12 @@ class _StrikesPageState extends State<StrikesPage> with WidgetsBindingObserver {
       context: context,
       builder: (context) => StatefulBuilder(
         builder: (context, setDialogState) => AlertDialog(
-          title: const Text('מטרה חדשה'),
+          title: const Text('סטרייק חדש'),
           content: TextField(
             controller: controller,
             textAlign: TextAlign.right,
             autofocus: true,
-            decoration: const InputDecoration(hintText: 'תאר את המטרה שלך'),
+            decoration: const InputDecoration(hintText: 'תאר את מטרה שלך'),
             onChanged: (_) => setDialogState(() {}),
             textInputAction: TextInputAction.done,
             onSubmitted: (_) => _submitAdd(controller.text),
@@ -103,18 +105,29 @@ class _StrikesPageState extends State<StrikesPage> with WidgetsBindingObserver {
     );
   }
 
-  void _submitAdd(String title) {
+  Future<void> _submitAdd(String title) async {
     final text = title.trim();
     if (text.isEmpty) return;
+    
+    Navigator.pop(context); 
+
+    final newItem = StrikeItem(
+      id: '',
+      title: text,
+      streak: 1,
+      lastIncrementDate: StrikeItem.todayString(),
+    );
+
+    final newId = await DatabaseService.addStrike(newItem);
+    
     setState(() {
-      _goals.add(StrikeGoal(
-        id: DateTime.now().millisecondsSinceEpoch.toString(),
-        title: text,
-        streak: 1,
-        lastIncrementDate: StrikeGoal.todayString(),
+      _goals.add(StrikeItem(
+        id: newId, 
+        title: newItem.title,
+        streak: newItem.streak,
+        lastIncrementDate: newItem.lastIncrementDate,
       ));
     });
-    Navigator.pop(context);
   }
 
   String _streakLabel(int streak) {
@@ -135,7 +148,9 @@ class _StrikesPageState extends State<StrikesPage> with WidgetsBindingObserver {
     return Directionality(
       textDirection: TextDirection.rtl,
       child: Scaffold(
-        body: _goals.isEmpty
+        body: _isLoading 
+          ? const Center(child: CircularProgressIndicator()) // הצגת ספינר בזמן טעינה
+          : _goals.isEmpty
             ? Center(
                 child: Text(
                   'אין מטרות עדיין\nלחץ + כדי להוסיף',
@@ -157,11 +172,9 @@ class _StrikesPageState extends State<StrikesPage> with WidgetsBindingObserver {
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.end,
                         children: [
-                          // Title row
                           Row(
                             mainAxisAlignment: MainAxisAlignment.spaceBetween,
                             children: [
-                              // Delete button
                               IconButton(
                                 icon: const Icon(Icons.delete, size: 18, color: Colors.redAccent),
                                 padding: EdgeInsets.zero,
@@ -169,7 +182,7 @@ class _StrikesPageState extends State<StrikesPage> with WidgetsBindingObserver {
                                 onPressed: () => showDialog(
                                   context: context,
                                   builder: (_) => AlertDialog(
-                                    title: const Text('מחיקת מטרה'),
+                                    title: const Text('מחיקת סטרייק'),
                                     content: Text('למחוק את "${goal.title}"?'),
                                     actions: [
                                       TextButton(onPressed: () => Navigator.pop(context), child: const Text('ביטול')),
@@ -184,7 +197,6 @@ class _StrikesPageState extends State<StrikesPage> with WidgetsBindingObserver {
                                   ),
                                 ),
                               ),
-                              // Title
                               Text(
                                 goal.title,
                                 style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
@@ -192,11 +204,9 @@ class _StrikesPageState extends State<StrikesPage> with WidgetsBindingObserver {
                             ],
                           ),
                           const SizedBox(height: 10),
-                          // Streak counter
                           Row(
                             mainAxisAlignment: MainAxisAlignment.spaceBetween,
                             children: [
-                              // Reset link
                               GestureDetector(
                                 onTap: () => showDialog(
                                   context: context,
@@ -224,7 +234,6 @@ class _StrikesPageState extends State<StrikesPage> with WidgetsBindingObserver {
                                   ),
                                 ),
                               ),
-                              // Flame + counter
                               Row(
                                 children: [
                                   Text(
@@ -244,7 +253,6 @@ class _StrikesPageState extends State<StrikesPage> with WidgetsBindingObserver {
                               ),
                             ],
                           ),
-                          // Subtle "today" indicator
                           if (goal.incrementedToday)
                             Padding(
                               padding: const EdgeInsets.only(top: 6),
