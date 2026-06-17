@@ -138,10 +138,25 @@ class _TasksTabState extends State<TasksTab> {
               onReorder: (oldIdx, newIdx) {
                 if (newIdx > oldIdx) newIdx -= 1;
                 final item = others.removeAt(oldIdx);
+                others.insert(newIdx, item);
                 widget.tasks.remove(item);
-                final insertAt = widget.tasks.indexWhere(
-                    (t) => t.id == (others.isEmpty ? null : others.first.id));
-                widget.tasks.insert(insertAt < 0 ? 0 : insertAt, item);
+                int insertAt = -1;
+                if (newIdx + 1 < others.length) {
+                  final nextItem = others[newIdx + 1];
+                  insertAt = widget.tasks.indexWhere((t) => t.id == nextItem.id);
+                } 
+                else if (newIdx > 0) {
+                  final prevItem = others[newIdx - 1];
+                  final prevIndex = widget.tasks.indexWhere((t) => t.id == prevItem.id);
+                  if (prevIndex != -1) {
+                    insertAt = prevIndex + 1; // Insert right after the previous item
+                  }
+                }
+                if (insertAt >= 0 && insertAt <= widget.tasks.length) {
+                  widget.tasks.insert(insertAt, item);
+                } else {
+                  widget.tasks.add(item); 
+                }
                 widget.onChanged();
               },
               itemBuilder: (context, index) => ReorderableDelayedDragStartListener(
