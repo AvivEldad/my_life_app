@@ -1,15 +1,15 @@
 import 'package:flutter/material.dart';
-import '../models/todo_item.dart';
+import '../models/task_item.dart';
 import '../models/category_item.dart';
-import '../widgets/todo_card.dart';
+import '../widgets/task_card.dart';
 import '../widgets/dialogs/task_dialog.dart';
 import '../services/task_service.dart';
 
 class TasksTab extends StatefulWidget {
-  final List<TodoItem> tasks;
+  final List<TaskItem> tasks;
   final List<CategoryItem> categories;
   final bool isRituals;
-  final Future<void> Function(TodoItem, bool isNew) onTaskSaved;
+  final Future<void> Function(TaskItem, bool isNew) onTaskSaved;
   final Future<void> Function(String id) onTaskDeleted;
   final VoidCallback onChanged;
 
@@ -28,42 +28,42 @@ class TasksTab extends StatefulWidget {
 }
 
 class _TasksTabState extends State<TasksTab> {
-  List<TodoItem> get _filtered => widget.tasks
+  List<TaskItem> get _filtered => widget.tasks
       .where((t) => widget.isRituals
           ? t.recurrence != RecurrenceType.none
           : t.recurrence == RecurrenceType.none)
       .toList();
 
-  void _showTaskDialog({TodoItem? todo}) {
-    final isNew = todo == null;
+  void _showTaskDialog({TaskItem? task}) {
+    final isNew = task == null;
     showDialog(
       context: context,
       builder: (_) => TaskDialog(
-        todo: todo,
+        task: task,
         isRitual: widget.isRituals,
         categories: widget.categories,
         onSave: (saved) {
           if (isNew) widget.tasks.insert(0, saved);
           widget.onTaskSaved(saved, isNew);
         },
-        onDelete: todo != null
+        onDelete: task != null
             ? () {
-                widget.tasks.removeWhere((t) => t.id == todo.id);
-                widget.onTaskDeleted(todo.id);
+                widget.tasks.removeWhere((t) => t.id == task.id);
+                widget.onTaskDeleted(task.id);
               }
             : null,
       ),
     );
   }
 
-  void _toggleGolden(TodoItem todo) {
-    if (todo.isGolden) {
-      todo.isGolden = false;
+  void _toggleGolden(TaskItem task) {
+    if (task.isGolden) {
+      task.isGolden = false;
     } else {
       for (var t in widget.tasks) t.isGolden = false;
-      todo.isGolden = true;
+      task.isGolden = true;
     }
-    widget.onTaskSaved(todo, false);
+    widget.onTaskSaved(task, false);
   }
 
   @override
@@ -113,14 +113,14 @@ class _TasksTabState extends State<TasksTab> {
 
           // Golden task
           if (!widget.isRituals && golden.isNotEmpty) ...[
-            TodoCard(
-              todo: golden.first,
+            TaskCard(
+              task: golden.first,
               category: widget.categories.where((c) => c.id == golden.first.categoryId).firstOrNull,
               onToggle: () {
                 golden.first.isCompleted = !golden.first.isCompleted;
                 widget.onTaskSaved(golden.first, false);
               },
-              onEdit: () => _showTaskDialog(todo: golden.first),
+              onEdit: () => _showTaskDialog(task: golden.first),
               onDelete: () {
                 widget.tasks.removeWhere((t) => t.id == golden.first.id);
                 widget.onTaskDeleted(golden.first.id);
@@ -162,8 +162,8 @@ class _TasksTabState extends State<TasksTab> {
               itemBuilder: (context, index) => ReorderableDelayedDragStartListener(
                 key: ValueKey(others[index].id),
                 index: index,
-                child: TodoCard(
-                  todo: others[index],
+                child: TaskCard(
+                  task: others[index],
                   category: widget.categories
                       .where((c) => c.id == others[index].categoryId)
                       .firstOrNull,
@@ -171,7 +171,7 @@ class _TasksTabState extends State<TasksTab> {
                     others[index].isCompleted = !others[index].isCompleted;
                     widget.onTaskSaved(others[index], false);
                   },
-                  onEdit: () => _showTaskDialog(todo: others[index]),
+                  onEdit: () => _showTaskDialog(task: others[index]),
                   onDelete: () {
                     widget.tasks.removeWhere((t) => t.id == others[index].id);
                     widget.onTaskDeleted(others[index].id);

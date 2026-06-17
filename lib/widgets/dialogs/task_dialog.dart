@@ -1,17 +1,17 @@
 import 'package:flutter/material.dart';
-import '../../models/todo_item.dart';
+import '../../models/task_item.dart';
 import '../../models/category_item.dart';
 
 class TaskDialog extends StatefulWidget {
-  final TodoItem? todo;
+  final TaskItem? task;
   final bool isRitual;
   final List<CategoryItem> categories;
-  final void Function(TodoItem) onSave;
+  final void Function(TaskItem) onSave;
   final void Function()? onDelete;
 
   const TaskDialog({
     super.key,
-    this.todo,
+    this.task,
     this.isRitual = false,
     required this.categories,
     required this.onSave,
@@ -34,21 +34,21 @@ class _TaskDialogState extends State<TaskDialog> {
   late TimeOfDay? _time;
   late int? _repeatValue;
 
-  bool get _isEditing => widget.todo != null;
+  bool get _isEditing => widget.task != null;
   bool get _isRitual => widget.isRitual;
 
   @override
   void initState() {
     super.initState();
-    final todo = widget.todo;
-    _titleController = TextEditingController(text: todo?.title ?? '');
-    _descController = TextEditingController(text: todo?.description ?? '');
-    _selectedDate = todo?.dueDate;
-    _level = todo?.level ?? 1;
-    _categoryId = todo?.categoryId;
-    _type = todo?.recurrence ?? RecurrenceType.daily;
-    _time = todo?.reminderTime;
-    _repeatValue = todo?.repeatValue ?? 1;
+    final task = widget.task;
+    _titleController = TextEditingController(text: task?.title ?? '');
+    _descController = TextEditingController(text: task?.description ?? '');
+    _selectedDate = task?.dueDate;
+    _level = task?.level ?? 1;
+    _categoryId = task?.categoryId;
+    _type = task?.recurrence ?? RecurrenceType.daily;
+    _time = task?.reminderTime;
+    _repeatValue = task?.repeatValue ?? 1;
   }
 
   @override
@@ -79,24 +79,24 @@ class _TaskDialogState extends State<TaskDialog> {
   }
 
   void _submit() {
-    final todo = widget.todo ?? TodoItem(
+    final task = widget.task ?? TaskItem(
       id: DateTime.now().millisecondsSinceEpoch.toString(),
       title: _titleController.text,
     );
-    todo.title = _titleController.text;
-    todo.description = _descController.text;
-    todo.level = _level;
-    todo.categoryId = _categoryId;
+    task.title = _titleController.text;
+    task.description = _descController.text;
+    task.level = _level;
+    task.categoryId = _categoryId;
 
     if (_isRitual) {
-      todo.recurrence = _type;
-      todo.reminderTime = _time;
-      todo.repeatValue = _repeatValue;
+      task.recurrence = _type;
+      task.reminderTime = _time;
+      task.repeatValue = _repeatValue;
     } else {
-      todo.dueDate = _selectedDate;
+      task.dueDate = _selectedDate;
     }
 
-    widget.onSave(todo);
+    widget.onSave(task);
     Navigator.pop(context);
   }
 

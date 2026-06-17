@@ -1,7 +1,7 @@
 import '../widgets/xp_progress_bar.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import '../models/todo_item.dart';
+import '../models/task_item.dart';
 import '../models/project_item.dart';
 import '../models/category_item.dart';
 import '../screens/tasks_tab.dart';
@@ -23,7 +23,7 @@ class HomePage extends StatefulWidget {
 }
 
 class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
-  final List<TodoItem> _tasks = [];
+  final List<TaskItem> _tasks = [];
   final List<ProjectItem> _projects = [];
   final List<CategoryItem> _categories = [];
   
@@ -63,7 +63,7 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
         DatabaseService.loadCategories(),
       ]);
       setState(() {
-        _tasks.addAll(results[0] as List<TodoItem>);
+        _tasks.addAll(results[0] as List<TaskItem>);
         _projects.addAll(results[1] as List<ProjectItem>);
         _categories.addAll(results[2] as List<CategoryItem>);
         _loading = false;
@@ -87,12 +87,12 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
   }
 
   // ─── Task actions ─────────────────────────────────────────────────
-  Future<void> onTaskSaved(TodoItem task, {bool isNew = false}) async {
+  Future<void> onTaskSaved(TaskItem task, {bool isNew = false}) async {
     if (isNew) {
       final id = await DatabaseService.addTask(task);
       final index = _tasks.indexOf(task);
       if (index >= 0) {
-        _tasks[index] = TodoItem.fromMap(id, task.toMap());
+        _tasks[index] = TaskItem.fromMap(id, task.toMap());
       }
     } else {
       await DatabaseService.updateTask(task);

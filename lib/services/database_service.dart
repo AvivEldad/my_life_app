@@ -1,5 +1,5 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
-import '../models/todo_item.dart';
+import '../models/task_item.dart';
 import '../models/project_item.dart';
 import '../models/category_item.dart';
 import '../models/mantra_item.dart';
@@ -18,10 +18,10 @@ class DatabaseService {
   static final CollectionReference _prizesRef = FirebaseFirestore.instance.collection('prizes');
 
   // ─── Load all data at startup ─────────────────────────────────────
-  static Future<List<TodoItem>> loadTasks() async {
+  static Future<List<TaskItem>> loadTasks() async {
     final snap = await _tasksCol.orderBy('createdAt', descending: true).get();
     return snap.docs
-        .map((d) => TodoItem.fromMap(d.id, d.data()))
+        .map((d) => TaskItem.fromMap(d.id, d.data()))
         .toList();
   }
 
@@ -40,7 +40,7 @@ class DatabaseService {
   }
 
   // ─── Tasks ────────────────────────────────────────────────────────
-  static Future<String> addTask(TodoItem item) async {
+  static Future<String> addTask(TaskItem item) async {
     final doc = await _tasksCol.add({
       ...item.toMap(),
       'createdAt': FieldValue.serverTimestamp(),
@@ -48,7 +48,7 @@ class DatabaseService {
     return doc.id;
   }
 
-  static Future<void> updateTask(TodoItem item) async {
+  static Future<void> updateTask(TaskItem item) async {
     await _tasksCol.doc(item.id).update(item.toMap());
   }
 
@@ -157,7 +157,7 @@ static Future<List<PrizeItem>> loadPrizes() async {
       return PrizeItem(
         id: doc.id,
         title: data['title'] ?? '',
-        cost: (data['cost'] ?? 0).toDouble(),
+        cost: (data['cost'] ?? 0).toDuble(),
         isRedeemed: data['isRedeemed'] ?? false,
       );
     }).toList();

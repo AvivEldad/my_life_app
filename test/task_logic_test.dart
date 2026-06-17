@@ -1,7 +1,7 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:flutter/material.dart';
-import 'package:my_todo_app/models/todo_item.dart';
-import 'package:my_todo_app/services/task_service.dart';
+import 'package:my_task_app/models/task_item.dart';
+import 'package:my_task_app/services/task_service.dart';
 
 void main() {
   group('Advanced Task Operations & Sorting', () {
@@ -9,8 +9,8 @@ void main() {
     // 1. עריכת משימה ומיון מחדש
     test('Edit a task and sort again', () {
       var tasks = [
-        TodoItem(id: '1', title: 'Task A', level: 1),
-        TodoItem(id: '2', title: 'Task B', level: 3),
+        TaskItem(id: '1', title: 'Task A', level: 1),
+        TaskItem(id: '2', title: 'Task B', level: 3),
       ];
       
       // עריכה: שינוי רמה של משימה A מרמה 1 לרמה 5
@@ -23,8 +23,8 @@ void main() {
     // 2. מחיקת משימה
     test('Delete a task', () {
       var tasks = [
-        TodoItem(id: '1', title: 'To Delete'),
-        TodoItem(id: '2', title: 'To Keep'),
+        TaskItem(id: '1', title: 'To Delete'),
+        TaskItem(id: '2', title: 'To Keep'),
       ];
       
       tasks.removeWhere((t) => t.id == '1');
@@ -34,16 +34,16 @@ void main() {
 
     // 3, 4, 5. יצירת משימות מחזוריות (יומי, שבועי, חודשי)
     test('Create recurring tasks (Daily, Weekly, Monthly)', () {
-      final daily = TodoItem(
+      final daily = TaskItem(
         id: 'd1', title: 'Daily', recurrence: RecurrenceType.daily, 
         reminderTime: const TimeOfDay(hour: 8, minute: 0)
       );
-      final weekly = TodoItem(
+      final weekly = TaskItem(
         id: 'w1', title: 'Weekly', recurrence: RecurrenceType.weekly, 
         repeatValue: 1, // יום א'
         reminderTime: const TimeOfDay(hour: 10, minute: 0)
       );
-      final monthly = TodoItem(
+      final monthly = TaskItem(
         id: 'm1', title: 'Monthly', recurrence: RecurrenceType.monthly, 
         repeatValue: 15, // ב-15 לחודש
         reminderTime: const TimeOfDay(hour: 12, minute: 0)
@@ -56,7 +56,7 @@ void main() {
 
     // 7. עריכת משימה חודשית
     test('Edit a monthly task', () {
-      var monthlyTask = TodoItem(
+      var monthlyTask = TaskItem(
         id: 'm1', title: 'Rent', recurrence: RecurrenceType.monthly, repeatValue: 1
       );
       
@@ -71,8 +71,8 @@ void main() {
     // 9. שינוי משימת הזהב
     test('Change the golden task', () {
       var tasks = [
-        TodoItem(id: '1', title: 'Old Gold', isGolden: true),
-        TodoItem(id: '2', title: 'New Gold', isGolden: false),
+        TaskItem(id: '1', title: 'Old Gold', isGolden: true),
+        TaskItem(id: '2', title: 'New Gold', isGolden: false),
       ];
       
       // לוגיקת החלפה (ממש כמו ב-HomePage)

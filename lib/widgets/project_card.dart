@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import '../models/project_item.dart';
-import '../models/todo_item.dart';
+import '../models/task_item.dart';
 import '../models/category_item.dart';
 import 'dialogs/task_dialog.dart';
 import 'dialogs/project_dialog.dart';
@@ -38,21 +38,21 @@ class ProjectCard extends StatelessWidget {
     );
   }
 
-  void _showSubtaskDialog(BuildContext context, {TodoItem? todo}) {
+  void _showSubtaskDialog(BuildContext context, {TaskItem? task}) {
     showDialog(
       context: context,
       builder: (_) => TaskDialog(
-        todo: todo,
+        task: task,
         categories: const [],
         onSave: (saved) {
-          if (todo == null) {
+          if (task == null) {
             project.subtasks.add(saved);
           }
           onChanged();
         },
-        onDelete: todo != null
+        onDelete: task != null
             ? () {
-                project.subtasks.removeWhere((t) => t.id == todo.id);
+                project.subtasks.removeWhere((t) => t.id == task.id);
                 onChanged();
               }
             : null,
@@ -201,7 +201,7 @@ class ProjectCard extends StatelessWidget {
                     if (isActive) const Icon(Icons.play_arrow, size: 16, color: Colors.amber),
                     IconButton(
                       icon: const Icon(Icons.edit, size: 16),
-                      onPressed: () => _showSubtaskDialog(context, todo: subtask),
+                      onPressed: () => _showSubtaskDialog(context, task: subtask),
                       padding: EdgeInsets.zero,
                       constraints: const BoxConstraints(),
                     ),

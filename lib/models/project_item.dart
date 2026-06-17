@@ -1,4 +1,4 @@
-import 'todo_item.dart';
+import 'task_item.dart';
 
 class ProjectItem {
   String id;
@@ -6,7 +6,7 @@ class ProjectItem {
   String description;
   DateTime? dueDate;
   int level;
-  List<TodoItem> subtasks;
+  List<TaskItem> subtasks;
   String? categoryId;
 
   ProjectItem({
@@ -15,7 +15,7 @@ class ProjectItem {
     this.description = '',
     this.dueDate,
     this.level = 1,
-    List<TodoItem>? subtasks,
+    List<TaskItem>? subtasks,
     this.categoryId,
   }) : subtasks = subtasks ?? [];
 
@@ -47,7 +47,7 @@ class ProjectItem {
       final sMap = Map<String, dynamic>.from(s as Map);
       final sid = sMap.remove('id') as String? ??
           DateTime.now().millisecondsSinceEpoch.toString();
-      return TodoItem.fromMap(sid, sMap);
+      return TaskItem.fromMap(sid, sMap);
     }).toList();
 
     return ProjectItem(

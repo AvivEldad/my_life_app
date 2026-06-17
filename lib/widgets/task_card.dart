@@ -1,11 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart'; // Added Provider import
-import '../models/todo_item.dart';
+import '../models/task_item.dart';
 import '../models/category_item.dart';
 import '../services/coin_service.dart';
 
-class TodoCard extends StatelessWidget {
-  final TodoItem todo; // Your variable is 'todo'
+class TaskCard extends StatelessWidget {
+  final TaskItem task; // Your variable is 'task'
   final VoidCallback onToggle;
   final VoidCallback onEdit;
   final VoidCallback onDelete;
@@ -13,9 +13,9 @@ class TodoCard extends StatelessWidget {
 
   final CategoryItem? category;
 
-  const TodoCard({
+  const TaskCard({
     super.key,
-    required this.todo,
+    required this.task,
     required this.onToggle,
     required this.onEdit,
     required this.onDelete,
@@ -23,7 +23,7 @@ class TodoCard extends StatelessWidget {
     this.category,
   });
 
-  String _getRecurrenceDetails(TodoItem item, BuildContext context) {
+  String _getRecurrenceDetails(TaskItem item, BuildContext context) {
     String time = item.reminderTime?.format(context) ?? "";
     switch (item.recurrence) {
       case RecurrenceType.daily: return 'כל יום ב-$time';
@@ -36,24 +36,24 @@ class TodoCard extends StatelessWidget {
     }
   }
 
-  // Updated function: Uses 'todo' instead of 'task' and only requires context
+  // Updated function: Uses 'task' instead of 'task' and only requires context
   void _onTaskCheckboxToggled(BuildContext context) {
     final coinService = Provider.of<CoinService>(context, listen: false);
 
     // 1. Check if we are checking it off as COMPLETED
-    final enteringCompletion = !todo.isCompleted;
+    final enteringCompletion = !task.isCompleted;
 
     // 2. Use the task details to run the calculation logic
     final rewardAmount = coinService.calculateStandardTaskReward(
-      level: todo.level,       
-      isGolden: todo.isGolden, 
-      dueDate: todo.dueDate,   
+      level: task.level,       
+      isGolden: task.isGolden, 
+      dueDate: task.dueDate,   
     );
     
     // 3. Calculate XP
     final xpAmount = coinService.calculateTaskXP(
-      level: todo.level,
-      isGolden: todo.isGolden,
+      level: task.level,
+      isGolden: task.isGolden,
     );
 
     // 4. Process the wallet balance adjusters
@@ -77,30 +77,30 @@ class TodoCard extends StatelessWidget {
         onTap: onEdit,
         // Linked the Checkbox to our new function!
         leading: Checkbox(
-          value: todo.isCompleted, 
+          value: task.isCompleted, 
           onChanged: (_) => _onTaskCheckboxToggled(context), 
           activeColor: Colors.amber
         ),
         title: Text(
-          todo.title,
+          task.title,
           style: TextStyle(
-            fontWeight: todo.isGolden ? FontWeight.bold : FontWeight.normal,
-            decoration: todo.isCompleted ? TextDecoration.lineThrough : null,
+            fontWeight: task.isGolden ? FontWeight.bold : FontWeight.normal,
+            decoration: task.isCompleted ? TextDecoration.lineThrough : null,
           ),
         ),
         subtitle: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            if (todo.description != null && todo.description!.isNotEmpty)
-              Text(todo.description!, style: const TextStyle(fontSize: 13, color: Colors.grey)),
+            if (task.description != null && task.description!.isNotEmpty)
+              Text(task.description!, style: const TextStyle(fontSize: 13, color: Colors.grey)),
             Row(
               children: [
-                Text('רמה: ${todo.level}', style: const TextStyle(fontSize: 12)),
+                Text('רמה: ${task.level}', style: const TextStyle(fontSize: 12)),
                 const SizedBox(width: 8),
-                if (todo.recurrence != RecurrenceType.none)
-                  Text(_getRecurrenceDetails(todo, context), style: const TextStyle(fontSize: 12, color: Colors.blueAccent))
-                else if (todo.dueDate != null)
-                  Text('עד: ${todo.dueDate!.day}/${todo.dueDate!.month}', style: const TextStyle(fontSize: 12, color: Colors.redAccent)),
+                if (task.recurrence != RecurrenceType.none)
+                  Text(_getRecurrenceDetails(task, context), style: const TextStyle(fontSize: 12, color: Colors.blueAccent))
+                else if (task.dueDate != null)
+                  Text('עד: ${task.dueDate!.day}/${task.dueDate!.month}', style: const TextStyle(fontSize: 12, color: Colors.redAccent)),
               ],
             ),
           ],
@@ -108,9 +108,9 @@ class TodoCard extends StatelessWidget {
         trailing: Row(
           mainAxisSize: MainAxisSize.min,
           children: [
-            if (todo.recurrence == RecurrenceType.none)
+            if (task.recurrence == RecurrenceType.none)
               IconButton(
-                icon: Icon(todo.isGolden ? Icons.monetization_on : Icons.monetization_on_outlined, color: todo.isGolden ? Colors.amber : Colors.grey),
+                icon: Icon(task.isGolden ? Icons.monetization_on : Icons.monetization_on_outlined, color: task.isGolden ? Colors.amber : Colors.grey),
                 onPressed: onToggleGolden,
               ),
             IconButton(icon: const Icon(Icons.edit, size: 20), onPressed: onEdit),
@@ -123,9 +123,9 @@ class TodoCard extends StatelessWidget {
       margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(12),
-        side: todo.isGolden ? const BorderSide(color: Colors.amber, width: 2) : BorderSide.none,
+        side: task.isGolden ? const BorderSide(color: Colors.amber, width: 2) : BorderSide.none,
       ),
-      elevation: todo.isGolden ? 8 : 1,
+      elevation: task.isGolden ? 8 : 1,
       clipBehavior: Clip.antiAlias,
       child: stripeColor == null
           ? tile

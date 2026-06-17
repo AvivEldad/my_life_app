@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 
 enum RecurrenceType { none, daily, weekly, monthly }
 
-class TodoItem {
+class TaskItem {
   final String id;
   String title;
   String? description;
@@ -15,7 +15,7 @@ class TodoItem {
   int? repeatValue;
   String? categoryId;
 
-  TodoItem({
+  TaskItem({
     required this.id,
     required this.title,
     this.description,
@@ -45,13 +45,13 @@ class TodoItem {
     };
   }
 
-  factory TodoItem.fromMap(String id, Map<String, dynamic> map) {
+  factory TaskItem.fromMap(String id, Map<String, dynamic> map) {
     final recurrenceIndex = (map['recurrence'] as int?) ?? 0;
     final reminderHour = map['reminderHour'] as int?;
     final reminderMinute = map['reminderMinute'] as int?;
     final dueDateMs = map['dueDate'] as int?;
 
-    return TodoItem(
+    return TaskItem(
       id: id,
       title: map['title'] as String? ?? '',
       description: map['description'] as String?,

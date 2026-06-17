@@ -1,9 +1,9 @@
-import '../models/todo_item.dart';
+import '../models/task_item.dart';
 
 class TaskService {
   // מיון לפי רמה - לכל המשימות
-  static List<TodoItem> sortByLevel(List<TodoItem> tasks) {
-    List<TodoItem> sorted = List.from(tasks);
+  static List<TaskItem> sortByLevel(List<TaskItem> tasks) {
+    List<TaskItem> sorted = List.from(tasks);
     sorted.sort((a, b) {
       if (a.isGolden) return -1;
       if (b.isGolden) return 1;
@@ -13,8 +13,8 @@ class TaskService {
   }
 
   // מיון לפי תאריך - רק למשימות רגילות
-  static List<TodoItem> sortByDueDate(List<TodoItem> tasks) {
-    List<TodoItem> sorted = List.from(tasks);
+  static List<TaskItem> sortByDueDate(List<TaskItem> tasks) {
+    List<TaskItem> sorted = List.from(tasks);
     sorted.sort((a, b) {
       if (a.isGolden) return -1;
       if (b.isGolden) return 1;
