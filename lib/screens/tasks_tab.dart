@@ -28,11 +28,23 @@ class TasksTab extends StatefulWidget {
 }
 
 class _TasksTabState extends State<TasksTab> {
-  List<TaskItem> get _filtered => widget.tasks
-      .where((t) => widget.isRituals
-          ? t.recurrence != RecurrenceType.none
-          : t.recurrence == RecurrenceType.none)
-      .toList();
+  List<TaskItem> get _filtered {
+    // 1. קודם כל מסננים את הרשימה לפי טקסים או משימות רגילות
+    List<TaskItem> list = widget.tasks
+        .where((t) => widget.isRituals
+            ? t.recurrence != RecurrenceType.none
+            : t.recurrence == RecurrenceType.none)
+        .toList();
+
+    // 2. ממיינים את הרשימה כך שמשימות שהושלמו תמיד ירדו לסוף
+    list.sort((a, b) {
+      if (a.isCompleted && !b.isCompleted) return 1;
+      if (!a.isCompleted && b.isCompleted) return -1;
+      return 0; // משאיר את שאר המשימות בסדר הרגיל שלהן (כדי לא לפגוע בגרירה)
+    });
+
+    return list;
+  }
 
   void _showTaskDialog({TaskItem? task}) {
     final isNew = task == null;

@@ -1,3 +1,4 @@
+import 'package:shared_preferences/shared_preferences.dart'; // <-- הוספנו את השורה הזו
 import '../widgets/xp_progress_bar.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
@@ -52,6 +53,7 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
   void didChangeAppLifecycleState(AppLifecycleState state) {
     if (state == AppLifecycleState.resumed && !_loading) {
       _runOptimizedBleedCheck();
+      _checkMidnightDeletion(); // <-- קריאה לפונקציית המחיקה כשחוזרים לאפליקציה
     }
   }
 
@@ -71,12 +73,43 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
 
       WidgetsBinding.instance.addPostFrameCallback((_) {
         _runOptimizedBleedCheck();
+        _checkMidnightDeletion(); // <-- קריאה לפונקציית המחיקה בסיום טעינת הנתונים
       });
     } catch (e) {
       setState(() => _loading = false);
       debugPrint('Error loading data: $e');
     }
   }
+
+  // ─── הפונקציה החדשה למחיקת משימות בחצות ────────────────────────────
+  Future<void> _checkMidnightDeletion() async {
+    final prefs = await SharedPreferences.getInstance();
+    final String? lastCleanDate = prefs.getString('last_clean_date');
+    
+    // יצירת מחרוזת של התאריך של היום (לדוגמה: "2023-10-25")
+    final String todayStr = DateTime.now().toIso8601String().split('T')[0];
+
+    // אם התאריך השמור שונה מהתאריך של היום, סימן שהתחיל יום חדש
+    if (lastCleanDate != todayStr) {
+      // 1. נמצא את כל המשימות שהושלמו
+      final completedTasks = _tasks.where((t) => t.isCompleted).toList();
+
+      // 2. נעבור עליהן, נמחק מ-Firebase ומהרשימה שלנו
+      for (var task in completedTasks) {
+        await DatabaseService.deleteTask(task.id);
+        _tasks.removeWhere((t) => t.id == task.id);
+      }
+
+      // 3. נשמור את התאריך של היום כדי שלא נמחק שוב באותו יום
+      await prefs.setString('last_clean_date', todayStr);
+
+      // 4. אם באמת מחקנו משהו, נרענן את המסך
+      if (completedTasks.isNotEmpty && mounted) {
+        setState(() {});
+      }
+    }
+  }
+  // ───────────────────────────────────────────────────────────────────
 
   void _runOptimizedBleedCheck() {
     final uncompletedTasks = _tasks.where((task) => !task.isCompleted).toList();
