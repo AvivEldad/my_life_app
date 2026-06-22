@@ -28,6 +28,14 @@ class TasksTab extends StatefulWidget {
 }
 
 class _TasksTabState extends State<TasksTab> {
+  final ScrollController _scrollController = ScrollController();
+  
+  @override
+  void dispose() {
+    _scrollController.dispose();
+    super.dispose();
+  }
+  
   List<TaskItem> get _filtered {
     // 1. קודם כל מסננים את הרשימה לפי טקסים או משימות רגילות
     List<TaskItem> list = widget.tasks
@@ -46,6 +54,16 @@ class _TasksTabState extends State<TasksTab> {
     return list;
   }
 
+  void _scrollToTop() {
+    if (_scrollController.hasClients) {
+      _scrollController.animateTo(
+        0.0, // מיקום 0 שזה הכי למעלה
+        duration: const Duration(milliseconds: 500), // משך האנימציה (חצי שנייה)
+        curve: Curves.easeInOut, // סוג תנועת האנימציה
+      );
+    }
+  }
+
   void _showTaskDialog({TaskItem? task}) {
     final isNew = task == null;
     showDialog(
@@ -57,6 +75,12 @@ class _TasksTabState extends State<TasksTab> {
         onSave: (saved) {
           if (isNew) widget.tasks.insert(0, saved);
           widget.onTaskSaved(saved, isNew);
+          if (isNew) {
+            // המערכת מחכה שהפריט החדש יתרנדר על המסך (בפריים הבא), ואז גוללת למעלה
+            WidgetsBinding.instance.addPostFrameCallback((_) {
+              _scrollToTop();
+            });
+          }
         },
         onDelete: task != null
             ? () {
@@ -146,6 +170,7 @@ class _TasksTabState extends State<TasksTab> {
           Expanded(
             child: ReorderableListView.builder(
               physics: const AlwaysScrollableScrollPhysics(),
+              scrollController: _scrollController,
               itemCount: others.length,
               onReorder: (oldIdx, newIdx) {
                 if (newIdx > oldIdx) newIdx -= 1;
