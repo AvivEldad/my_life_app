@@ -12,7 +12,7 @@ class TaskService {
       // 2. משימות מוזהבות מקבלות עדיפות
       if (a.isGolden && !b.isGolden) return -1;
       if (!a.isGolden && b.isGolden) return 1;
-      
+
       // 3. מיון לפי רמה
       return b.level.compareTo(a.level);
     });
@@ -31,16 +31,9 @@ class TaskService {
       if (a.isGolden && !b.isGolden) return -1;
       if (!a.isGolden && b.isGolden) return 1;
 
-      bool aIsReg = a.recurrence == RecurrenceType.none;
-      bool bIsReg = b.recurrence == RecurrenceType.none;
-
-      if (!aIsReg && !bIsReg) return 0;
-      if (!aIsReg) return 1;
-      if (!bIsReg) return -1;
-
       if (a.dueDate == null) return 1;
       if (b.dueDate == null) return -1;
-      
+
       return a.dueDate!.compareTo(b.dueDate!);
     });
     return sorted;

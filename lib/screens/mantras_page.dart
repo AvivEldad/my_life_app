@@ -67,17 +67,22 @@ class _MantrasPageState extends State<MantrasPage> {
           controller: controller,
           maxLines: 3,
           textAlign: TextAlign.right,
-          decoration: const InputDecoration(hintText: 'הכנס טקסט כאן...'),
+          decoration: const InputDecoration(hintText: 'הכנס מנטרה כאן...'),
         ),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(context), child: const Text('ביטול')),
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('ביטול'),
+          ),
           ElevatedButton(
             onPressed: () async {
               if (controller.text.isEmpty) return;
               if (mantra == null) {
                 final newItem = MantraItem(id: '', text: controller.text);
                 final id = await DatabaseService.addMantra(newItem);
-                setState(() => _mantras.add(MantraItem(id: id, text: newItem.text)));
+                setState(
+                  () => _mantras.add(MantraItem(id: id, text: newItem.text)),
+                );
               } else {
                 mantra.text = controller.text;
                 await DatabaseService.updateMantra(mantra);
@@ -99,24 +104,28 @@ class _MantrasPageState extends State<MantrasPage> {
       body: _loading
           ? const Center(child: CircularProgressIndicator())
           : _mantras.isEmpty
-              ? const Center(child: Text('אין מנטרות עדיין'))
-              : PageView.builder(
-                  controller: _pageController,
-                  onPageChanged: (idx) => _currentPage = idx,
-                  itemCount: _mantras.length,
-                  itemBuilder: (context, index) {
-                    return Center(
-                      child: Padding(
-                        padding: const EdgeInsets.all(40.0),
-                        child: Text(
-                          _mantras[index].text,
-                          textAlign: TextAlign.center,
-                          style: const TextStyle(fontSize: 28, fontStyle: FontStyle.italic, fontWeight: FontWeight.w300),
-                        ),
+          ? const Center(child: Text('אין מנטרות עדיין'))
+          : PageView.builder(
+              controller: _pageController,
+              onPageChanged: (idx) => _currentPage = idx,
+              itemCount: _mantras.length,
+              itemBuilder: (context, index) {
+                return Center(
+                  child: Padding(
+                    padding: const EdgeInsets.all(40.0),
+                    child: Text(
+                      _mantras[index].text,
+                      textAlign: TextAlign.center,
+                      style: const TextStyle(
+                        fontSize: 28,
+                        fontStyle: FontStyle.italic,
+                        fontWeight: FontWeight.w300,
                       ),
-                    );
-                  },
-                ),
+                    ),
+                  ),
+                );
+              },
+            ),
       floatingActionButton: FloatingActionButton(
         onPressed: () => _showMantraDialog(),
         child: const Icon(Icons.add),
@@ -130,11 +139,18 @@ class _MantrasPageState extends State<MantrasPage> {
       builder: (context) => ListView.builder(
         itemCount: _mantras.length,
         itemBuilder: (context, i) => ListTile(
-          title: Text(_mantras[i].text, maxLines: 1, overflow: TextOverflow.ellipsis),
+          title: Text(
+            _mantras[i].text,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+          ),
           trailing: Row(
             mainAxisSize: MainAxisSize.min,
             children: [
-              IconButton(icon: const Icon(Icons.edit), onPressed: () => _showMantraDialog(mantra: _mantras[i])),
+              IconButton(
+                icon: const Icon(Icons.edit),
+                onPressed: () => _showMantraDialog(mantra: _mantras[i]),
+              ),
               IconButton(
                 icon: const Icon(Icons.delete, color: Colors.redAccent),
                 onPressed: () async {

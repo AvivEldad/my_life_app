@@ -5,38 +5,43 @@ import '../models/category_item.dart';
 import '../models/mantra_item.dart';
 import '../models/prize_item.dart';
 import '../models/strike_item.dart';
+import '../models/ritual_item.dart';
 
 class DatabaseService {
   static final _db = FirebaseFirestore.instance;
 
   static final _tasksCol = _db.collection('tasks');
+  static final _ritualsCol = _db.collection('rituals');
   static final _projectsCol = _db.collection('projects');
   static final _categoriesCol = _db.collection('categories');
   static final _mantrasCol = _db.collection('mantras');
   static final _strikesCol = _db.collection('strikes');
-  static final CollectionReference _gamificationRef = FirebaseFirestore.instance.collection('gamification');
-  static final CollectionReference _prizesRef = FirebaseFirestore.instance.collection('prizes');
+  static final CollectionReference _gamificationRef = FirebaseFirestore.instance
+      .collection('gamification');
+  static final CollectionReference _prizesRef = FirebaseFirestore.instance
+      .collection('prizes');
 
   // ─── Load all data at startup ─────────────────────────────────────
   static Future<List<TaskItem>> loadTasks() async {
     final snap = await _tasksCol.orderBy('createdAt', descending: true).get();
-    return snap.docs
-        .map((d) => TaskItem.fromMap(d.id, d.data()))
-        .toList();
+    return snap.docs.map((d) => TaskItem.fromMap(d.id, d.data())).toList();
+  }
+
+  static Future<List<RitualItem>> loadRituals() async {
+    final snap = await _ritualsCol.orderBy('createdAt', descending: true).get();
+    return snap.docs.map((d) => RitualItem.fromMap(d.id, d.data())).toList();
   }
 
   static Future<List<ProjectItem>> loadProjects() async {
-    final snap = await _projectsCol.orderBy('createdAt', descending: true).get();
-    return snap.docs
-        .map((d) => ProjectItem.fromMap(d.id, d.data()))
-        .toList();
+    final snap = await _projectsCol
+        .orderBy('createdAt', descending: true)
+        .get();
+    return snap.docs.map((d) => ProjectItem.fromMap(d.id, d.data())).toList();
   }
 
   static Future<List<CategoryItem>> loadCategories() async {
     final snap = await _categoriesCol.get();
-    return snap.docs
-        .map((d) => CategoryItem.fromMap(d.id, d.data()))
-        .toList();
+    return snap.docs.map((d) => CategoryItem.fromMap(d.id, d.data())).toList();
   }
 
   // ─── Tasks ────────────────────────────────────────────────────────
@@ -54,6 +59,23 @@ class DatabaseService {
 
   static Future<void> deleteTask(String id) async {
     await _tasksCol.doc(id).delete();
+  }
+
+  // ─── Rituals ────────────────────────────────────────────────────────
+  static Future<String> addRitual(RitualItem item) async {
+    final doc = await _ritualsCol.add({
+      ...item.toMap(),
+      'createdAt': FieldValue.serverTimestamp(),
+    });
+    return doc.id;
+  }
+
+  static Future<void> updateRitual(RitualItem item) async {
+    await _ritualsCol.doc(item.id).update(item.toMap());
+  }
+
+  static Future<void> deleteRitual(String id) async {
+    await _ritualsCol.doc(id).delete();
   }
 
   // ─── Projects ─────────────────────────────────────────────────────
@@ -87,46 +109,44 @@ class DatabaseService {
     await _categoriesCol.doc(id).delete();
   }
 
-
   // ─── Mantras ───────────────────────────────────────────────────
-    static Future<List<MantraItem>> loadMantras() async {
-      final snap = await _mantrasCol.get();
-      return snap.docs.map((d) => MantraItem.fromMap(d.id, d.data())).toList();
-    }
+  static Future<List<MantraItem>> loadMantras() async {
+    final snap = await _mantrasCol.get();
+    return snap.docs.map((d) => MantraItem.fromMap(d.id, d.data())).toList();
+  }
 
-    static Future<String> addMantra(MantraItem item) async {
-      final doc = await _mantrasCol.add(item.toMap());
-      return doc.id;
-    }
+  static Future<String> addMantra(MantraItem item) async {
+    final doc = await _mantrasCol.add(item.toMap());
+    return doc.id;
+  }
 
-    static Future<void> updateMantra(MantraItem item) async {
-      await _mantrasCol.doc(item.id).update(item.toMap());
-    }
+  static Future<void> updateMantra(MantraItem item) async {
+    await _mantrasCol.doc(item.id).update(item.toMap());
+  }
 
-    static Future<void> deleteMantra(String id) async {
-      await _mantrasCol.doc(id).delete();
-    }
+  static Future<void> deleteMantra(String id) async {
+    await _mantrasCol.doc(id).delete();
+  }
 
-    // ─── Strikes ───────────────────────────────────────────────────
-    // ─── Strikes ───────────────────────────────────────────────────
-    static Future<List<StrikeItem>> loadStrikes() async {
-      final snap = await _strikesCol.get();
-      return snap.docs.map((d) => StrikeItem.fromMap(d.id, d.data())).toList();
-    }
+  // ─── Strikes ───────────────────────────────────────────────────
+  // ─── Strikes ───────────────────────────────────────────────────
+  static Future<List<StrikeItem>> loadStrikes() async {
+    final snap = await _strikesCol.get();
+    return snap.docs.map((d) => StrikeItem.fromMap(d.id, d.data())).toList();
+  }
 
-    static Future<String> addStrike(StrikeItem item) async {
-      final doc = await _strikesCol.add(item.toMap());
-      return doc.id;
-    }
+  static Future<String> addStrike(StrikeItem item) async {
+    final doc = await _strikesCol.add(item.toMap());
+    return doc.id;
+  }
 
-    static Future<void> updateStrike(StrikeItem item) async {
-      await _strikesCol.doc(item.id).update(item.toMap());
-    }
+  static Future<void> updateStrike(StrikeItem item) async {
+    await _strikesCol.doc(item.id).update(item.toMap());
+  }
 
-    static Future<void> deleteStrike(String id) async {
-      await _strikesCol.doc(id).delete();
-    }
-
+  static Future<void> deleteStrike(String id) async {
+    await _strikesCol.doc(id).delete();
+  }
 
   static Future<Map<String, dynamic>?> loadEconomy() async {
     final doc = await _gamificationRef.doc('wallet').get();
@@ -137,10 +157,10 @@ class DatabaseService {
   }
 
   static Future<void> updateEconomy(
-    double totalCoins, 
-    DateTime? lastCheck, 
-    int xp, 
-    List<int> unlockedPokemon
+    double totalCoins,
+    DateTime? lastCheck,
+    int xp,
+    List<int> unlockedPokemon,
   ) async {
     await _gamificationRef.doc('wallet').set({
       'totalCoins': totalCoins,
@@ -150,7 +170,7 @@ class DatabaseService {
     }, SetOptions(merge: true));
   }
 
-static Future<List<PrizeItem>> loadPrizes() async {
+  static Future<List<PrizeItem>> loadPrizes() async {
     final snapshot = await _prizesRef.get();
     return snapshot.docs.map((doc) {
       final data = doc.data() as Map<String, dynamic>;
@@ -163,24 +183,24 @@ static Future<List<PrizeItem>> loadPrizes() async {
     }).toList();
   }
 
-static Future<String> addPrize(PrizeItem prize) async {
-  final docRef = await _prizesRef.add({
-    'title': prize.title,
-    'cost': prize.cost,
-    'isRedeemed': prize.isRedeemed,
-  });
-  return docRef.id;
-}
+  static Future<String> addPrize(PrizeItem prize) async {
+    final docRef = await _prizesRef.add({
+      'title': prize.title,
+      'cost': prize.cost,
+      'isRedeemed': prize.isRedeemed,
+    });
+    return docRef.id;
+  }
 
-static Future<void> updatePrize(PrizeItem prize) async {
-  await _prizesRef.doc(prize.id).update({
-    'title': prize.title,
-    'cost': prize.cost,
-    'isRedeemed': prize.isRedeemed,
-  });
-}
+  static Future<void> updatePrize(PrizeItem prize) async {
+    await _prizesRef.doc(prize.id).update({
+      'title': prize.title,
+      'cost': prize.cost,
+      'isRedeemed': prize.isRedeemed,
+    });
+  }
 
-static Future<void> deletePrize(String id) async {
-  await _prizesRef.doc(id).delete();
-}
+  static Future<void> deletePrize(String id) async {
+    await _prizesRef.doc(id).delete();
+  }
 }

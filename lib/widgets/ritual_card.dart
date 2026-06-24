@@ -1,24 +1,48 @@
 import 'package:flutter/material.dart';
-import '../models/task_item.dart';
+import '../models/ritual_item.dart';
 import '../models/category_item.dart';
 
-class TaskCard extends StatelessWidget {
-  final TaskItem task;
+class RitualCard extends StatelessWidget {
+  final RitualItem ritual;
   final VoidCallback onToggle;
   final VoidCallback onEdit;
   final VoidCallback onDelete;
-  final VoidCallback onToggleGolden;
   final CategoryItem? category;
 
-  const TaskCard({
+  const RitualCard({
     super.key,
-    required this.task,
+    required this.ritual,
     required this.onToggle,
     required this.onEdit,
     required this.onDelete,
-    required this.onToggleGolden,
     this.category,
   });
+
+  String _getRecurrenceDetails(BuildContext context) {
+    String time = ritual.reminderTime?.format(context) ?? "";
+    String timeStr = time.isNotEmpty ? ' ב-$time' : '';
+
+    switch (ritual.recurrence) {
+      case RitualRecurrence.daily:
+        return 'כל יום$timeStr';
+      case RitualRecurrence.weekly:
+        List<String> days = [
+          '',
+          'א\'',
+          'ב\'',
+          'ג\'',
+          'ד\'',
+          'ה\'',
+          'ו\'',
+          'ש\'',
+        ];
+        int dayIndex = ritual.repeatValue ?? 1;
+        if (dayIndex < 1 || dayIndex > 7) dayIndex = 1;
+        return 'כל יום ${days[dayIndex]}$timeStr';
+      case RitualRecurrence.monthly:
+        return 'ב-${ritual.repeatValue ?? 1} לכל חודש$timeStr';
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -27,55 +51,40 @@ class TaskCard extends StatelessWidget {
     final tile = ListTile(
       contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
       leading: Checkbox(
-        value: task.isCompleted,
+        value: ritual.isCompleted,
         onChanged: (v) => onToggle(),
         activeColor: Colors.amber,
         shape: const CircleBorder(),
       ),
       title: Text(
-        task.title,
+        ritual.title,
         style: TextStyle(
           fontSize: 16,
           fontWeight: FontWeight.bold,
-          decoration: task.isCompleted ? TextDecoration.lineThrough : null,
+          decoration: ritual.isCompleted ? TextDecoration.lineThrough : null,
         ),
       ),
       subtitle: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          if (task.description != null && task.description!.isNotEmpty) ...[
-            Text(task.description!, style: const TextStyle(fontSize: 14)),
+          if (ritual.description != null && ritual.description!.isNotEmpty) ...[
+            Text(ritual.description!, style: const TextStyle(fontSize: 14)),
             const SizedBox(height: 4),
           ],
           Row(
             children: [
-              // החזרנו את תצוגת הרמה לכאן!
-              Text(
-                'רמה: ${task.level}',
-                style: const TextStyle(
-                  fontSize: 12,
-                  fontWeight: FontWeight.bold,
-                ),
-              ),
-              const SizedBox(width: 8),
               if (category != null) ...[
                 Icon(Icons.label, size: 14, color: stripeColor ?? Colors.grey),
                 const SizedBox(width: 4),
                 Text(category!.name, style: const TextStyle(fontSize: 12)),
                 const SizedBox(width: 8),
               ],
-              if (task.dueDate != null) ...[
-                const Icon(
-                  Icons.calendar_today,
-                  size: 14,
-                  color: Colors.redAccent,
-                ),
-                const SizedBox(width: 4),
-                Text(
-                  '${task.dueDate!.day}/${task.dueDate!.month}',
-                  style: const TextStyle(fontSize: 12, color: Colors.redAccent),
-                ),
-              ],
+              const Icon(Icons.sync, size: 14, color: Colors.blueAccent),
+              const SizedBox(width: 4),
+              Text(
+                _getRecurrenceDetails(context),
+                style: const TextStyle(fontSize: 12, color: Colors.blueAccent),
+              ),
             ],
           ),
         ],
@@ -83,15 +92,6 @@ class TaskCard extends StatelessWidget {
       trailing: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          IconButton(
-            icon: Icon(
-              task.isGolden
-                  ? Icons.monetization_on
-                  : Icons.monetization_on_outlined,
-              color: task.isGolden ? Colors.amber : Colors.grey,
-            ),
-            onPressed: onToggleGolden,
-          ),
           IconButton(icon: const Icon(Icons.edit, size: 20), onPressed: onEdit),
           IconButton(
             icon: const Icon(Icons.delete, size: 20, color: Colors.redAccent),
@@ -103,13 +103,8 @@ class TaskCard extends StatelessWidget {
 
     return Card(
       margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(12),
-        side: task.isGolden
-            ? const BorderSide(color: Colors.amber, width: 2)
-            : BorderSide.none,
-      ),
-      elevation: task.isGolden ? 8 : 1,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+      elevation: 1,
       clipBehavior: Clip.antiAlias,
       child: stripeColor == null
           ? tile

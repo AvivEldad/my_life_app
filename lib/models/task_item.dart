@@ -1,7 +1,3 @@
-import 'package:flutter/material.dart';
-
-enum RecurrenceType { none, daily, weekly, monthly }
-
 class TaskItem {
   final String id;
   String title;
@@ -10,9 +6,6 @@ class TaskItem {
   int level;
   bool isCompleted;
   bool isGolden;
-  RecurrenceType recurrence;
-  TimeOfDay? reminderTime;
-  int? repeatValue;
   String? categoryId;
 
   TaskItem({
@@ -23,9 +16,6 @@ class TaskItem {
     this.level = 1,
     this.isCompleted = false,
     this.isGolden = false,
-    this.recurrence = RecurrenceType.none,
-    this.reminderTime,
-    this.repeatValue,
     this.categoryId,
   });
 
@@ -37,18 +27,11 @@ class TaskItem {
       'level': level,
       'isCompleted': isCompleted,
       'isGolden': isGolden,
-      'recurrence': recurrence.index,
-      'reminderHour': reminderTime?.hour,
-      'reminderMinute': reminderTime?.minute,
-      'repeatValue': repeatValue,
       'categoryId': categoryId,
     };
   }
 
   factory TaskItem.fromMap(String id, Map<String, dynamic> map) {
-    final recurrenceIndex = (map['recurrence'] as int?) ?? 0;
-    final reminderHour = map['reminderHour'] as int?;
-    final reminderMinute = map['reminderMinute'] as int?;
     final dueDateMs = map['dueDate'] as int?;
 
     return TaskItem(
@@ -61,12 +44,6 @@ class TaskItem {
       level: (map['level'] as int?) ?? 1,
       isCompleted: (map['isCompleted'] as bool?) ?? false,
       isGolden: (map['isGolden'] as bool?) ?? false,
-      recurrence: RecurrenceType.values[
-          recurrenceIndex.clamp(0, RecurrenceType.values.length - 1)],
-      reminderTime: reminderHour != null && reminderMinute != null
-          ? TimeOfDay(hour: reminderHour, minute: reminderMinute)
-          : null,
-      repeatValue: map['repeatValue'] as int?,
       categoryId: map['categoryId'] as String?,
     );
   }

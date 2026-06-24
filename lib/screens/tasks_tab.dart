@@ -8,7 +8,6 @@ import '../services/task_service.dart';
 class TasksTab extends StatefulWidget {
   final List<TaskItem> tasks;
   final List<CategoryItem> categories;
-  final bool isRituals;
   final Future<void> Function(TaskItem, bool isNew) onTaskSaved;
   final Future<void> Function(String id) onTaskDeleted;
   final VoidCallback onChanged;
@@ -17,7 +16,6 @@ class TasksTab extends StatefulWidget {
     super.key,
     required this.tasks,
     required this.categories,
-    required this.isRituals,
     required this.onTaskSaved,
     required this.onTaskDeleted,
     required this.onChanged,
@@ -29,37 +27,48 @@ class TasksTab extends StatefulWidget {
 
 class _TasksTabState extends State<TasksTab> {
   final ScrollController _scrollController = ScrollController();
-  
+
   @override
   void dispose() {
     _scrollController.dispose();
     super.dispose();
   }
-  
-  List<TaskItem> get _filtered {
-    // 1. קודם כל מסננים את הרשימה לפי טקסים או משימות רגילות
-    List<TaskItem> list = widget.tasks
-        .where((t) => widget.isRituals
-            ? t.recurrence != RecurrenceType.none
-            : t.recurrence == RecurrenceType.none)
-        .toList();
 
-    // 2. ממיינים את הרשימה כך שמשימות שהושלמו תמיד ירדו לסוף
+  void _sortTasks(bool byLevel) {
+    setState(() {
+      final sorted = byLevel
+          ? TaskService.sortByLevel(widget.tasks)
+          : TaskService.sortByDueDate(widget.tasks);
+
+      widget.tasks.clear();
+      widget.tasks.addAll(sorted);
+    });
+    widget.onChanged();
+  }
+
+  List<TaskItem> get _filtered {
+    List<TaskItem> list = List.from(widget.tasks);
     list.sort((a, b) {
+      // 1. קודם כל: משימות שהושלמו יורדות לסוף הרשימה
       if (a.isCompleted && !b.isCompleted) return 1;
       if (!a.isCompleted && b.isCompleted) return -1;
-      return 0; // משאיר את שאר המשימות בסדר הרגיל שלהן (כדי לא לפגוע בגרירה)
-    });
 
+      // 2. משימת הזהב תמיד תהיה בראש הרשימה! (מופרדת ומעל כולם)
+      if (a.isGolden && !b.isGolden) return -1;
+      if (!a.isGolden && b.isGolden) return 1;
+
+      // 3. שאר המשימות שומרות על הסדר שלהן כדי לאפשר גרירה
+      return 0;
+    });
     return list;
   }
 
   void _scrollToTop() {
     if (_scrollController.hasClients) {
       _scrollController.animateTo(
-        0.0, // מיקום 0 שזה הכי למעלה
-        duration: const Duration(milliseconds: 500), // משך האנימציה (חצי שנייה)
-        curve: Curves.easeInOut, // סוג תנועת האנימציה
+        0.0,
+        duration: const Duration(milliseconds: 500),
+        curve: Curves.easeInOut,
       );
     }
   }
@@ -68,160 +77,154 @@ class _TasksTabState extends State<TasksTab> {
     final isNew = task == null;
     showDialog(
       context: context,
-      builder: (_) => TaskDialog(
+      builder: (context) => TaskDialog(
         task: task,
-        isRitual: widget.isRituals,
         categories: widget.categories,
-        onSave: (saved) {
-          if (isNew) widget.tasks.insert(0, saved);
-          widget.onTaskSaved(saved, isNew);
+        onSave: (savedTask) async {
+          await widget.onTaskSaved(savedTask, isNew);
           if (isNew) {
-            // המערכת מחכה שהפריט החדש יתרנדר על המסך (בפריים הבא), ואז גוללת למעלה
             WidgetsBinding.instance.addPostFrameCallback((_) {
               _scrollToTop();
             });
           }
         },
-        onDelete: task != null
-            ? () {
-                widget.tasks.removeWhere((t) => t.id == task.id);
-                widget.onTaskDeleted(task.id);
-              }
-            : null,
+        onDelete: () {
+          if (task != null) {
+            widget.onTaskDeleted(task.id);
+          }
+        },
       ),
     );
   }
 
   void _toggleGolden(TaskItem task) {
-    if (task.isGolden) {
-      task.isGolden = false;
-    } else {
-      for (var t in widget.tasks) t.isGolden = false;
-      task.isGolden = true;
+    bool isTurningGolden = !task.isGolden;
+
+    if (isTurningGolden) {
+      // אם אנחנו מסמנים משימה כ"מוזהבת", נוודא שהיא ייחודית
+      // נרוץ על כל המשימות ונבטל את הזהב מהשאר
+      for (var t in widget.tasks) {
+        if (t.isGolden && t.id != task.id) {
+          t.isGolden = false;
+          widget.onTaskSaved(t, false);
+        }
+      }
     }
+
+    task.isGolden = isTurningGolden;
     widget.onTaskSaved(task, false);
+
+    // רענון המסך כדי שהמשימה תקפוץ מיד למעלה
+    setState(() {});
   }
 
   @override
   Widget build(BuildContext context) {
-    final all = _filtered;
-    final golden = all.where((t) => t.isGolden).toList();
-    final others = all.where((t) => !t.isGolden).toList();
+    final others = _filtered;
 
     return Scaffold(
       body: Column(
         children: [
-          // Sort button (tasks only)
-          if (!widget.isRituals)
-            Align(
-              alignment: Alignment.centerLeft,
-              child: PopupMenuButton<String>(
-                icon: const Icon(Icons.sort),
-                tooltip: 'מיון חד פעמי',
-                onSelected: (value) {
-                  final golden = widget.tasks.where((t) => t.isGolden).toList();
-                  final regular = widget.tasks
-                      .where((t) => !t.isGolden && t.recurrence == RecurrenceType.none)
-                      .toList();
-                  final rituals = widget.tasks
-                      .where((t) => t.recurrence != RecurrenceType.none)
-                      .toList();
-                  final sorted = value == 'level'
-                      ? TaskService.sortByLevel(regular)
-                      : TaskService.sortByDueDate(regular);
-                  widget.tasks
-                    ..clear()
-                    ..addAll(golden)
-                    ..addAll(sorted)
-                    ..addAll(rituals);
-                  widget.onChanged();
-                },
-                itemBuilder: (_) => const [
-                  PopupMenuItem(value: 'level', child: Row(children: [
-                    Icon(Icons.bar_chart, size: 18), SizedBox(width: 8), Text('מיין לפי רמה'),
-                  ])),
-                  PopupMenuItem(value: 'date', child: Row(children: [
-                    Icon(Icons.calendar_today, size: 18), SizedBox(width: 8), Text('מיין לפי תאריך'),
-                  ])),
-                ],
-              ),
+          Padding(
+            padding: const EdgeInsets.symmetric(
+              horizontal: 16.0,
+              vertical: 8.0,
             ),
-
-          // Golden task
-          if (!widget.isRituals && golden.isNotEmpty) ...[
-            TaskCard(
-              task: golden.first,
-              category: widget.categories.where((c) => c.id == golden.first.categoryId).firstOrNull,
-              onToggle: () {
-                golden.first.isCompleted = !golden.first.isCompleted;
-                widget.onTaskSaved(golden.first, false);
-              },
-              onEdit: () => _showTaskDialog(task: golden.first),
-              onDelete: () {
-                widget.tasks.removeWhere((t) => t.id == golden.first.id);
-                widget.onTaskDeleted(golden.first.id);
-              },
-              onToggleGolden: () => _toggleGolden(golden.first),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                const Text(
+                  'המשימות שלי',
+                  style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                ),
+                PopupMenuButton<String>(
+                  icon: const Icon(Icons.sort),
+                  tooltip: 'מיין משימות',
+                  onSelected: (value) {
+                    if (value == 'level') _sortTasks(true);
+                    if (value == 'date') _sortTasks(false);
+                  },
+                  itemBuilder: (context) => [
+                    const PopupMenuItem(
+                      value: 'level',
+                      child: Text('מיין לפי רמה'),
+                    ),
+                    const PopupMenuItem(
+                      value: 'date',
+                      child: Text('מיין לפי תאריך'),
+                    ),
+                  ],
+                ),
+              ],
             ),
-            const Divider(),
-          ],
-
-          // Task list
+          ),
           Expanded(
             child: ReorderableListView.builder(
-              physics: const AlwaysScrollableScrollPhysics(),
               scrollController: _scrollController,
               itemCount: others.length,
-              onReorder: (oldIdx, newIdx) {
-                if (newIdx > oldIdx) newIdx -= 1;
-                final item = others.removeAt(oldIdx);
-                others.insert(newIdx, item);
-                widget.tasks.remove(item);
-                int insertAt = -1;
-                if (newIdx + 1 < others.length) {
-                  final nextItem = others[newIdx + 1];
-                  insertAt = widget.tasks.indexWhere((t) => t.id == nextItem.id);
-                } 
-                else if (newIdx > 0) {
-                  final prevItem = others[newIdx - 1];
-                  final prevIndex = widget.tasks.indexWhere((t) => t.id == prevItem.id);
-                  if (prevIndex != -1) {
-                    insertAt = prevIndex + 1; // Insert right after the previous item
+              onReorder: (oldIndex, newIndex) {
+                setState(() {
+                  // 1. שומרים את המשימה שאנחנו גוררים כרגע
+                  final item = others[oldIndex];
+
+                  // 2. בודקים איזו משימה יושבת במיקום שבו אנחנו רוצים לנחות
+                  TaskItem? referenceItem;
+                  if (newIndex < others.length) {
+                    referenceItem = others[newIndex];
                   }
-                }
-                if (insertAt >= 0 && insertAt <= widget.tasks.length) {
-                  widget.tasks.insert(insertAt, item);
-                } else {
-                  widget.tasks.add(item); 
-                }
-                widget.onChanged();
+
+                  // 3. מסירים את המשימה שנגררת מהרשימה המקורית
+                  widget.tasks.remove(item);
+
+                  // 4. מכניסים אותה בחזרה בדיוק במקום הנכון (לפני ה-referenceItem)
+                  if (referenceItem != null) {
+                    int insertIndex = widget.tasks.indexOf(referenceItem);
+                    if (insertIndex != -1) {
+                      widget.tasks.insert(insertIndex, item);
+                    } else {
+                      widget.tasks.add(item);
+                    }
+                  } else {
+                    // מקרה קצה: נגרר עד לסוף הרשימה (מתחת לכולם)
+                    widget.tasks.add(item);
+                  }
+
+                  widget.onChanged();
+                });
               },
-              itemBuilder: (context, index) => ReorderableDelayedDragStartListener(
-                key: ValueKey(others[index].id),
-                index: index,
-                child: TaskCard(
-                  task: others[index],
-                  category: widget.categories
-                      .where((c) => c.id == others[index].categoryId)
-                      .firstOrNull,
-                  onToggle: () {
-                    others[index].isCompleted = !others[index].isCompleted;
-                    widget.onTaskSaved(others[index], false);
-                  },
-                  onEdit: () => _showTaskDialog(task: others[index]),
-                  onDelete: () {
-                    widget.tasks.removeWhere((t) => t.id == others[index].id);
-                    widget.onTaskDeleted(others[index].id);
-                  },
-                  onToggleGolden: () => _toggleGolden(others[index]),
-                ),
-              ),
+              itemBuilder: (context, index) =>
+                  ReorderableDelayedDragStartListener(
+                    key: ValueKey(others[index].id),
+                    index: index,
+                    child: TaskCard(
+                      task: others[index],
+                      category: widget.categories
+                          .where((c) => c.id == others[index].categoryId)
+                          .firstOrNull,
+                      onToggle: () {
+                        bool isNowCompleted = !others[index].isCompleted;
+                        others[index].isCompleted = isNowCompleted;
+                        if (isNowCompleted && others[index].isGolden) {
+                          others[index].isGolden = false;
+                        }
+                        widget.onTaskSaved(others[index], false);
+                      },
+                      onEdit: () => _showTaskDialog(task: others[index]),
+                      onDelete: () {
+                        widget.tasks.removeWhere(
+                          (t) => t.id == others[index].id,
+                        );
+                        widget.onTaskDeleted(others[index].id);
+                      },
+                      onToggleGolden: () => _toggleGolden(others[index]),
+                    ),
+                  ),
             ),
           ),
         ],
       ),
       floatingActionButton: FloatingActionButton(
-        onPressed: _showTaskDialog,
+        onPressed: () => _showTaskDialog(),
         child: const Icon(Icons.add),
       ),
     );
