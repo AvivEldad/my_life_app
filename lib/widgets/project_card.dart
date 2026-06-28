@@ -43,183 +43,294 @@ class ProjectCard extends StatelessWidget {
       context: context,
       builder: (_) => TaskDialog(
         task: task,
-        categories: const [],
+        categories: categories,
         onSave: (saved) {
           if (task == null) {
             project.subtasks.add(saved);
+          } else {
+            final idx = project.subtasks.indexWhere((t) => t.id == task.id);
+            if (idx >= 0) project.subtasks[idx] = saved;
           }
           onChanged();
         },
-        onDelete: task != null
-            ? () {
-                project.subtasks.removeWhere((t) => t.id == task.id);
-                onChanged();
+      ),
+    );
+  }
+
+  void _showAddNestedTaskDialog(BuildContext context, TaskItem parentTask) {
+    final TextEditingController ctrl = TextEditingController();
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text(
+          'תת-משימה חדשה',
+          style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+        ),
+        content: TextField(
+          controller: ctrl,
+          autofocus: true,
+          decoration: const InputDecoration(hintText: 'הכנס שם לתת-המשימה'),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: const Text('ביטול'),
+          ),
+          ElevatedButton(
+            onPressed: () {
+              if (ctrl.text.trim().isNotEmpty) {
+                // מוסיף את תת המשימה לרשימה הפנימית של המשימה הספציפית
+                parentTask.subTasks.add(
+                  SubTask(
+                    id: DateTime.now().millisecondsSinceEpoch.toString(),
+                    title: ctrl.text.trim(),
+                  ),
+                );
+                onChanged(); // הרענון הזה שומר הכל אוטומטית למסד הנתונים!
+                Navigator.pop(ctx);
               }
-            : null,
+            },
+            child: const Text('הוסף'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _showEditNestedTaskDialog(BuildContext context, SubTask nestedTask) {
+    final TextEditingController ctrl = TextEditingController(
+      text: nestedTask.title,
+    );
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text(
+          'עריכת תת-משימה',
+          style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+        ),
+        content: TextField(controller: ctrl, autofocus: true),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: const Text('ביטול'),
+          ),
+          ElevatedButton(
+            onPressed: () {
+              if (ctrl.text.trim().isNotEmpty) {
+                nestedTask.title = ctrl.text.trim();
+                onChanged(); // שמירה למסד הנתונים
+                Navigator.pop(ctx);
+              }
+            },
+            child: const Text('שמור'),
+          ),
+        ],
       ),
     );
   }
 
   @override
   Widget build(BuildContext context) {
-    final activeIdx = project.activeSubtaskIndex;
     final stripeColor = _stripeColor;
 
     final cardContent = Column(
       children: [
-        // ── Header ──
-        InkWell(
-          onTap: onToggleExpand,
-          child: Padding(
-            padding: const EdgeInsets.fromLTRB(8, 12, 14, 12),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.end,
-              children: [
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    Row(
-                      children: [
-                        Icon(isExpanded ? Icons.expand_less : Icons.expand_more,
-                            color: Colors.grey[400]),
-                        IconButton(
-                          icon: const Icon(Icons.edit, size: 18),
-                          onPressed: () => _showEditDialog(context),
-                          padding: EdgeInsets.zero,
-                          constraints: const BoxConstraints(),
-                        ),
-                        const SizedBox(width: 6),
-                        IconButton(
-                          icon: const Icon(Icons.delete, size: 18, color: Colors.redAccent),
-                          onPressed: onDelete,
-                          padding: EdgeInsets.zero,
-                          constraints: const BoxConstraints(),
-                        ),
-                        const SizedBox(width: 6),
-                        IconButton(
-                          icon: const Icon(Icons.add_task, size: 18, color: Colors.amber),
-                          onPressed: () => _showSubtaskDialog(context),
-                          padding: EdgeInsets.zero,
-                          constraints: const BoxConstraints(),
-                        ),
-                      ],
-                    ),
-                    Row(
-                      children: [
-                        Text(
-                          '${project.completedCount}/${project.subtasks.length}',
-                          style: TextStyle(color: Colors.grey[400], fontSize: 13),
-                        ),
-                        const SizedBox(width: 8),
-                        Text(project.title,
-                            style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
-                      ],
-                    ),
-                  ],
-                ),
-                if (project.description.isNotEmpty)
-                  Padding(
-                    padding: const EdgeInsets.only(top: 4, bottom: 6),
-                    child: Text(project.description,
-                        style: TextStyle(color: Colors.grey[400], fontSize: 13)),
-                  ),
-                const SizedBox(height: 8),
-                ClipRRect(
-                  borderRadius: BorderRadius.circular(8),
-                  child: LinearProgressIndicator(
-                    value: project.progress,
-                    minHeight: 8,
-                    backgroundColor: Colors.grey[800],
-                    valueColor: AlwaysStoppedAnimation<Color>(
-                        project.progress == 1.0 ? Colors.green : Colors.amber),
-                  ),
-                ),
-                if (project.dueDate != null)
-                  Padding(
-                    padding: const EdgeInsets.only(top: 6),
-                    child: Text(
-                      'יעד: ${project.dueDate!.day}/${project.dueDate!.month}/${project.dueDate!.year}',
-                      style: TextStyle(color: Colors.grey[500], fontSize: 12),
-                    ),
-                  ),
-              ],
-            ),
+        ListTile(
+          contentPadding: const EdgeInsets.symmetric(
+            horizontal: 16,
+            vertical: 4,
           ),
+          title: Text(
+            project.title,
+            style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 18),
+          ),
+          subtitle:
+              project.description != null && project.description!.isNotEmpty
+              ? Text(project.description!)
+              : null,
+          trailing: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              IconButton(
+                icon: const Icon(Icons.add_task, color: Colors.blueAccent),
+                onPressed: () => _showSubtaskDialog(context),
+              ),
+              IconButton(
+                icon: const Icon(Icons.edit),
+                onPressed: () => _showEditDialog(context),
+              ),
+              IconButton(
+                icon: Icon(isExpanded ? Icons.expand_less : Icons.expand_more),
+                onPressed: onToggleExpand,
+              ),
+            ],
+          ),
+          onTap: onToggleExpand,
         ),
-
-        // ── Subtasks ──
         if (isExpanded) ...[
-          if (project.subtasks.isEmpty)
-            Padding(
-              padding: const EdgeInsets.all(12),
-              child: Text('אין משימות עדיין', style: TextStyle(color: Colors.grey[500])),
-            )
-          else ...[
-            const Divider(height: 1),
-            ...List.generate(project.subtasks.length, (i) {
-              final subtask = project.subtasks[i];
-              final isActive = i == activeIdx;
-              final isLocked = !subtask.isCompleted && !isActive;
-
-              return ListTile(
-                contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 2),
-                leading: isLocked
-                    ? const Padding(
-                        padding: EdgeInsets.all(12),
-                        child: Icon(Icons.lock, size: 18, color: Colors.grey),
-                      )
-                    : Checkbox(
+          const Divider(height: 1),
+          for (var subtask in project.subtasks)
+            Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                // ─── המשימה הראשית (Level 1) ───
+                Padding(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 16,
+                    vertical: 0,
+                  ),
+                  child: Row(
+                    children: [
+                      Checkbox(
                         value: subtask.isCompleted,
-                        activeColor: Colors.amber,
-                        onChanged: (_) {
-                          subtask.isCompleted = !subtask.isCompleted;
+                        onChanged: (v) {
+                          subtask.isCompleted = v ?? false;
                           onChanged();
                         },
+                        shape: const CircleBorder(),
+                        activeColor: Colors.amber,
                       ),
-                title: Text(
-                  subtask.title,
-                  textAlign: TextAlign.right,
-                  style: TextStyle(
-                    decoration: subtask.isCompleted ? TextDecoration.lineThrough : null,
-                    color: isLocked ? Colors.grey[600] : subtask.isCompleted ? Colors.grey : null,
+                      Expanded(
+                        child: Text(
+                          subtask.title,
+                          style: TextStyle(
+                            decoration: subtask.isCompleted
+                                ? TextDecoration.lineThrough
+                                : null,
+                            fontWeight:
+                                FontWeight.bold, // הדגשה כדי שייראה כמו "אבא"
+                          ),
+                        ),
+                      ),
+                      if (subtask.isActive)
+                        const Icon(
+                          Icons.play_arrow,
+                          size: 16,
+                          color: Colors.amber,
+                        ),
+                      IconButton(
+                        icon: const Icon(Icons.edit, size: 16),
+                        onPressed: () =>
+                            _showSubtaskDialog(context, task: subtask),
+                        padding: EdgeInsets.zero,
+                        constraints: const BoxConstraints(),
+                      ),
+                      IconButton(
+                        icon: const Icon(
+                          Icons.delete,
+                          size: 16,
+                          color: Colors.redAccent,
+                        ),
+                        onPressed: () {
+                          project.subtasks.removeWhere(
+                            (t) => t.id == subtask.id,
+                          );
+                          onChanged();
+                        },
+                        padding: EdgeInsets.zero,
+                        constraints: const BoxConstraints(),
+                      ),
+                    ],
                   ),
                 ),
-                subtitle: (subtask.description?.isNotEmpty ?? false) || subtask.dueDate != null
-                    ? Text(
-                        [
-                          if (subtask.description?.isNotEmpty ?? false) subtask.description!,
-                          if (subtask.dueDate != null)
-                            '${subtask.dueDate!.day}/${subtask.dueDate!.month}',
-                        ].join(' · '),
-                        textAlign: TextAlign.right,
-                        style: TextStyle(color: isLocked ? Colors.grey[700] : null),
-                      )
-                    : null,
-                trailing: Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    if (isActive) const Icon(Icons.play_arrow, size: 16, color: Colors.amber),
-                    IconButton(
-                      icon: const Icon(Icons.edit, size: 16),
-                      onPressed: () => _showSubtaskDialog(context, task: subtask),
-                      padding: EdgeInsets.zero,
-                      constraints: const BoxConstraints(),
+
+                // ─── תתי-המשימות הפנימיות (Level 2) ───
+                if (subtask.subTasks.isNotEmpty)
+                  for (var nestedTask in subtask.subTasks)
+                    Padding(
+                      padding: const EdgeInsets.only(
+                        right: 56.0,
+                        left: 16.0,
+                      ), // הזחה פנימה שייראה כמו תת-רשימה (מתאים לעברית)
+                      child: Row(
+                        children: [
+                          SizedBox(
+                            width: 24,
+                            height: 24,
+                            child: Checkbox(
+                              value: nestedTask.isCompleted,
+                              onChanged: (v) {
+                                nestedTask.isCompleted = v ?? false;
+                                onChanged();
+                              },
+                            ),
+                          ),
+                          const SizedBox(width: 8),
+                          Expanded(
+                            child: Text(
+                              nestedTask.title,
+                              style: TextStyle(
+                                fontSize: 14,
+                                decoration: nestedTask.isCompleted
+                                    ? TextDecoration.lineThrough
+                                    : null,
+                              ),
+                            ),
+                          ),
+                          IconButton(
+                            icon: const Icon(
+                              Icons.edit,
+                              size: 14,
+                              color: Colors.grey,
+                            ),
+                            onPressed: () =>
+                                _showEditNestedTaskDialog(context, nestedTask),
+                            padding: EdgeInsets.zero,
+                            constraints: const BoxConstraints(),
+                          ),
+                          IconButton(
+                            icon: const Icon(
+                              Icons.close,
+                              size: 14,
+                              color: Colors.grey,
+                            ),
+                            onPressed: () {
+                              subtask.subTasks.removeWhere(
+                                (t) => t.id == nestedTask.id,
+                              );
+                              onChanged();
+                            },
+                            padding: EdgeInsets.zero,
+                            constraints: const BoxConstraints(),
+                          ),
+                        ],
+                      ),
                     ),
-                    IconButton(
-                      icon: const Icon(Icons.delete, size: 16, color: Colors.redAccent),
-                      onPressed: () {
-                        project.subtasks.removeWhere((t) => t.id == subtask.id);
-                        onChanged();
-                      },
-                      padding: EdgeInsets.zero,
-                      constraints: const BoxConstraints(),
+
+                // ─── כפתור הוספת תת-משימה ───
+                Padding(
+                  padding: const EdgeInsets.only(
+                    right: 56.0,
+                    bottom: 8.0,
+                    top: 4.0,
+                  ),
+                  child: InkWell(
+                    onTap: () => _showAddNestedTaskDialog(context, subtask),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        const Icon(
+                          Icons.add,
+                          size: 16,
+                          color: Colors.blueAccent,
+                        ),
+                        const SizedBox(width: 4),
+                        const Text(
+                          'הוסף תת-משימה',
+                          style: TextStyle(
+                            fontSize: 12,
+                            color: Colors.blueAccent,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                      ],
                     ),
-                  ],
+                  ),
                 ),
-              );
-            }),
-            const SizedBox(height: 8),
-          ],
+                const Divider(height: 1, indent: 16, endIndent: 16),
+              ],
+            ),
+          const SizedBox(height: 8),
         ],
       ],
     );

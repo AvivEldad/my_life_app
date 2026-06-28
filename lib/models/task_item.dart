@@ -1,3 +1,23 @@
+class SubTask {
+  final String id;
+  String title;
+  bool isCompleted;
+
+  SubTask({required this.id, required this.title, this.isCompleted = false});
+
+  Map<String, dynamic> toMap() {
+    return {'id': id, 'title': title, 'isCompleted': isCompleted};
+  }
+
+  factory SubTask.fromMap(Map<String, dynamic> map) {
+    return SubTask(
+      id: map['id'] as String? ?? '',
+      title: map['title'] as String? ?? '',
+      isCompleted: map['isCompleted'] as bool? ?? false,
+    );
+  }
+}
+
 class TaskItem {
   final String id;
   String title;
@@ -7,7 +27,8 @@ class TaskItem {
   bool isCompleted;
   bool isGolden;
   String? categoryId;
-
+  bool isActive;
+  List<SubTask> subTasks;
   TaskItem({
     required this.id,
     required this.title,
@@ -17,8 +38,9 @@ class TaskItem {
     this.isCompleted = false,
     this.isGolden = false,
     this.categoryId,
-  });
-
+    this.isActive = false,
+    List<SubTask>? subTasks,
+  }) : subTasks = subTasks ?? [];
   Map<String, dynamic> toMap() {
     return {
       'title': title,
@@ -28,11 +50,16 @@ class TaskItem {
       'isCompleted': isCompleted,
       'isGolden': isGolden,
       'categoryId': categoryId,
+      'isActive': isActive,
+      'subTasks': subTasks
+          .map((e) => e.toMap())
+          .toList(), // שומר את כל תתי-המשימות
     };
   }
 
   factory TaskItem.fromMap(String id, Map<String, dynamic> map) {
     final dueDateMs = map['dueDate'] as int?;
+    final subTasksList = map['subTasks'] as List<dynamic>?;
 
     return TaskItem(
       id: id,
@@ -45,6 +72,12 @@ class TaskItem {
       isCompleted: (map['isCompleted'] as bool?) ?? false,
       isGolden: (map['isGolden'] as bool?) ?? false,
       categoryId: map['categoryId'] as String?,
+      isActive: (map['isActive'] as bool?) ?? false,
+      subTasks: subTasksList != null
+          ? subTasksList
+                .map((e) => SubTask.fromMap(e as Map<String, dynamic>))
+                .toList()
+          : [],
     );
   }
 }
