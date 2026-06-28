@@ -26,6 +26,14 @@ class ProjectsTab extends StatefulWidget {
 
 class _ProjectsTabState extends State<ProjectsTab> {
   final Set<String> _expanded = <String>{};
+  final ScrollController _scrollController =
+      ScrollController(); // הוספנו בקר גלילה
+
+  @override
+  void dispose() {
+    _scrollController.dispose();
+    super.dispose();
+  }
 
   void _showProjectDialog({ProjectItem? project}) {
     final isNew = project == null;
@@ -61,6 +69,7 @@ class _ProjectsTabState extends State<ProjectsTab> {
               ),
             )
           : ReorderableListView.builder(
+              scrollController: _scrollController, // חיבור בקר הגלילה לרשימה
               itemCount: widget.projects.length,
               onReorder: (oldIdx, newIdx) {
                 if (newIdx > oldIdx) newIdx -= 1;
@@ -70,7 +79,8 @@ class _ProjectsTabState extends State<ProjectsTab> {
               },
               itemBuilder: (context, index) {
                 final project = widget.projects[index];
-                return ReorderableDragStartListener(
+                // כאן הקסם: שינינו לגרסה המושהית (Delayed) שדורשת לחיצה ארוכה
+                return ReorderableDelayedDragStartListener(
                   key: ValueKey(project.id),
                   index: index,
                   child: ProjectCard(
