@@ -79,14 +79,15 @@ class ProjectCard extends StatelessWidget {
           ElevatedButton(
             onPressed: () {
               if (ctrl.text.trim().isNotEmpty) {
-                // מוסיף את תת המשימה לרשימה הפנימית של המשימה הספציפית
                 parentTask.subTasks.add(
                   SubTask(
-                    id: DateTime.now().millisecondsSinceEpoch.toString(),
+                    id:
+                        DateTime.now().millisecondsSinceEpoch.toString() +
+                        UniqueKey().toString(), // ID חזק וייחודי
                     title: ctrl.text.trim(),
                   ),
                 );
-                onChanged(); // הרענון הזה שומר הכל אוטומטית למסד הנתונים!
+                onChanged();
                 Navigator.pop(ctx);
               }
             },
@@ -118,7 +119,7 @@ class ProjectCard extends StatelessWidget {
             onPressed: () {
               if (ctrl.text.trim().isNotEmpty) {
                 nestedTask.title = ctrl.text.trim();
-                onChanged(); // שמירה למסד הנתונים
+                onChanged();
                 Navigator.pop(ctx);
               }
             },
@@ -169,167 +170,253 @@ class ProjectCard extends StatelessWidget {
         ),
         if (isExpanded) ...[
           const Divider(height: 1),
-          for (var subtask in project.subtasks)
-            Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                // ─── המשימה הראשית (Level 1) ───
-                Padding(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 16,
-                    vertical: 0,
-                  ),
-                  child: Row(
-                    children: [
-                      Checkbox(
-                        value: subtask.isCompleted,
-                        onChanged: (v) {
-                          subtask.isCompleted = v ?? false;
-                          onChanged();
-                        },
-                        shape: const CircleBorder(),
-                        activeColor: Colors.amber,
-                      ),
-                      Expanded(
-                        child: Text(
-                          subtask.title,
-                          style: TextStyle(
-                            decoration: subtask.isCompleted
-                                ? TextDecoration.lineThrough
-                                : null,
-                            fontWeight:
-                                FontWeight.bold, // הדגשה כדי שייראה כמו "אבא"
-                          ),
-                        ),
-                      ),
-                      if (subtask.isActive)
-                        const Icon(
-                          Icons.play_arrow,
-                          size: 16,
-                          color: Colors.amber,
-                        ),
-                      IconButton(
-                        icon: const Icon(Icons.edit, size: 16),
-                        onPressed: () =>
-                            _showSubtaskDialog(context, task: subtask),
-                        padding: EdgeInsets.zero,
-                        constraints: const BoxConstraints(),
-                      ),
-                      IconButton(
-                        icon: const Icon(
-                          Icons.delete,
-                          size: 16,
-                          color: Colors.redAccent,
-                        ),
-                        onPressed: () {
-                          project.subtasks.removeWhere(
-                            (t) => t.id == subtask.id,
-                          );
-                          onChanged();
-                        },
-                        padding: EdgeInsets.zero,
-                        constraints: const BoxConstraints(),
-                      ),
-                    ],
-                  ),
-                ),
-
-                // ─── תתי-המשימות הפנימיות (Level 2) ───
-                if (subtask.subTasks.isNotEmpty)
-                  for (var nestedTask in subtask.subTasks)
+          // שימוש בלולאה עם אינדקס כדי שנוכל לבדוק מיקום (עבור חיצי הסידור)
+          for (int i = 0; i < project.subtasks.length; i++) ...[
+            Builder(
+              builder: (context) {
+                final subtask = project.subtasks[i];
+                return Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    // ─── המשימה הראשית (Level 1) ───
                     Padding(
-                      padding: const EdgeInsets.only(
-                        right: 56.0,
-                        left: 16.0,
-                      ), // הזחה פנימה שייראה כמו תת-רשימה (מתאים לעברית)
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 16,
+                        vertical: 0,
+                      ),
                       child: Row(
                         children: [
-                          SizedBox(
-                            width: 24,
-                            height: 24,
-                            child: Checkbox(
-                              value: nestedTask.isCompleted,
-                              onChanged: (v) {
-                                nestedTask.isCompleted = v ?? false;
-                                onChanged();
-                              },
-                            ),
+                          Checkbox(
+                            value: subtask.isCompleted,
+                            onChanged: (v) {
+                              subtask.isCompleted = v ?? false;
+                              onChanged();
+                            },
+                            shape: const CircleBorder(),
+                            activeColor: Colors.amber,
                           ),
-                          const SizedBox(width: 8),
                           Expanded(
                             child: Text(
-                              nestedTask.title,
+                              subtask.title,
                               style: TextStyle(
-                                fontSize: 14,
-                                decoration: nestedTask.isCompleted
+                                decoration: subtask.isCompleted
                                     ? TextDecoration.lineThrough
                                     : null,
+                                fontWeight: FontWeight.bold,
                               ),
                             ),
                           ),
-                          IconButton(
-                            icon: const Icon(
-                              Icons.edit,
-                              size: 14,
-                              color: Colors.grey,
+                          // חץ למעלה
+                          if (i > 0)
+                            IconButton(
+                              icon: const Icon(
+                                Icons.keyboard_arrow_up,
+                                size: 20,
+                                color: Colors.grey,
+                              ),
+                              onPressed: () {
+                                final temp = project.subtasks[i];
+                                project.subtasks[i] = project.subtasks[i - 1];
+                                project.subtasks[i - 1] = temp;
+                                onChanged();
+                              },
+                              padding: EdgeInsets.zero,
+                              constraints: const BoxConstraints(minWidth: 28),
                             ),
+                          // חץ למטה
+                          if (i < project.subtasks.length - 1)
+                            IconButton(
+                              icon: const Icon(
+                                Icons.keyboard_arrow_down,
+                                size: 20,
+                                color: Colors.grey,
+                              ),
+                              onPressed: () {
+                                final temp = project.subtasks[i];
+                                project.subtasks[i] = project.subtasks[i + 1];
+                                project.subtasks[i + 1] = temp;
+                                onChanged();
+                              },
+                              padding: EdgeInsets.zero,
+                              constraints: const BoxConstraints(minWidth: 28),
+                            ),
+                          IconButton(
+                            icon: const Icon(Icons.edit, size: 16),
                             onPressed: () =>
-                                _showEditNestedTaskDialog(context, nestedTask),
+                                _showSubtaskDialog(context, task: subtask),
                             padding: EdgeInsets.zero,
-                            constraints: const BoxConstraints(),
+                            constraints: const BoxConstraints(minWidth: 28),
                           ),
                           IconButton(
                             icon: const Icon(
-                              Icons.close,
-                              size: 14,
-                              color: Colors.grey,
+                              Icons.delete,
+                              size: 16,
+                              color: Colors.redAccent,
                             ),
                             onPressed: () {
-                              subtask.subTasks.removeWhere(
-                                (t) => t.id == nestedTask.id,
+                              project.subtasks.removeWhere(
+                                (t) => t.id == subtask.id,
                               );
                               onChanged();
                             },
                             padding: EdgeInsets.zero,
-                            constraints: const BoxConstraints(),
+                            constraints: const BoxConstraints(minWidth: 28),
                           ),
                         ],
                       ),
                     ),
 
-                // ─── כפתור הוספת תת-משימה ───
-                Padding(
-                  padding: const EdgeInsets.only(
-                    right: 56.0,
-                    bottom: 8.0,
-                    top: 4.0,
-                  ),
-                  child: InkWell(
-                    onTap: () => _showAddNestedTaskDialog(context, subtask),
-                    child: Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        const Icon(
-                          Icons.add,
-                          size: 16,
-                          color: Colors.blueAccent,
-                        ),
-                        const SizedBox(width: 4),
-                        const Text(
-                          'הוסף תת-משימה',
-                          style: TextStyle(
-                            fontSize: 12,
-                            color: Colors.blueAccent,
-                            fontWeight: FontWeight.w600,
-                          ),
+                    // ─── תתי-המשימות הפנימיות (Level 2) ───
+                    if (subtask.subTasks.isNotEmpty)
+                      for (int j = 0; j < subtask.subTasks.length; j++) ...[
+                        Builder(
+                          builder: (context) {
+                            final nestedTask = subtask.subTasks[j];
+                            return Padding(
+                              padding: const EdgeInsets.only(
+                                right: 56.0,
+                                left: 16.0,
+                              ),
+                              child: Row(
+                                children: [
+                                  SizedBox(
+                                    width: 24,
+                                    height: 24,
+                                    child: Checkbox(
+                                      value: nestedTask.isCompleted,
+                                      onChanged: (v) {
+                                        nestedTask.isCompleted = v ?? false;
+                                        onChanged();
+                                      },
+                                    ),
+                                  ),
+                                  const SizedBox(width: 8),
+                                  Expanded(
+                                    child: Text(
+                                      nestedTask.title,
+                                      style: TextStyle(
+                                        fontSize: 14,
+                                        decoration: nestedTask.isCompleted
+                                            ? TextDecoration.lineThrough
+                                            : null,
+                                      ),
+                                    ),
+                                  ),
+                                  // חץ למעלה תת-משימה
+                                  if (j > 0)
+                                    IconButton(
+                                      icon: const Icon(
+                                        Icons.keyboard_arrow_up,
+                                        size: 16,
+                                        color: Colors.grey,
+                                      ),
+                                      onPressed: () {
+                                        final temp = subtask.subTasks[j];
+                                        subtask.subTasks[j] =
+                                            subtask.subTasks[j - 1];
+                                        subtask.subTasks[j - 1] = temp;
+                                        onChanged();
+                                      },
+                                      padding: EdgeInsets.zero,
+                                      constraints: const BoxConstraints(
+                                        minWidth: 24,
+                                      ),
+                                    ),
+                                  // חץ למטה תת-משימה
+                                  if (j < subtask.subTasks.length - 1)
+                                    IconButton(
+                                      icon: const Icon(
+                                        Icons.keyboard_arrow_down,
+                                        size: 16,
+                                        color: Colors.grey,
+                                      ),
+                                      onPressed: () {
+                                        final temp = subtask.subTasks[j];
+                                        subtask.subTasks[j] =
+                                            subtask.subTasks[j + 1];
+                                        subtask.subTasks[j + 1] = temp;
+                                        onChanged();
+                                      },
+                                      padding: EdgeInsets.zero,
+                                      constraints: const BoxConstraints(
+                                        minWidth: 24,
+                                      ),
+                                    ),
+                                  IconButton(
+                                    icon: const Icon(
+                                      Icons.edit,
+                                      size: 14,
+                                      color: Colors.grey,
+                                    ),
+                                    onPressed: () => _showEditNestedTaskDialog(
+                                      context,
+                                      nestedTask,
+                                    ),
+                                    padding: EdgeInsets.zero,
+                                    constraints: const BoxConstraints(
+                                      minWidth: 24,
+                                    ),
+                                  ),
+                                  IconButton(
+                                    icon: const Icon(
+                                      Icons.close,
+                                      size: 14,
+                                      color: Colors.grey,
+                                    ),
+                                    onPressed: () {
+                                      subtask.subTasks.removeWhere(
+                                        (t) => t.id == nestedTask.id,
+                                      );
+                                      onChanged();
+                                    },
+                                    padding: EdgeInsets.zero,
+                                    constraints: const BoxConstraints(
+                                      minWidth: 24,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            );
+                          },
                         ),
                       ],
+
+                    // ─── כפתור הוספת תת-משימה ───
+                    Padding(
+                      padding: const EdgeInsets.only(
+                        right: 56.0,
+                        bottom: 8.0,
+                        top: 4.0,
+                      ),
+                      child: InkWell(
+                        onTap: () => _showAddNestedTaskDialog(context, subtask),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            const Icon(
+                              Icons.add,
+                              size: 16,
+                              color: Colors.blueAccent,
+                            ),
+                            const SizedBox(width: 4),
+                            const Text(
+                              'הוסף תת-משימה',
+                              style: TextStyle(
+                                fontSize: 12,
+                                color: Colors.blueAccent,
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
                     ),
-                  ),
-                ),
-                const Divider(height: 1, indent: 16, endIndent: 16),
-              ],
+                    const Divider(height: 1, indent: 16, endIndent: 16),
+                  ],
+                );
+              },
             ),
+          ],
           const SizedBox(height: 8),
         ],
       ],

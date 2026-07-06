@@ -40,7 +40,7 @@ class _TaskDialogState extends State<TaskDialog> {
     _selectedDate = task?.dueDate;
     _level = task?.level ?? 1;
     _categoryId = task?.categoryId;
-    _validate(); // בדיקה ראשונית האם הכפתור אמור להיות פעיל
+    _validate();
   }
 
   void _validate() {
@@ -57,8 +57,14 @@ class _TaskDialogState extends State<TaskDialog> {
   }
 
   void _submit() {
+    // יצירת ID ייחודי למשימה חדשה כדי למנוע מחיקה כפולה!
+    final String taskId =
+        (widget.task?.id != null && widget.task!.id.isNotEmpty)
+        ? widget.task!.id
+        : DateTime.now().millisecondsSinceEpoch.toString();
+
     final task = TaskItem(
-      id: widget.task?.id ?? '', // ה-ID ייווצר ב-Firebase אם זה חדש
+      id: taskId,
       title: _titleController.text.trim(),
       description: _descController.text.trim(),
       dueDate: _selectedDate,
@@ -66,6 +72,7 @@ class _TaskDialogState extends State<TaskDialog> {
       isCompleted: widget.task?.isCompleted ?? false,
       isGolden: widget.task?.isGolden ?? false,
       categoryId: _categoryId,
+      subTasks: widget.task?.subTasks ?? [], // שמירה על תתי המשימות הקיימות!
     );
     widget.onSave(task);
     Navigator.pop(context);
