@@ -83,7 +83,7 @@ class ProjectCard extends StatelessWidget {
                   SubTask(
                     id:
                         DateTime.now().millisecondsSinceEpoch.toString() +
-                        UniqueKey().toString(), // ID חזק וייחודי
+                        UniqueKey().toString(),
                     title: ctrl.text.trim(),
                   ),
                 );
@@ -134,6 +134,13 @@ class ProjectCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final stripeColor = _stripeColor;
 
+    int firstUncompletedIndex = -1;
+    if (project.isSequential) {
+      firstUncompletedIndex = project.subtasks.indexWhere(
+        (t) => !t.isCompleted,
+      );
+    }
+
     final cardContent = Column(
       children: [
         ListTile(
@@ -141,9 +148,35 @@ class ProjectCard extends StatelessWidget {
             horizontal: 16,
             vertical: 4,
           ),
-          title: Text(
-            project.title,
-            style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 18),
+          title: Row(
+            children: [
+              // כפתור המנעול להחלפת הסטטוס
+              IconButton(
+                icon: Icon(
+                  project.isSequential ? Icons.lock : Icons.lock_open,
+                  color: project.isSequential ? Colors.amber : Colors.grey[400],
+                  size: 20,
+                ),
+                tooltip: project.isSequential
+                    ? 'פרויקט טורי (נעול)'
+                    : 'פרויקט מקבילי (פתוח)',
+                onPressed: () {
+                  project.isSequential = !project.isSequential;
+                  onChanged();
+                },
+                padding: EdgeInsets.zero,
+                constraints: const BoxConstraints(minWidth: 32),
+              ),
+              Expanded(
+                child: Text(
+                  project.title,
+                  style: const TextStyle(
+                    fontWeight: FontWeight.bold,
+                    fontSize: 18,
+                  ),
+                ),
+              ),
+            ],
           ),
           subtitle:
               project.description != null && project.description!.isNotEmpty
@@ -170,11 +203,16 @@ class ProjectCard extends StatelessWidget {
         ),
         if (isExpanded) ...[
           const Divider(height: 1),
-          // שימוש בלולאה עם אינדקס כדי שנוכל לבדוק מיקום (עבור חיצי הסידור)
           for (int i = 0; i < project.subtasks.length; i++) ...[
             Builder(
               builder: (context) {
                 final subtask = project.subtasks[i];
+
+                bool isTaskLocked =
+                    project.isSequential &&
+                    firstUncompletedIndex != -1 &&
+                    i > firstUncompletedIndex;
+
                 return Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
@@ -188,13 +226,22 @@ class ProjectCard extends StatelessWidget {
                         children: [
                           Checkbox(
                             value: subtask.isCompleted,
-                            onChanged: (v) {
-                              subtask.isCompleted = v ?? false;
-                              onChanged();
-                            },
+                            onChanged: isTaskLocked
+                                ? null
+                                : (v) {
+                                    subtask.isCompleted = v ?? false;
+                                    onChanged();
+                                  },
                             shape: const CircleBorder(),
                             activeColor: Colors.amber,
                           ),
+                          if (isTaskLocked)
+                            const Icon(
+                              Icons.lock,
+                              size: 14,
+                              color: Colors.grey,
+                            ),
+                          if (isTaskLocked) const SizedBox(width: 4),
                           Expanded(
                             child: Text(
                               subtask.title,
@@ -203,10 +250,10 @@ class ProjectCard extends StatelessWidget {
                                     ? TextDecoration.lineThrough
                                     : null,
                                 fontWeight: FontWeight.bold,
+                                color: isTaskLocked ? Colors.grey : null,
                               ),
                             ),
                           ),
-                          // חץ למעלה
                           if (i > 0)
                             IconButton(
                               icon: const Icon(
@@ -223,7 +270,6 @@ class ProjectCard extends StatelessWidget {
                               padding: EdgeInsets.zero,
                               constraints: const BoxConstraints(minWidth: 28),
                             ),
-                          // חץ למטה
                           if (i < project.subtasks.length - 1)
                             IconButton(
                               icon: const Icon(
@@ -284,10 +330,13 @@ class ProjectCard extends StatelessWidget {
                                     height: 24,
                                     child: Checkbox(
                                       value: nestedTask.isCompleted,
-                                      onChanged: (v) {
-                                        nestedTask.isCompleted = v ?? false;
-                                        onChanged();
-                                      },
+                                      onChanged: isTaskLocked
+                                          ? null
+                                          : (v) {
+                                              nestedTask.isCompleted =
+                                                  v ?? false;
+                                              onChanged();
+                                            },
                                     ),
                                   ),
                                   const SizedBox(width: 8),
@@ -299,10 +348,12 @@ class ProjectCard extends StatelessWidget {
                                         decoration: nestedTask.isCompleted
                                             ? TextDecoration.lineThrough
                                             : null,
+                                        color: isTaskLocked
+                                            ? Colors.grey
+                                            : null,
                                       ),
                                     ),
                                   ),
-                                  // חץ למעלה תת-משימה
                                   if (j > 0)
                                     IconButton(
                                       icon: const Icon(
@@ -322,7 +373,6 @@ class ProjectCard extends StatelessWidget {
                                         minWidth: 24,
                                       ),
                                     ),
-                                  // חץ למטה תת-משימה
                                   if (j < subtask.subTasks.length - 1)
                                     IconButton(
                                       icon: const Icon(

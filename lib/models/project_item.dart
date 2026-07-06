@@ -1,13 +1,16 @@
 import 'task_item.dart';
 
 class ProjectItem {
-  String id;
+  final String id;
   String title;
   String description;
   DateTime? dueDate;
   int level;
-  List<TaskItem> subtasks;
   String? categoryId;
+  List<TaskItem> subtasks;
+
+  // 1. הוספת המשתנה החדש
+  bool isSequential;
 
   ProjectItem({
     required this.id,
@@ -15,20 +18,11 @@ class ProjectItem {
     this.description = '',
     this.dueDate,
     this.level = 1,
-    List<TaskItem>? subtasks,
     this.categoryId,
+    List<TaskItem>? subtasks,
+    // 2. הוספה לבנאי (כברירת מחדל פרויקט לא יהיה נעול)
+    this.isSequential = false,
   }) : subtasks = subtasks ?? [];
-
-  int get completedCount => subtasks.where((t) => t.isCompleted).length;
-  double get progress =>
-      subtasks.isEmpty ? 0.0 : completedCount / subtasks.length;
-
-  int get activeSubtaskIndex {
-    for (int i = 0; i < subtasks.length; i++) {
-      if (!subtasks[i].isCompleted) return i;
-    }
-    return -1;
-  }
 
   Map<String, dynamic> toMap() {
     return {
@@ -37,29 +31,28 @@ class ProjectItem {
       'dueDate': dueDate?.millisecondsSinceEpoch,
       'level': level,
       'categoryId': categoryId,
-      'subtasks': subtasks.map((s) => {'id': s.id, ...s.toMap()}).toList(),
+      'subtasks': subtasks.map((e) => e.toMap()).toList(),
+      // 3. שמירה למסד הנתונים
+      'isSequential': isSequential,
     };
   }
 
   factory ProjectItem.fromMap(String id, Map<String, dynamic> map) {
-    final rawSubtasks = (map['subtasks'] as List<dynamic>?) ?? [];
-    final subtasks = rawSubtasks.map((s) {
-      final sMap = Map<String, dynamic>.from(s as Map);
-      final sid = sMap.remove('id') as String? ??
-          DateTime.now().millisecondsSinceEpoch.toString();
-      return TaskItem.fromMap(sid, sMap);
-    }).toList();
-
+    final subtasksList = map['subtasks'] as List<dynamic>?;
     return ProjectItem(
       id: id,
       title: map['title'] as String? ?? '',
       description: map['description'] as String? ?? '',
       dueDate: map['dueDate'] != null
-          ? DateTime.fromMillisecondsSinceEpoch(map['dueDate'] as int)
+          ? DateTime.fromMillisecondsSinceEpoch(map['dueDate'])
           : null,
-      level: (map['level'] as int?) ?? 1,
-      subtasks: subtasks,
+      level: map['level'] as int? ?? 1,
       categoryId: map['categoryId'] as String?,
+      subtasks: subtasksList != null
+          ? subtasksList.map((e) => TaskItem.fromMap('', e)).toList()
+          : [],
+      // 4. קריאה ממסד הנתונים
+      isSequential: map['isSequential'] as bool? ?? false,
     );
   }
 }

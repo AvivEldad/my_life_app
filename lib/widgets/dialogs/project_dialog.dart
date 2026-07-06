@@ -51,32 +51,49 @@ class _ProjectDialogState extends State<ProjectDialog> {
     if (widget.categories.isEmpty) return const SizedBox.shrink();
     return DropdownButtonFormField<String?>(
       value: _categoryId,
-      decoration: const InputDecoration(hintText: 'קטגוריה (אופציונלי)'),
+      decoration: const InputDecoration(
+        hintText: 'קטגוריה (אופציונלי)',
+        border: OutlineInputBorder(),
+      ),
       items: [
         const DropdownMenuItem(value: null, child: Text('ללא קטגוריה')),
-        ...widget.categories.map((c) => DropdownMenuItem(
-          value: c.id,
-          child: Row(children: [
-            Container(width: 14, height: 14, decoration: BoxDecoration(color: c.color, shape: BoxShape.circle)),
-            const SizedBox(width: 8),
-            Text(c.name),
-          ]),
-        )),
+        ...widget.categories.map(
+          (c) => DropdownMenuItem(
+            value: c.id,
+            child: Row(
+              children: [
+                Container(
+                  width: 14,
+                  height: 14,
+                  decoration: BoxDecoration(
+                    color: c.color,
+                    shape: BoxShape.circle,
+                  ),
+                ),
+                const SizedBox(width: 8),
+                Text(c.name),
+              ],
+            ),
+          ),
+        ),
       ],
       onChanged: (v) => setState(() => _categoryId = v),
     );
   }
 
   void _submit() {
-    final project = widget.project ?? ProjectItem(
-      id: DateTime.now().millisecondsSinceEpoch.toString(),
-      title: _titleController.text,
-    );
+    final project =
+        widget.project ??
+        ProjectItem(
+          id: DateTime.now().millisecondsSinceEpoch.toString(),
+          title: _titleController.text,
+        );
     project.title = _titleController.text;
     project.description = _descController.text;
     project.dueDate = _selectedDate;
     project.level = _level;
     project.categoryId = _categoryId;
+    // מצב הנעילה נשמר כבר דרך הכרטיסייה, אין צורך לגעת בו כאן
 
     widget.onSave(project);
     Navigator.pop(context);
@@ -92,20 +109,28 @@ class _ProjectDialogState extends State<ProjectDialog> {
           children: [
             TextField(
               controller: _titleController,
-              textAlign: TextAlign.right,
-              decoration: const InputDecoration(hintText: 'כותרת'),
+              decoration: const InputDecoration(
+                hintText: 'כותרת',
+                border: OutlineInputBorder(),
+              ),
               onChanged: (_) => setState(() {}),
             ),
+            const SizedBox(height: 12),
             TextField(
               controller: _descController,
-              textAlign: TextAlign.right,
-              decoration: const InputDecoration(hintText: 'תיאור'),
+              decoration: const InputDecoration(
+                hintText: 'תיאור',
+                border: OutlineInputBorder(),
+              ),
             ),
+            const SizedBox(height: 12),
             ListTile(
               contentPadding: EdgeInsets.zero,
-              title: Text(_selectedDate == null
-                  ? 'תאריך יעד (אופציונלי)'
-                  : '${_selectedDate!.day}/${_selectedDate!.month}'),
+              title: Text(
+                _selectedDate == null
+                    ? 'תאריך יעד (אופציונלי)'
+                    : '${_selectedDate!.day}/${_selectedDate!.month}',
+              ),
               trailing: const Icon(Icons.calendar_today),
               onTap: () async {
                 final picked = await showDatePicker(
@@ -117,9 +142,15 @@ class _ProjectDialogState extends State<ProjectDialog> {
                 if (picked != null) setState(() => _selectedDate = picked);
               },
             ),
+            Align(
+              alignment: Alignment.centerRight,
+              child: Text('רמה: $_level', style: const TextStyle(fontSize: 14)),
+            ),
             Slider(
               value: _level.toDouble(),
-              min: 1, max: 5, divisions: 4,
+              min: 1,
+              max: 5,
+              divisions: 4,
               activeColor: Colors.amber,
               onChanged: (v) => setState(() => _level = v.toInt()),
             ),
@@ -131,9 +162,15 @@ class _ProjectDialogState extends State<ProjectDialog> {
         if (_isEditing && widget.onDelete != null)
           IconButton(
             icon: const Icon(Icons.delete, color: Colors.redAccent),
-            onPressed: () { widget.onDelete!(); Navigator.pop(context); },
+            onPressed: () {
+              widget.onDelete!();
+              Navigator.pop(context);
+            },
           ),
-        TextButton(onPressed: () => Navigator.pop(context), child: const Text('ביטול')),
+        TextButton(
+          onPressed: () => Navigator.pop(context),
+          child: const Text('ביטול'),
+        ),
         ElevatedButton(
           onPressed: _titleController.text.isEmpty ? null : _submit,
           child: Text(_isEditing ? 'שמור' : 'צור'),
