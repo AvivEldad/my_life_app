@@ -38,6 +38,38 @@ class ProjectCard extends StatelessWidget {
     );
   }
 
+  void _confirmDeleteProject(BuildContext context) {
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text(
+          'מחיקת פרויקט',
+          style: TextStyle(fontWeight: FontWeight.bold),
+        ),
+        content: const Text(
+          'האם אתה בטוח שברצונך למחוק את הפרויקט הזה וכל המשימות שבו?\n\nפעולה זו אינה הפיכה.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: const Text('ביטול'),
+          ),
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(backgroundColor: Colors.redAccent),
+            onPressed: () {
+              Navigator.pop(ctx);
+              onDelete();
+            },
+            child: const Text(
+              'מחק פרויקט',
+              style: TextStyle(color: Colors.white),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
   void _showSubtaskDialog(BuildContext context, {TaskItem? task}) {
     showDialog(
       context: context,
@@ -145,34 +177,47 @@ class ProjectCard extends StatelessWidget {
       children: [
         ListTile(
           contentPadding: const EdgeInsets.symmetric(
-            horizontal: 16,
-            vertical: 4,
+            horizontal: 12,
+            vertical: 0,
           ),
           title: Row(
+            crossAxisAlignment: CrossAxisAlignment
+                .start, // כדי שהמנעול יישאר למעלה אם הטקסט גולש
             children: [
-              // כפתור המנעול להחלפת הסטטוס
-              IconButton(
-                icon: Icon(
-                  project.isSequential ? Icons.lock : Icons.lock_open,
-                  color: project.isSequential ? Colors.amber : Colors.grey[400],
-                  size: 20,
+              Padding(
+                padding: const EdgeInsets.only(top: 2.0),
+                child: IconButton(
+                  icon: Icon(
+                    project.isSequential ? Icons.lock : Icons.lock_open,
+                    color: project.isSequential
+                        ? Colors.amber
+                        : Colors.grey[400],
+                    size: 16,
+                  ),
+                  tooltip: project.isSequential
+                      ? 'פרויקט טורי (נעול)'
+                      : 'פרויקט מקבילי (פתוח)',
+                  onPressed: () {
+                    project.isSequential = !project.isSequential;
+                    onChanged();
+                  },
+                  padding: EdgeInsets.zero,
+                  constraints: const BoxConstraints(
+                    minWidth: 24,
+                    minHeight: 24,
+                  ), // צמוד מאוד
                 ),
-                tooltip: project.isSequential
-                    ? 'פרויקט טורי (נעול)'
-                    : 'פרויקט מקבילי (פתוח)',
-                onPressed: () {
-                  project.isSequential = !project.isSequential;
-                  onChanged();
-                },
-                padding: EdgeInsets.zero,
-                constraints: const BoxConstraints(minWidth: 32),
               ),
               Expanded(
-                child: Text(
-                  project.title,
-                  style: const TextStyle(
-                    fontWeight: FontWeight.bold,
-                    fontSize: 18,
+                child: Padding(
+                  padding: const EdgeInsets.only(top: 4.0),
+                  child: Text(
+                    project.title,
+                    style: const TextStyle(
+                      fontWeight: FontWeight.bold,
+                      fontSize: 16,
+                    ),
+                    // הסרנו את maxLines ו-overflow כדי שהטקסט יוצג במלואו!
                   ),
                 ),
               ),
@@ -180,22 +225,46 @@ class ProjectCard extends StatelessWidget {
           ),
           subtitle:
               project.description != null && project.description!.isNotEmpty
-              ? Text(project.description!)
+              ? Text(project.description!) // גם כאן הסרנו את ההגבלה
               : null,
           trailing: Row(
             mainAxisSize: MainAxisSize.min,
             children: [
+              // כל האייקונים מקבלים מינימום רוחב של 24 פיקסלים בלבד (צפוף יותר)
               IconButton(
-                icon: const Icon(Icons.add_task, color: Colors.blueAccent),
+                icon: const Icon(
+                  Icons.add_task,
+                  color: Colors.blueAccent,
+                  size: 18,
+                ),
                 onPressed: () => _showSubtaskDialog(context),
+                padding: EdgeInsets.zero,
+                constraints: const BoxConstraints(minWidth: 24, minHeight: 24),
               ),
               IconButton(
-                icon: const Icon(Icons.edit),
+                icon: const Icon(Icons.edit, size: 18),
                 onPressed: () => _showEditDialog(context),
+                padding: EdgeInsets.zero,
+                constraints: const BoxConstraints(minWidth: 24, minHeight: 24),
               ),
               IconButton(
-                icon: Icon(isExpanded ? Icons.expand_less : Icons.expand_more),
+                icon: const Icon(
+                  Icons.delete,
+                  color: Colors.redAccent,
+                  size: 18,
+                ),
+                onPressed: () => _confirmDeleteProject(context),
+                padding: EdgeInsets.zero,
+                constraints: const BoxConstraints(minWidth: 24, minHeight: 24),
+              ),
+              IconButton(
+                icon: Icon(
+                  isExpanded ? Icons.expand_less : Icons.expand_more,
+                  size: 20,
+                ),
                 onPressed: onToggleExpand,
+                padding: EdgeInsets.zero,
+                constraints: const BoxConstraints(minWidth: 24, minHeight: 24),
               ),
             ],
           ),
@@ -258,7 +327,7 @@ class ProjectCard extends StatelessWidget {
                             IconButton(
                               icon: const Icon(
                                 Icons.keyboard_arrow_up,
-                                size: 20,
+                                size: 18,
                                 color: Colors.grey,
                               ),
                               onPressed: () {
@@ -268,13 +337,16 @@ class ProjectCard extends StatelessWidget {
                                 onChanged();
                               },
                               padding: EdgeInsets.zero,
-                              constraints: const BoxConstraints(minWidth: 28),
+                              constraints: const BoxConstraints(
+                                minWidth: 26,
+                                minHeight: 26,
+                              ),
                             ),
                           if (i < project.subtasks.length - 1)
                             IconButton(
                               icon: const Icon(
                                 Icons.keyboard_arrow_down,
-                                size: 20,
+                                size: 18,
                                 color: Colors.grey,
                               ),
                               onPressed: () {
@@ -284,14 +356,20 @@ class ProjectCard extends StatelessWidget {
                                 onChanged();
                               },
                               padding: EdgeInsets.zero,
-                              constraints: const BoxConstraints(minWidth: 28),
+                              constraints: const BoxConstraints(
+                                minWidth: 26,
+                                minHeight: 26,
+                              ),
                             ),
                           IconButton(
                             icon: const Icon(Icons.edit, size: 16),
                             onPressed: () =>
                                 _showSubtaskDialog(context, task: subtask),
                             padding: EdgeInsets.zero,
-                            constraints: const BoxConstraints(minWidth: 28),
+                            constraints: const BoxConstraints(
+                              minWidth: 26,
+                              minHeight: 26,
+                            ),
                           ),
                           IconButton(
                             icon: const Icon(
@@ -306,7 +384,10 @@ class ProjectCard extends StatelessWidget {
                               onChanged();
                             },
                             padding: EdgeInsets.zero,
-                            constraints: const BoxConstraints(minWidth: 28),
+                            constraints: const BoxConstraints(
+                              minWidth: 26,
+                              minHeight: 26,
+                            ),
                           ),
                         ],
                       ),
@@ -371,6 +452,7 @@ class ProjectCard extends StatelessWidget {
                                       padding: EdgeInsets.zero,
                                       constraints: const BoxConstraints(
                                         minWidth: 24,
+                                        minHeight: 24,
                                       ),
                                     ),
                                   if (j < subtask.subTasks.length - 1)
@@ -390,6 +472,7 @@ class ProjectCard extends StatelessWidget {
                                       padding: EdgeInsets.zero,
                                       constraints: const BoxConstraints(
                                         minWidth: 24,
+                                        minHeight: 24,
                                       ),
                                     ),
                                   IconButton(
@@ -405,6 +488,7 @@ class ProjectCard extends StatelessWidget {
                                     padding: EdgeInsets.zero,
                                     constraints: const BoxConstraints(
                                       minWidth: 24,
+                                      minHeight: 24,
                                     ),
                                   ),
                                   IconButton(
@@ -422,6 +506,7 @@ class ProjectCard extends StatelessWidget {
                                     padding: EdgeInsets.zero,
                                     constraints: const BoxConstraints(
                                       minWidth: 24,
+                                      minHeight: 24,
                                     ),
                                   ),
                                 ],
