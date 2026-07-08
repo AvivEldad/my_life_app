@@ -11,13 +11,13 @@ class StrikesPage extends StatefulWidget {
 
 class _StrikesPageState extends State<StrikesPage> with WidgetsBindingObserver {
   List<StrikeItem> _goals = [];
-  bool _isLoading = true; 
+  bool _isLoading = true;
 
   @override
   void initState() {
     super.initState();
     WidgetsBinding.instance.addObserver(this);
-    _loadGoalsFromDb(); 
+    _loadGoalsFromDb();
   }
 
   @override
@@ -34,7 +34,7 @@ class _StrikesPageState extends State<StrikesPage> with WidgetsBindingObserver {
         _goals = goals;
         _isLoading = false;
       });
-      _autoIncrementAll(); 
+      _autoIncrementAll();
     } catch (e) {
       print("Error loading strikes: $e");
       setState(() => _isLoading = false);
@@ -50,7 +50,7 @@ class _StrikesPageState extends State<StrikesPage> with WidgetsBindingObserver {
 
   void _autoIncrementAll() {
     bool hasChanges = false;
-    
+
     setState(() {
       for (final goal in _goals) {
         if (!goal.incrementedToday) {
@@ -94,9 +94,14 @@ class _StrikesPageState extends State<StrikesPage> with WidgetsBindingObserver {
             onSubmitted: (_) => _submitAdd(controller.text),
           ),
           actions: [
-            TextButton(onPressed: () => Navigator.pop(context), child: const Text('ביטול')),
+            TextButton(
+              onPressed: () => Navigator.pop(context),
+              child: const Text('ביטול'),
+            ),
             ElevatedButton(
-              onPressed: controller.text.trim().isEmpty ? null : () => _submitAdd(controller.text),
+              onPressed: controller.text.trim().isEmpty
+                  ? null
+                  : () => _submitAdd(controller.text),
               child: const Text('הוסף'),
             ),
           ],
@@ -108,8 +113,8 @@ class _StrikesPageState extends State<StrikesPage> with WidgetsBindingObserver {
   Future<void> _submitAdd(String title) async {
     final text = title.trim();
     if (text.isEmpty) return;
-    
-    Navigator.pop(context); 
+
+    Navigator.pop(context);
 
     final newItem = StrikeItem(
       id: '',
@@ -119,19 +124,21 @@ class _StrikesPageState extends State<StrikesPage> with WidgetsBindingObserver {
     );
 
     final newId = await DatabaseService.addStrike(newItem);
-    
+
     setState(() {
-      _goals.add(StrikeItem(
-        id: newId, 
-        title: newItem.title,
-        streak: newItem.streak,
-        lastIncrementDate: newItem.lastIncrementDate,
-      ));
+      _goals.add(
+        StrikeItem(
+          id: newId,
+          title: newItem.title,
+          streak: newItem.streak,
+          lastIncrementDate: newItem.lastIncrementDate,
+        ),
+      );
     });
   }
 
   String _streakLabel(int streak) {
-    if (streak == 0) return 'טרם התחיל';
+    if (streak == 0) return 'אתה אפס!';
     if (streak == 1) return 'יום 1';
     return '$streak ימים';
   }
@@ -148,9 +155,11 @@ class _StrikesPageState extends State<StrikesPage> with WidgetsBindingObserver {
     return Directionality(
       textDirection: TextDirection.rtl,
       child: Scaffold(
-        body: _isLoading 
-          ? const Center(child: CircularProgressIndicator()) // הצגת ספינר בזמן טעינה
-          : _goals.isEmpty
+        body: _isLoading
+            ? const Center(
+                child: CircularProgressIndicator(),
+              ) // הצגת ספינר בזמן טעינה
+            : _goals.isEmpty
             ? Center(
                 child: Text(
                   'אין מטרות עדיין\nלחץ + כדי להוסיף',
@@ -166,7 +175,10 @@ class _StrikesPageState extends State<StrikesPage> with WidgetsBindingObserver {
                   final color = _streakColor(goal.streak);
 
                   return Card(
-                    margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
+                    margin: const EdgeInsets.symmetric(
+                      horizontal: 16,
+                      vertical: 6,
+                    ),
                     child: Padding(
                       padding: const EdgeInsets.fromLTRB(16, 14, 16, 10),
                       child: Column(
@@ -176,7 +188,11 @@ class _StrikesPageState extends State<StrikesPage> with WidgetsBindingObserver {
                             mainAxisAlignment: MainAxisAlignment.spaceBetween,
                             children: [
                               IconButton(
-                                icon: const Icon(Icons.delete, size: 18, color: Colors.redAccent),
+                                icon: const Icon(
+                                  Icons.delete,
+                                  size: 18,
+                                  color: Colors.redAccent,
+                                ),
                                 padding: EdgeInsets.zero,
                                 constraints: const BoxConstraints(),
                                 onPressed: () => showDialog(
@@ -185,7 +201,10 @@ class _StrikesPageState extends State<StrikesPage> with WidgetsBindingObserver {
                                     title: const Text('מחיקת סטרייק'),
                                     content: Text('למחוק את "${goal.title}"?'),
                                     actions: [
-                                      TextButton(onPressed: () => Navigator.pop(context), child: const Text('ביטול')),
+                                      TextButton(
+                                        onPressed: () => Navigator.pop(context),
+                                        child: const Text('ביטול'),
+                                      ),
                                       ElevatedButton(
                                         onPressed: () {
                                           _deleteGoal(goal);
@@ -199,7 +218,10 @@ class _StrikesPageState extends State<StrikesPage> with WidgetsBindingObserver {
                               ),
                               Text(
                                 goal.title,
-                                style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                                style: const TextStyle(
+                                  fontSize: 16,
+                                  fontWeight: FontWeight.bold,
+                                ),
                               ),
                             ],
                           ),
@@ -212,9 +234,14 @@ class _StrikesPageState extends State<StrikesPage> with WidgetsBindingObserver {
                                   context: context,
                                   builder: (_) => AlertDialog(
                                     title: const Text('איפוס סטריק'),
-                                    content: Text('לאפס את הסטריק של "${goal.title}"?'),
+                                    content: Text(
+                                      'לאפס את הסטריק של "${goal.title}"?',
+                                    ),
                                     actions: [
-                                      TextButton(onPressed: () => Navigator.pop(context), child: const Text('ביטול')),
+                                      TextButton(
+                                        onPressed: () => Navigator.pop(context),
+                                        child: const Text('ביטול'),
+                                      ),
                                       ElevatedButton(
                                         onPressed: () {
                                           _resetGoal(goal);
@@ -260,7 +287,10 @@ class _StrikesPageState extends State<StrikesPage> with WidgetsBindingObserver {
                                 alignment: Alignment.centerLeft,
                                 child: Text(
                                   '✓ עודכן היום',
-                                  style: TextStyle(color: Colors.grey[600], fontSize: 11),
+                                  style: TextStyle(
+                                    color: Colors.grey[600],
+                                    fontSize: 11,
+                                  ),
                                 ),
                               ),
                             ),
