@@ -29,6 +29,10 @@ class TaskItem {
   String? categoryId;
   bool isActive;
   List<SubTask> subTasks;
+
+  String? projectId;
+  String? projectName;
+
   TaskItem({
     required this.id,
     required this.title,
@@ -40,7 +44,10 @@ class TaskItem {
     this.categoryId,
     this.isActive = false,
     List<SubTask>? subTasks,
+    this.projectId,
+    this.projectName,
   }) : subTasks = subTasks ?? [];
+
   Map<String, dynamic> toMap() {
     return {
       'title': title,
@@ -51,9 +58,9 @@ class TaskItem {
       'isGolden': isGolden,
       'categoryId': categoryId,
       'isActive': isActive,
-      'subTasks': subTasks
-          .map((e) => e.toMap())
-          .toList(), // שומר את כל תתי-המשימות
+      'subTasks': subTasks.map((e) => e.toMap()).toList(),
+      'projectId': projectId,
+      'projectName': projectName,
     };
   }
 
@@ -78,6 +85,8 @@ class TaskItem {
                 .map((e) => SubTask.fromMap(e as Map<String, dynamic>))
                 .toList()
           : [],
+      projectId: map['projectId'] as String?,
+      projectName: map['projectName'] as String?,
     );
   }
 }

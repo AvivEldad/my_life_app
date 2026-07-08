@@ -192,33 +192,44 @@ class _TasksTabState extends State<TasksTab> {
                   widget.onChanged();
                 });
               },
-              itemBuilder: (context, index) =>
-                  ReorderableDelayedDragStartListener(
-                    key: ValueKey(others[index].id),
-                    index: index,
-                    child: TaskCard(
-                      task: others[index],
-                      category: widget.categories
-                          .where((c) => c.id == others[index].categoryId)
-                          .firstOrNull,
-                      onToggle: () {
-                        bool isNowCompleted = !others[index].isCompleted;
-                        others[index].isCompleted = isNowCompleted;
-                        if (isNowCompleted && others[index].isGolden) {
-                          others[index].isGolden = false;
-                        }
-                        widget.onTaskSaved(others[index], false);
-                      },
-                      onEdit: () => _showTaskDialog(task: others[index]),
-                      onDelete: () {
-                        widget.tasks.removeWhere(
-                          (t) => t.id == others[index].id,
-                        );
-                        widget.onTaskDeleted(others[index].id);
-                      },
-                      onToggleGolden: () => _toggleGolden(others[index]),
-                    ),
+              itemBuilder: (context, index) {
+                final currentTask = others[index];
+
+                // --- הפתרון לקריסה ---
+                // מייצרים מפתח חכם: מחברים את ה-ID הרגיל עם ה-ID של הפרויקט.
+                // אם ה-ID ריק לגמרי (בגלל נתונים ישנים), נשתמש במיקום שלו ברשימה כמפתח זמני.
+                final safeKey = currentTask.id.isNotEmpty
+                    ? '${currentTask.id}_${currentTask.projectId ?? "regular"}'
+                    : 'fallback_id_$index';
+
+                return ReorderableDelayedDragStartListener(
+                  key: ValueKey(safeKey), // שימוש במפתח החסין שיצרנו
+                  index: index,
+                  child: TaskCard(
+                    task: currentTask,
+                    category: widget.categories
+                        .where((c) => c.id == currentTask.categoryId)
+                        .firstOrNull,
+                    onToggle: () {
+                      bool isNowCompleted = !currentTask.isCompleted;
+                      currentTask.isCompleted = isNowCompleted;
+
+                      if (isNowCompleted && currentTask.isGolden) {
+                        currentTask.isGolden = false;
+                      }
+
+                      widget.onTaskSaved(currentTask, false);
+                      setState(() {});
+                    },
+                    onEdit: () => _showTaskDialog(task: currentTask),
+                    onDelete: () {
+                      widget.tasks.removeWhere((t) => t.id == currentTask.id);
+                      widget.onTaskDeleted(currentTask.id);
+                    },
+                    onToggleGolden: () => _toggleGolden(currentTask),
                   ),
+                );
+              },
             ),
           ),
         ],

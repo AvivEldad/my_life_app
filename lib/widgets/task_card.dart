@@ -49,7 +49,6 @@ class TaskCard extends StatelessWidget {
           ],
           Row(
             children: [
-              // החזרנו את תצוגת הרמה לכאן!
               Text(
                 'רמה: ${task.level}',
                 style: const TextStyle(
@@ -58,6 +57,23 @@ class TaskCard extends StatelessWidget {
                 ),
               ),
               const SizedBox(width: 8),
+              if (task.projectName != null) ...[
+                const Icon(
+                  Icons.folder_outlined,
+                  size: 14,
+                  color: Colors.blueGrey,
+                ),
+                const SizedBox(width: 4),
+                Text(
+                  task.projectName!,
+                  style: const TextStyle(
+                    fontSize: 12,
+                    color: Colors.blueGrey,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+                const SizedBox(width: 8),
+              ],
               if (category != null) ...[
                 Icon(Icons.label, size: 14, color: stripeColor ?? Colors.grey),
                 const SizedBox(width: 4),

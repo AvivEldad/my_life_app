@@ -1,4 +1,4 @@
-import 'package:shared_preferences/shared_preferences.dart'; // <-- הוספנו את השורה הזו
+import 'package:shared_preferences/shared_preferences.dart';
 import '../widgets/xp_progress_bar.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
@@ -31,8 +31,8 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
   final List<CategoryItem> _categories = [];
   final List<RitualItem> _rituals = [];
 
-  int _selectedIndex = 0; // Controls the BottomNavigationBar
-  int _currentDrawerIndex = 0; // Controls the Master IndexedStack
+  int _selectedIndex = 0;
+  int _currentDrawerIndex = 0;
   bool _loading = true;
 
   static const _titles = ['המשימות שלי', 'ההרגלים שלי', 'הפרויקטים שלי'];
@@ -56,8 +56,27 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
   void didChangeAppLifecycleState(AppLifecycleState state) {
     if (state == AppLifecycleState.resumed && !_loading) {
       _runOptimizedBleedCheck();
-      _checkMidnightDeletion(); // <-- קריאה לפונקציית המחיקה כשחוזרים לאפליקציה
+      _checkMidnightDeletion();
     }
+  }
+
+  List<TaskItem> get _combinedTasks {
+    List<TaskItem> combined = List.from(_tasks);
+
+    for (var project in _projects) {
+      int firstUncompletedIndex = project.subtasks.indexWhere(
+        (t) => !t.isCompleted,
+      );
+
+      if (firstUncompletedIndex != -1) {
+        var nextTask = project.subtasks[firstUncompletedIndex];
+        nextTask.projectId = project.id;
+        nextTask.projectName = project.title;
+
+        combined.add(nextTask);
+      }
+    }
+    return combined;
   }
 
   Future<void> _loadData() async {
@@ -129,26 +148,52 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
 
   // ─── Task actions ─────────────────────────────────────────────────
   Future<void> onTaskSaved(TaskItem task, {bool isNew = false}) async {
+    // ─── טיפול במשימה שמגיעה מתוך פרויקט ───
+    if (task.projectId != null) {
+      final projectIndex = _projects.indexWhere((p) => p.id == task.projectId);
+      if (projectIndex >= 0) {
+        // הפרויקט כבר מעודכן בזיכרון (כי המשימה היא רפרנס אליו), פשוט נשמור אותו ל-Firebase
+        await DatabaseService.updateProject(_projects[projectIndex]);
+        setState(() {});
+      }
+      return;
+    }
+
+    // ─── טיפול במשימה רגילה ───
     if (isNew) {
-      // 1. שמירה ב-Firebase וקבלת מזהה חדש
       final id = await DatabaseService.addTask(task);
-      // 2. הוספת המשימה החדשה לראש הרשימה המקומית כדי שתוצג מיד!
       _tasks.insert(0, TaskItem.fromMap(id, task.toMap()));
     } else {
-      // 1. עדכון ב-Firebase
       await DatabaseService.updateTask(task);
-      // 2. עדכון המשימה ברשימה המקומית
       final index = _tasks.indexWhere((t) => t.id == task.id);
       if (index >= 0) {
         _tasks[index] = task;
       }
     }
-    setState(() {}); // רענון המסך
+    setState(() {});
   }
 
   Future<void> onTaskDeleted(String id) async {
+    // בדיקה האם המשימה נמצאת ברשימת המשימות הרגילה
+    final isRegularTask = _tasks.any((t) => t.id == id);
+
+    if (!isRegularTask) {
+      // ─── מחיקת משימה מתוך פרויקט ───
+      for (var project in _projects) {
+        final taskIndex = project.subtasks.indexWhere((t) => t.id == id);
+        if (taskIndex >= 0) {
+          project.subtasks.removeAt(taskIndex);
+          await DatabaseService.updateProject(project);
+          setState(() {});
+          return;
+        }
+      }
+    }
+
+    // ─── מחיקת משימה רגילה ───
     await DatabaseService.deleteTask(id);
-    setState(() => _tasks.removeWhere((t) => t.id == id));
+    _tasks.removeWhere((t) => t.id == id);
+    setState(() {});
   }
 
   // ─── Rituals actions ─────────────────────────────────────────────────
@@ -382,7 +427,7 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
                     index: _selectedIndex,
                     children: [
                       TasksTab(
-                        tasks: _tasks,
+                        tasks: _combinedTasks,
                         categories: _categories,
                         onTaskSaved: (t, isNew) => onTaskSaved(t, isNew: isNew),
                         onTaskDeleted: onTaskDeleted,
