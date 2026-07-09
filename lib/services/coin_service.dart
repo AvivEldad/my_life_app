@@ -1,18 +1,18 @@
 import 'dart:math';
 import 'package:flutter/foundation.dart';
 import '../models/prize_item.dart';
-import 'database_service.dart'; 
+import 'database_service.dart';
+import 'reward_engine.dart';
 
 class CoinService extends ChangeNotifier {
   // --- Wealth (Coins) ---
   double _totalCoins = 0.0;
   DateTime? _lastPenaltyCheck;
-  
+
   // --- Experience & Collection (Pokemon) ---
   int _xp = 0;
   List<int> _unlockedPokemon = [];
-  final int xpRequiredPerPull = 100;
-  
+
   // --- State ---
   List<PrizeItem> _prizes = [];
   bool _isInitialized = false;
@@ -27,6 +27,8 @@ class CoinService extends ChangeNotifier {
   bool get isInitialized => _isInitialized;
   int? get newlyPulledPokemonId => _newlyPulledPokemonId;
 
+  int get xpRequiredPerPull =>
+      RewardEngine.calculateMaxXpForNextPull(_unlockedPokemon.length);
   CoinService() {
     _loadFromFirebase();
   }
@@ -40,12 +42,14 @@ class CoinService extends ChangeNotifier {
         _totalCoins = (economyData['totalCoins'] ?? 0.0).toDouble();
         _xp = economyData['xp'] ?? 0;
         _unlockedPokemon = List<int>.from(economyData['unlockedPokemon'] ?? []);
-        
+
         if (economyData['lastPenaltyCheck'] != null) {
-          _lastPenaltyCheck = DateTime.tryParse(economyData['lastPenaltyCheck']);
+          _lastPenaltyCheck = DateTime.tryParse(
+            economyData['lastPenaltyCheck'],
+          );
         }
       } else {
-        _lastPenaltyCheck = DateTime.now(); 
+        _lastPenaltyCheck = DateTime.now();
       }
 
       _prizes = await DatabaseService.loadPrizes();
@@ -60,7 +64,12 @@ class CoinService extends ChangeNotifier {
   }
 
   void _saveEconomyToFirebase() {
-    DatabaseService.updateEconomy(_totalCoins, _lastPenaltyCheck, _xp, _unlockedPokemon);
+    DatabaseService.updateEconomy(
+      _totalCoins,
+      _lastPenaltyCheck,
+      _xp,
+      _unlockedPokemon,
+    );
   }
 
   // ==========================================
@@ -70,19 +79,29 @@ class CoinService extends ChangeNotifier {
   double _getEvolutionMultiplier() {
     double multiplier = 1.0;
     // Check Bulbasaur Line
-    if (_unlockedPokemon.contains(1) && _unlockedPokemon.contains(2) && _unlockedPokemon.contains(3)) multiplier += 0.05;
+    if (_unlockedPokemon.contains(1) &&
+        _unlockedPokemon.contains(2) &&
+        _unlockedPokemon.contains(3))
+      multiplier += 0.05;
     // Check Charmander Line
-    if (_unlockedPokemon.contains(4) && _unlockedPokemon.contains(5) && _unlockedPokemon.contains(6)) multiplier += 0.05;
+    if (_unlockedPokemon.contains(4) &&
+        _unlockedPokemon.contains(5) &&
+        _unlockedPokemon.contains(6))
+      multiplier += 0.05;
     // Check Squirtle Line
-    if (_unlockedPokemon.contains(7) && _unlockedPokemon.contains(8) && _unlockedPokemon.contains(9)) multiplier += 0.05;
-    
+    if (_unlockedPokemon.contains(7) &&
+        _unlockedPokemon.contains(8) &&
+        _unlockedPokemon.contains(9))
+      multiplier += 0.05;
+
     return multiplier;
   }
 
   double _getDailyPagePassiveIncome() {
     double dailyBonus = 0.0;
     // Check how many full pages of 9 are complete
-    for (int page = 0; page < 16; page++) { // 16 pages * 9 = 144
+    for (int page = 0; page < 16; page++) {
+      // 16 pages * 9 = 144
       bool pageComplete = true;
       for (int i = 1; i <= 9; i++) {
         int targetId = (page * 9) + i;
@@ -99,7 +118,7 @@ class CoinService extends ChangeNotifier {
   // ==========================================
   // ECONOMY & XP ACTIONS
   // ==========================================
-  
+
   void addCoins(double amount) {
     if (amount <= 0) return;
     _totalCoins += (amount * _getEvolutionMultiplier());
@@ -110,6 +129,7 @@ class CoinService extends ChangeNotifier {
   void deductCoins(double amount) {
     if (amount <= 0) return;
     _totalCoins -= amount;
+    // Ensure coins never drop below 0
     if (_totalCoins < 0) _totalCoins = 0.0;
     notifyListeners();
     _saveEconomyToFirebase();
@@ -118,8 +138,8 @@ class CoinService extends ChangeNotifier {
   void addXP(int amount) {
     if (amount <= 0) return;
     _xp += amount;
-    
-    // Check for level up / pull
+
+    // Check for level up / pull against the DYNAMIC max XP
     if (_xp >= xpRequiredPerPull) {
       _triggerRandomPull();
     } else {
@@ -128,65 +148,81 @@ class CoinService extends ChangeNotifier {
     }
   }
 
+  void deductXP(int amount) {
+    if (amount <= 0) return;
+    _xp -= amount;
+    if (_xp < 0) _xp = 0;
+    notifyListeners();
+    _saveEconomyToFirebase();
+  }
+
+  // --- Task Checking Helper ---
+  // Call this from your UI when a task is toggled
+  void handleTaskToggle({
+    required int level,
+    required bool isCompleted,
+    bool isGolden = false,
+  }) {
+    final reward = RewardEngine.calculateTaskReward(level, isGolden: isGolden);
+
+    if (isCompleted) {
+      addCoins(reward.coins);
+      addXP(reward.xp);
+    } else {
+      // Strict deduction to prevent abuse
+      deductCoins(reward.coins);
+      deductXP(reward.xp);
+    }
+  }
+
   void _triggerRandomPull() {
-    // Generate list of uncollected IDs (1 through 151)
-    final availableIds = List.generate(151, (i) => i + 1)
-        .where((id) => !_unlockedPokemon.contains(id))
-        .toList();
+    int maxIdRange;
+
+    // Determine which Generation we are pulling from
+    if (_unlockedPokemon.where((id) => id <= 151).length == 151) {
+      // Gen 1 Complete! Pull from Gen 2 (IDs 152 - 251)
+      maxIdRange = 251;
+    } else {
+      // Pulling from Gen 1 (IDs 1 - 151)
+      maxIdRange = 151;
+    }
+
+    // Generate list of uncollected IDs for the current generation
+    final availableIds = List.generate(
+      maxIdRange,
+      (i) => i + 1,
+    ).where((id) => !_unlockedPokemon.contains(id)).toList();
 
     if (availableIds.isEmpty) {
-      // User has all 151! Cap XP and grant coins instead.
+      // Fallback if all currently supported generations are maxed out
       _xp = xpRequiredPerPull;
-      addCoins(50.0); // Reward for max rank
+      addCoins(50.0);
       return;
     }
 
-    // Pick a random ID
+    // Pick a random ID from available (No Duplicates)
     final random = Random();
     final pulledId = availableIds[random.nextInt(availableIds.length)];
 
     // Update state
     _unlockedPokemon.add(pulledId);
-    _xp -= xpRequiredPerPull; // Keep leftover XP
-    _newlyPulledPokemonId = pulledId; // Set flag for UI animation
+    _xp = 0; // Reset XP bar to 0 after a pull
+    _newlyPulledPokemonId = pulledId;
 
     notifyListeners();
     _saveEconomyToFirebase();
   }
-
-  void clearPullFlag() {
-    _newlyPulledPokemonId = null;
-    // Don't need to notify listeners here, just resetting the UI trigger state
-  }
-
-  // --- Task Reward Formulas ---
-
-  double calculateStandardTaskReward({required int level, bool isGolden = false, DateTime? dueDate, DateTime? completionDate}) {
-    double reward = level * 2.0;
-    if (isGolden) reward *= 2;
-    if (dueDate != null) {
-      final actualCompletion = completionDate ?? DateTime.now();
-      if (actualCompletion.isBefore(dueDate)) {
-        final daysRemaining = dueDate.difference(actualCompletion).inDays;
-        if (daysRemaining > 0) reward += (daysRemaining * 0.5);
-      }
-    }
-    return reward;
-  }
-
-  int calculateTaskXP({required int level, bool isGolden = false}) {
-    int xpEarned = level * 10;
-    if (isGolden) xpEarned *= 2;
-    return xpEarned;
-  }
-
   // --- Prize CRUD State ---
 
   Future<void> addNewPrize(PrizeItem prize) async {
     // Add to Firebase first to get the real ID
     final realId = await DatabaseService.addPrize(prize);
-    final newPrize = PrizeItem(id: realId, title: prize.title, cost: prize.cost);
-    
+    final newPrize = PrizeItem(
+      id: realId,
+      title: prize.title,
+      cost: prize.cost,
+    );
+
     _prizes.add(newPrize);
     notifyListeners();
   }
@@ -217,25 +253,32 @@ class CoinService extends ChangeNotifier {
     double milestone = getNextMilestone();
     if (milestone == 0) return 0.0;
     double progress = _totalCoins / milestone;
-    return progress > 1.0 ? 1.0 : progress; 
+    return progress > 1.0 ? 1.0 : progress;
   }
-
 
   void processActiveBleedPenalties(List<dynamic> uncompletedTasksWithDueDates) {
     if (!_isInitialized || _lastPenaltyCheck == null) return;
     final now = DateTime.now();
-    final lastCheckMidnight = DateTime(_lastPenaltyCheck!.year, _lastPenaltyCheck!.month, _lastPenaltyCheck!.day);
+    final lastCheckMidnight = DateTime(
+      _lastPenaltyCheck!.year,
+      _lastPenaltyCheck!.month,
+      _lastPenaltyCheck!.day,
+    );
     final currentMidnight = DateTime(now.year, now.month, now.day);
-    final midnightsPassed = currentMidnight.difference(lastCheckMidnight).inDays;
+    final midnightsPassed = currentMidnight
+        .difference(lastCheckMidnight)
+        .inDays;
 
-    if (midnightsPassed <= 0) return; 
+    if (midnightsPassed <= 0) return;
 
     double passiveIncome = _getDailyPagePassiveIncome() * midnightsPassed;
     if (passiveIncome > 0) {
       _totalCoins += passiveIncome;
     }
 
-    final targetsWithDueDates = uncompletedTasksWithDueDates.where((t) => t.dueDate != null).toList();
+    final targetsWithDueDates = uncompletedTasksWithDueDates
+        .where((t) => t.dueDate != null)
+        .toList();
     if (targetsWithDueDates.isEmpty) {
       _lastPenaltyCheck = now;
       _saveEconomyToFirebase();
@@ -244,11 +287,17 @@ class CoinService extends ChangeNotifier {
 
     double totalBleedPenalty = 0.0;
     for (var task in targetsWithDueDates) {
-      final taskMidnight = DateTime(task.dueDate!.year, task.dueDate!.month, task.dueDate!.day);
+      final taskMidnight = DateTime(
+        task.dueDate!.year,
+        task.dueDate!.month,
+        task.dueDate!.day,
+      );
       if (lastCheckMidnight.isAfter(taskMidnight)) {
         totalBleedPenalty += (1.0 * midnightsPassed);
       } else if (currentMidnight.isAfter(taskMidnight)) {
-        final daysOverdueInInterval = currentMidnight.difference(taskMidnight).inDays;
+        final daysOverdueInInterval = currentMidnight
+            .difference(taskMidnight)
+            .inDays;
         totalBleedPenalty += (1.0 * daysOverdueInInterval);
       }
     }
