@@ -47,7 +47,11 @@ class TaskCard extends StatelessWidget {
             Text(task.description!, style: const TextStyle(fontSize: 14)),
             const SizedBox(height: 4),
           ],
-          Row(
+          // --- כאן החלפנו את ה-Row ב-Wrap כדי לפתור את בעיית הגלישה! ---
+          Wrap(
+            spacing: 12.0, // הרווח האופקי בין הפריטים
+            runSpacing: 4.0, // הרווח האנכי כשהפריטים יורדים לשורה חדשה
+            crossAxisAlignment: WrapCrossAlignment.center,
             children: [
               Text(
                 'רמה: ${task.level}',
@@ -56,42 +60,58 @@ class TaskCard extends StatelessWidget {
                   fontWeight: FontWeight.bold,
                 ),
               ),
-              const SizedBox(width: 8),
-              if (task.projectName != null) ...[
-                const Icon(
-                  Icons.folder_outlined,
-                  size: 14,
-                  color: Colors.blueGrey,
+              if (task.projectName != null)
+                Row(
+                  mainAxisSize: MainAxisSize.min, // מחזיק את האייקון והטקסט יחד
+                  children: [
+                    const Icon(
+                      Icons.folder_outlined,
+                      size: 14,
+                      color: Colors.blueGrey,
+                    ),
+                    const SizedBox(width: 4),
+                    Text(
+                      task.projectName!,
+                      style: const TextStyle(
+                        fontSize: 12,
+                        color: Colors.blueGrey,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                  ],
                 ),
-                const SizedBox(width: 4),
-                Text(
-                  task.projectName!,
-                  style: const TextStyle(
-                    fontSize: 12,
-                    color: Colors.blueGrey,
-                    fontWeight: FontWeight.bold,
-                  ),
+              if (category != null)
+                Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Icon(
+                      Icons.label,
+                      size: 14,
+                      color: stripeColor ?? Colors.grey,
+                    ),
+                    const SizedBox(width: 4),
+                    Text(category!.name, style: const TextStyle(fontSize: 12)),
+                  ],
                 ),
-                const SizedBox(width: 8),
-              ],
-              if (category != null) ...[
-                Icon(Icons.label, size: 14, color: stripeColor ?? Colors.grey),
-                const SizedBox(width: 4),
-                Text(category!.name, style: const TextStyle(fontSize: 12)),
-                const SizedBox(width: 8),
-              ],
-              if (task.dueDate != null) ...[
-                const Icon(
-                  Icons.calendar_today,
-                  size: 14,
-                  color: Colors.redAccent,
+              if (task.dueDate != null)
+                Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    const Icon(
+                      Icons.calendar_today,
+                      size: 14,
+                      color: Colors.redAccent,
+                    ),
+                    const SizedBox(width: 4),
+                    Text(
+                      '${task.dueDate!.day}/${task.dueDate!.month}',
+                      style: const TextStyle(
+                        fontSize: 12,
+                        color: Colors.redAccent,
+                      ),
+                    ),
+                  ],
                 ),
-                const SizedBox(width: 4),
-                Text(
-                  '${task.dueDate!.day}/${task.dueDate!.month}',
-                  style: const TextStyle(fontSize: 12, color: Colors.redAccent),
-                ),
-              ],
             ],
           ),
         ],
@@ -99,19 +119,30 @@ class TaskCard extends StatelessWidget {
       trailing: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
+          // צמצמנו את הכפתורים בצד כדי שיתפסו פחות מקום במסך
           IconButton(
             icon: Icon(
               task.isGolden
                   ? Icons.monetization_on
                   : Icons.monetization_on_outlined,
               color: task.isGolden ? Colors.amber : Colors.grey,
+              size: 20,
             ),
             onPressed: onToggleGolden,
+            padding: EdgeInsets.zero,
+            constraints: const BoxConstraints(minWidth: 32, minHeight: 32),
           ),
-          IconButton(icon: const Icon(Icons.edit, size: 20), onPressed: onEdit),
           IconButton(
-            icon: const Icon(Icons.delete, size: 20, color: Colors.redAccent),
+            icon: const Icon(Icons.edit, size: 18),
+            onPressed: onEdit,
+            padding: EdgeInsets.zero,
+            constraints: const BoxConstraints(minWidth: 32, minHeight: 32),
+          ),
+          IconButton(
+            icon: const Icon(Icons.delete, size: 18, color: Colors.redAccent),
             onPressed: onDelete,
+            padding: EdgeInsets.zero,
+            constraints: const BoxConstraints(minWidth: 32, minHeight: 32),
           ),
         ],
       ),
