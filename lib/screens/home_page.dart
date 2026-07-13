@@ -2,8 +2,9 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../models/task_item.dart';
 import '../services/task_service.dart';
-import '../widgets/task_card.dart'; // ייבוא הווידג'ט החדש שלנו!
+import '../widgets/task_card.dart';
 import 'task_details_screen.dart';
+import '../widgets/app_drawer.dart';
 
 enum TaskSort { level, date }
 
@@ -74,6 +75,7 @@ class _HomePageState extends State<HomePage> {
 
     return Scaffold(
       appBar: AppBar(title: const Text('המשימות שלי'), centerTitle: true),
+      drawer: const AppDrawer(),
       body: StreamBuilder<List<TaskItem>>(
         stream: taskService.streamTasks(),
         builder: (context, snapshot) {
