@@ -33,6 +33,9 @@ class TaskItem {
   String? projectId;
   String? projectName;
 
+  int orderIndex;
+  DateTime createdAt;
+
   TaskItem({
     required this.id,
     required this.title,
@@ -46,7 +49,10 @@ class TaskItem {
     List<SubTask>? subTasks,
     this.projectId,
     this.projectName,
-  }) : subTasks = subTasks ?? [];
+    this.orderIndex = 0,
+    DateTime? createdAt,
+  }) : subTasks = subTasks ?? [],
+       this.createdAt = createdAt ?? DateTime.now();
 
   Map<String, dynamic> toMap() {
     return {
@@ -61,6 +67,8 @@ class TaskItem {
       'subTasks': subTasks.map((e) => e.toMap()).toList(),
       'projectId': projectId,
       'projectName': projectName,
+      'orderIndex': orderIndex,
+      'createdAt': createdAt.millisecondsSinceEpoch,
     };
   }
 
@@ -87,6 +95,10 @@ class TaskItem {
           : [],
       projectId: map['projectId'] as String?,
       projectName: map['projectName'] as String?,
+      orderIndex: (map['orderIndex'] as int?) ?? 0,
+      createdAt: map['createdAt'] != null
+          ? DateTime.fromMillisecondsSinceEpoch(map['createdAt'])
+          : DateTime.now(),
     );
   }
 }

@@ -15,6 +15,8 @@ import 'services/daily_task_service.dart';
 
 import 'screens/test_screen.dart';
 
+import 'screens/main_layout.dart';
+
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
@@ -60,7 +62,7 @@ class TaskApp extends StatelessWidget {
           useMaterial3: true,
           primarySwatch: Colors.amber,
         ),
-        home: const TestScreen(),
+        home: const MainLayout(),
       ),
     );
   }
