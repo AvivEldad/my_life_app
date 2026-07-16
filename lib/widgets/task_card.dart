@@ -19,16 +19,22 @@ class TaskCard extends StatelessWidget {
   Widget build(BuildContext context) {
     // השתמשנו ב-Provider כדי למשוך את שירות המשימות ישירות לתוך הווידג'ט
     final taskService = context.read<TaskService>();
+    bool isOverdue =
+        task.dueDate != null &&
+        task.dueDate!.isBefore(DateTime.now()) &&
+        !task.isCompleted;
 
     return Card(
       margin: const EdgeInsets.only(bottom: 8.0),
       color: task.isCompleted ? Colors.grey.shade800.withOpacity(0.5) : null,
-      shape: task.isGolden
-          ? RoundedRectangleBorder(
-              side: const BorderSide(color: Colors.amber, width: 2.0),
-              borderRadius: BorderRadius.circular(12.0),
-            )
-          : RoundedRectangleBorder(borderRadius: BorderRadius.circular(12.0)),
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(12.0),
+        side: isOverdue
+            ? const BorderSide(color: Colors.red, width: 2.0)
+            : task.isGolden
+            ? const BorderSide(color: Colors.amber, width: 2.0)
+            : BorderSide.none,
+      ),
       child: InkWell(
         onTap: onTap,
         child: Padding(
