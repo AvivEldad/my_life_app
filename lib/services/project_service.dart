@@ -6,7 +6,13 @@ class ProjectService {
 
   Future<bool> saveProject(ProjectItem project) async {
     try {
-      await _db.collection('projects').doc(project.id).set(project.toMap());
+      if (project.id.isEmpty) {
+        // פרויקט חדש: ניתן ל-Firebase לייצר מזהה (ID) ייחודי באופן אוטומטי
+        await _db.collection('projects').add(project.toMap());
+      } else {
+        // פרויקט קיים: נעדכן את המסמך הקיים לפי ה-ID שלו
+        await _db.collection('projects').doc(project.id).set(project.toMap());
+      }
       return true;
     } catch (e) {
       print('Error saving project: $e');
@@ -21,7 +27,7 @@ class ProjectService {
           .snapshots()
           .map(
             (snapshot) => snapshot.docs
-                .map((doc) => ProjectItem.fromMap(doc.id, doc.data()))
+                .map((doc) => ProjectItem.fromMap(doc.data(), doc.id))
                 .toList(),
           );
     } catch (e) {
