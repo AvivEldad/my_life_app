@@ -12,6 +12,7 @@ import 'services/prize_service.dart';
 import 'services/strike_service.dart';
 import 'services/mantra_service.dart';
 import 'services/daily_task_service.dart';
+import 'services/gamification_service.dart';
 
 import 'screens/test_screen.dart';
 
@@ -41,6 +42,9 @@ class TaskApp extends StatelessWidget {
     return MultiProvider(
       providers: [
         Provider<TaskService>(create: (_) => TaskService()),
+        ChangeNotifierProvider<GamificationService>(
+          create: (_) => GamificationService(),
+        ),
         Provider<ProjectService>(create: (_) => ProjectService()),
         Provider<RitualService>(create: (_) => RitualService()),
         Provider<PrizeService>(create: (_) => PrizeService()),

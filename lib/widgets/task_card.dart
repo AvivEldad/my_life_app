@@ -2,11 +2,13 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../models/task_item.dart';
 import '../services/task_service.dart';
+// ייבוא השירות החדש שיצרנו
+import '../services/gamification_service.dart';
 
 class TaskCard extends StatelessWidget {
   final TaskItem task;
-  final VoidCallback onTap; // פונקציה שתופעל כשלוחצים על המשימה (לפתיחת עריכה)
-  final VoidCallback onToggleGolden; // פונקציה שתופעל כשלוחצים על כפתור הזהב
+  final VoidCallback onTap;
+  final VoidCallback onToggleGolden;
 
   const TaskCard({
     super.key,
@@ -17,8 +19,10 @@ class TaskCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    // השתמשנו ב-Provider כדי למשוך את שירות המשימות ישירות לתוך הווידג'ט
     final taskService = context.read<TaskService>();
+    // קריאה לשירות הגיימיפיקציה שלנו כדי להשתמש בו בלחיצה
+    final gamificationService = context.read<GamificationService>();
+
     bool isOverdue =
         task.dueDate != null &&
         task.dueDate!.isBefore(DateTime.now()) &&
@@ -44,7 +48,15 @@ class TaskCard extends StatelessWidget {
               Checkbox(
                 value: task.isCompleted,
                 onChanged: (bool? value) {
-                  task.isCompleted = value ?? false;
+                  bool isNowCompleted = value ?? false;
+
+                  // הלוגיקה החדשה: אם המשימה סומנה עכשיו כהושלמה
+                  // (ולא הייתה מושלמת קודם), נעניק את הפרס!
+                  if (isNowCompleted && !task.isCompleted) {
+                    gamificationService.processTaskCompletion(task);
+                  }
+
+                  task.isCompleted = isNowCompleted;
                   taskService.saveTask(task); // שומר ישירות ל-Firebase!
                 },
                 activeColor: Colors.amber,

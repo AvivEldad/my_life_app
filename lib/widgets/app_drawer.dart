@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 import '../screens/main_layout.dart';
+import 'package:provider/provider.dart';
+import '../services/gamification_service.dart';
 
 class AppDrawer extends StatelessWidget {
   const AppDrawer({super.key});
@@ -19,8 +21,10 @@ class AppDrawer extends StatelessWidget {
 
     // משתנים זמניים לרמה ומטבעות
     // (כשתהיה לנו מערכת גיימיפיקציה, נמשוך אותם מ-Provider כאן)
-    int currentLevel = 1;
-    int currentCoins = 0;
+    // משיכת נתונים אמיתיים מתוך השירות שיצרנו
+    final gamificationService = context.watch<GamificationService>();
+    int currentLevel = 1; // בהמשך נעדכן לפי ה-XP, בינתיים ניקח את המטבעות
+    int currentCoins = gamificationService.currentCoins;
 
     return SizedBox(
       // התפריט יתפוס בדיוק 50% מרוחב המסך, כמו שביקשת
