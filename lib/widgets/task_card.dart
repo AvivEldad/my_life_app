@@ -2,8 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../models/task_item.dart';
 import '../services/task_service.dart';
-// ייבוא השירות החדש שיצרנו
 import '../services/gamification_service.dart';
+import 'pokemon_pull_dialog.dart';
 
 class TaskCard extends StatelessWidget {
   final TaskItem task;
@@ -47,17 +47,26 @@ class TaskCard extends StatelessWidget {
             children: [
               Checkbox(
                 value: task.isCompleted,
-                onChanged: (bool? value) {
+                onChanged: (bool? value) async {
                   bool isNowCompleted = value ?? false;
 
-                  // הלוגיקה החדשה: אם המשימה סומנה עכשיו כהושלמה
-                  // (ולא הייתה מושלמת קודם), נעניק את הפרס!
                   if (isNowCompleted && !task.isCompleted) {
-                    gamificationService.processTaskCompletion(task);
+                    // Wait for the service to calculate rewards and return a potential pulled ID
+                    int? pulledId = await gamificationService
+                        .processTaskCompletion(task);
+
+                    // If we got a new ID and the screen is still active, show the dialog!
+                    if (pulledId != null && context.mounted) {
+                      showDialog(
+                        context: context,
+                        builder: (context) =>
+                            PokemonPullDialog(pokemonId: pulledId),
+                      );
+                    }
                   }
 
                   task.isCompleted = isNowCompleted;
-                  taskService.saveTask(task); // שומר ישירות ל-Firebase!
+                  taskService.saveTask(task);
                 },
                 activeColor: Colors.amber,
               ),

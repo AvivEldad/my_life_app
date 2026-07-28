@@ -5,6 +5,7 @@ import '../services/task_service.dart';
 import '../widgets/task_card.dart';
 import 'task_details_screen.dart';
 import '../widgets/app_drawer.dart';
+import '../widgets/xp_bar.dart';
 
 enum TaskSort { level, date }
 
@@ -116,6 +117,7 @@ class _HomePageState extends State<HomePage> {
 
           return Column(
             children: [
+              const Padding(padding: EdgeInsets.all(16.0), child: XpBar()),
               Padding(
                 padding: const EdgeInsets.symmetric(
                   horizontal: 16.0,

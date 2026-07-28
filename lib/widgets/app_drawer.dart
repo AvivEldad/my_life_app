@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import '../screens/main_layout.dart';
 import 'package:provider/provider.dart';
 import '../services/gamification_service.dart';
+import '../screens/binder_screen.dart';
 
 class AppDrawer extends StatelessWidget {
   const AppDrawer({super.key});
@@ -105,7 +106,18 @@ class AppDrawer extends StatelessWidget {
                 // TODO: ניווט למסך מנטרות
               },
             ),
-
+            ListTile(
+              leading: const Icon(Icons.book), // אייקון של ספר/אלבום
+              title: const Text('אלבום הפוקימונים'),
+              onTap: () {
+                Navigator.pop(context); // סוגר את התפריט הצדדי
+                // מנווט למסך האלבום
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(builder: (context) => const BinderScreen()),
+                );
+              },
+            ),
             const Spacer(),
 
             // --- פריטים בתחתית התפריט ---
