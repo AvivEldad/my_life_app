@@ -24,7 +24,7 @@ class AppDrawer extends StatelessWidget {
     // (כשתהיה לנו מערכת גיימיפיקציה, נמשוך אותם מ-Provider כאן)
     // משיכת נתונים אמיתיים מתוך השירות שיצרנו
     final gamificationService = context.watch<GamificationService>();
-    int currentLevel = 1; // בהמשך נעדכן לפי ה-XP, בינתיים ניקח את המטבעות
+    int currentLevel = gamificationService.currentLevel;
     int currentCoins = gamificationService.currentCoins;
 
     return SizedBox(

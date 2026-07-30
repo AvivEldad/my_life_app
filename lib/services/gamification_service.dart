@@ -4,15 +4,22 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import '../models/task_item.dart';
 
 class GamificationService extends ChangeNotifier {
+  // Database instance for saving our gamification stats
   final FirebaseFirestore _db = FirebaseFirestore.instance;
 
   int currentXp = 0;
   int currentCoins = 0;
   int currentXpThreshold = 100;
+  int currentLevel = 1;
   List<int> unlockedPokemons = [];
 
-  // Call this when the app starts to load saved data
-  Future<void> loadGamificationData() async {
+  // The constructor runs automatically when the service is initialized
+  GamificationService() {
+    _loadGamificationData();
+  }
+
+  /// Pulls existing data from Firebase when the app starts
+  Future<void> _loadGamificationData() async {
     try {
       final doc = await _db.collection('gamification').doc('user_stats').get();
       if (doc.exists) {
@@ -20,7 +27,10 @@ class GamificationService extends ChangeNotifier {
         currentXp = data['currentXp'] ?? 0;
         currentCoins = data['currentCoins'] ?? 0;
         currentXpThreshold = data['currentXpThreshold'] ?? 100;
+        currentLevel = data['currentLevel'] ?? 1;
         unlockedPokemons = List<int>.from(data['unlockedPokemons'] ?? []);
+
+        // Tell the UI to refresh with the saved data
         notifyListeners();
       }
     } catch (e) {
@@ -28,13 +38,14 @@ class GamificationService extends ChangeNotifier {
     }
   }
 
-  // Private method to save data after any change
+  /// Pushes the current state to Firebase
   Future<void> _saveData() async {
     try {
       await _db.collection('gamification').doc('user_stats').set({
         'currentXp': currentXp,
         'currentCoins': currentCoins,
         'currentXpThreshold': currentXpThreshold,
+        'currentLevel': currentLevel,
         'unlockedPokemons': unlockedPokemons,
       });
     } catch (e) {
@@ -42,7 +53,7 @@ class GamificationService extends ChangeNotifier {
     }
   }
 
-  // Notice it now returns a Future<int?>. It returns the ID if a pull happens, or null if not.
+  /// Triggered when a task is checked off
   Future<int?> processTaskCompletion(TaskItem task) async {
     int earnedXp = task.level * 10;
     int earnedCoins = task.level * 5;
@@ -50,21 +61,24 @@ class GamificationService extends ChangeNotifier {
     currentXp += earnedXp;
     currentCoins += earnedCoins;
 
-    int? pulledPokemonId; // Will store the new ID if we level up
+    int? pulledPokemonId;
 
+    // Check if we hit the threshold
     if (currentXp >= currentXpThreshold) {
       currentXp -= currentXpThreshold;
-      currentXpThreshold = (currentXpThreshold * 1.3).toInt();
+      currentXpThreshold = (currentXpThreshold * 1.1).toInt();
+      currentLevel++; // <--- כאן אנחנו מעלים את הרמה ב-1!
       pulledPokemonId = _pullPokemon();
     }
 
-    await _saveData(); // Save progress to Firebase
+    // Save the new progress to Firebase immediately
+    await _saveData();
     notifyListeners();
 
-    return pulledPokemonId; // Return the ID to the UI
+    return pulledPokemonId;
   }
 
-  // Changed to return the pulled ID
+  /// Handles the random pull logic without duplicates
   int? _pullPokemon() {
     List<int> allGen1Ids = List.generate(151, (index) => index + 1);
     List<int> availableIds = allGen1Ids
@@ -80,5 +94,12 @@ class GamificationService extends ChangeNotifier {
       return pulledId;
     }
     return null; // All Gen 1 unlocked
+  }
+
+  /// Checks if enough time has passed to purchase a prize
+  bool canPurchasePrize(DateTime? lastPurchasedAt, Duration cooldownDuration) {
+    if (lastPurchasedAt == null) return true;
+    final difference = DateTime.now().difference(lastPurchasedAt);
+    return difference >= cooldownDuration;
   }
 }
