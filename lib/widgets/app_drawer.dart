@@ -3,6 +3,7 @@ import '../screens/main_layout.dart';
 import 'package:provider/provider.dart';
 import '../services/gamification_service.dart';
 import '../screens/binder_screen.dart';
+import '../screens/home_page.dart';
 
 class AppDrawer extends StatelessWidget {
   const AppDrawer({super.key});
@@ -77,6 +78,17 @@ class AppDrawer extends StatelessWidget {
             const SizedBox(height: 4),
             // --- פריטי התפריט העליונים ---
             ListTile(
+              leading: const Icon(Icons.task),
+              title: const Text('המשימות שלי'),
+              onTap: () {
+                Navigator.pop(context);
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(builder: (context) => const HomePage()),
+                );
+              },
+            ),
+            ListTile(
               leading: const Icon(Icons.folder_outlined),
               title: const Text('הפרויקטים שלי'),
               onTap: () {
@@ -85,7 +97,7 @@ class AppDrawer extends StatelessWidget {
                 Navigator.pushReplacement(
                   context,
                   MaterialPageRoute(
-                    builder: (context) => const MainLayout(initialIndex: 1),
+                    builder: (context) => const MainLayout(initialIndex: 2),
                   ),
                 );
               },
@@ -108,7 +120,7 @@ class AppDrawer extends StatelessWidget {
             ),
             ListTile(
               leading: const Icon(Icons.book), // אייקון של ספר/אלבום
-              title: const Text('אלבום הפוקימונים'),
+              title: const Text('ביינדר'),
               onTap: () {
                 Navigator.pop(context); // סוגר את התפריט הצדדי
                 // מנווט למסך האלבום
