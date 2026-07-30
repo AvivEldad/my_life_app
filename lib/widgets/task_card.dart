@@ -51,6 +51,7 @@ class TaskCard extends StatelessWidget {
                   bool isNowCompleted = value ?? false;
 
                   if (isNowCompleted && !task.isCompleted) {
+                    task.completedAt = DateTime.now();
                     // Wait for the service to calculate rewards and return a potential pulled ID
                     int? pulledId = await gamificationService
                         .processTaskCompletion(task);
@@ -63,6 +64,9 @@ class TaskCard extends StatelessWidget {
                             PokemonPullDialog(pokemonId: pulledId),
                       );
                     }
+                  } else if (!isNowCompleted) {
+                    // If the user unchecks the box, remove the timestamp
+                    task.completedAt = null;
                   }
 
                   task.isCompleted = isNowCompleted;

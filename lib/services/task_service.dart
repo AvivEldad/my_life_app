@@ -40,4 +40,34 @@ class TaskService {
       throw Exception('task deletion faild');
     }
   }
+
+  /// Deletes completed tasks ONLY if they were completed before today
+  Future<void> clearCompletedTasks() async {
+    try {
+      final snapshot = await _db
+          .collection('tasks')
+          .where('isCompleted', isEqualTo: true)
+          .get();
+
+      final now = DateTime.now();
+      // Creates a timestamp for today exactly at 00:00:00 (Midnight)
+      final startOfToday = DateTime(now.year, now.month, now.day);
+
+      for (var doc in snapshot.docs) {
+        // Convert the raw Firebase data into our TaskItem object to read it easily
+        final task = TaskItem.fromMap(doc.id, doc.data());
+
+        if (task.completedAt != null &&
+            task.completedAt!.isBefore(startOfToday)) {
+          // If the task was completed before today started, delete it
+          await doc.reference.delete();
+        } else if (task.completedAt == null) {
+          // Fallback: If it's an old task from before we added this feature, delete it
+          await doc.reference.delete();
+        }
+      }
+    } catch (e) {
+      print('Error clearing completed tasks: $e');
+    }
+  }
 }

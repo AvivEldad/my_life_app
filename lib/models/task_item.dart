@@ -35,6 +35,7 @@ class TaskItem {
 
   int orderIndex;
   DateTime createdAt;
+  DateTime? completedAt;
 
   TaskItem({
     required this.id,
@@ -51,6 +52,7 @@ class TaskItem {
     this.projectName,
     this.orderIndex = 0,
     DateTime? createdAt,
+    this.completedAt,
   }) : subTasks = subTasks ?? [],
        this.createdAt = createdAt ?? DateTime.now();
 
@@ -69,12 +71,14 @@ class TaskItem {
       'projectName': projectName,
       'orderIndex': orderIndex,
       'createdAt': createdAt.millisecondsSinceEpoch,
+      'completedAt': completedAt?.millisecondsSinceEpoch,
     };
   }
 
   factory TaskItem.fromMap(String id, Map<String, dynamic> map) {
     final dueDateMs = map['dueDate'] as int?;
     final subTasksList = map['subTasks'] as List<dynamic>?;
+    final completedAtMs = map['completedAt'] as int?;
 
     return TaskItem(
       id: id,
@@ -99,6 +103,9 @@ class TaskItem {
       createdAt: map['createdAt'] != null
           ? DateTime.fromMillisecondsSinceEpoch(map['createdAt'])
           : DateTime.now(),
+      completedAt: completedAtMs != null
+          ? DateTime.fromMillisecondsSinceEpoch(completedAtMs)
+          : null,
     );
   }
 }

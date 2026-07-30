@@ -60,15 +60,15 @@ class _TaskDetailsScreenState extends State<TaskDetailsScreen> {
         title: _titleController.text,
         description: _descriptionController.text,
         level: _level,
-        dueDate: _dueDate, // שמירת התאריך שבחרנו
+        dueDate: _dueDate,
         subTasks: _subTasks,
-        // שומרים על הערכים הקיימים
         isGolden: widget.task?.isGolden ?? false,
         isCompleted: widget.task?.isCompleted ?? false,
         orderIndex:
             widget.task?.orderIndex ??
             DateTime.now().millisecondsSinceEpoch * -1,
         createdAt: widget.task?.createdAt ?? DateTime.now(),
+        completedAt: widget.task?.completedAt,
       );
 
       await taskService.saveTask(updatedTask);
