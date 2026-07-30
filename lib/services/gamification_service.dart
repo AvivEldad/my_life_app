@@ -55,8 +55,9 @@ class GamificationService extends ChangeNotifier {
 
   /// Triggered when a task is checked off
   Future<int?> processTaskCompletion(TaskItem task) async {
-    int earnedXp = task.level * 10;
-    int earnedCoins = task.level * 5;
+    final multiplier = task.isGolden ? 2 : 1;
+    final earnedXp = task.level * 10 * multiplier;
+    final earnedCoins = task.level * 5 * multiplier;
 
     currentXp += earnedXp;
     currentCoins += earnedCoins;
