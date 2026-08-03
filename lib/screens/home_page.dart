@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../models/task_item.dart';
 import '../services/task_service.dart';
+import '../services/gamification_service.dart';
 import '../widgets/task_card.dart';
 import 'task_details_screen.dart';
 import '../widgets/app_drawer.dart';
@@ -16,13 +17,38 @@ class HomePage extends StatefulWidget {
   State<HomePage> createState() => _HomePageState();
 }
 
-class _HomePageState extends State<HomePage> {
+class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
   @override
   void initState() {
     super.initState();
+
+    // 1. רישום המסך כמאזין למחזור החיים של האפליקציה
+    WidgetsBinding.instance.addObserver(this);
+
+    // 2. הפעלה ראשונית של בדיקות הבוקר (למקרה של פתיחה מחדש - Cold Start)
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      context.read<TaskService>().clearCompletedTasks();
+      _runDailyChecks();
     });
+  }
+
+  @override
+  void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    super.dispose();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.resumed) {
+      _runDailyChecks();
+    }
+  }
+
+  void _runDailyChecks() {
+    // מנקה משימות שהושלמו אתמול
+    context.read<TaskService>().clearCompletedTasks();
+    // בודק ומחיל קנסות על משימות שפג תוקפן
+    context.read<GamificationService>().processOverduePenalties();
   }
 
   void _showTaskDetails(BuildContext context, TaskItem? task) {

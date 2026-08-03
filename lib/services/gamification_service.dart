@@ -103,4 +103,83 @@ class GamificationService extends ChangeNotifier {
     final difference = DateTime.now().difference(lastPurchasedAt);
     return difference >= cooldownDuration;
   }
+
+  Future<void> processOverduePenalties() async {
+    try {
+      final now = DateTime.now();
+      // יצירת תאריך מדויק של חצות היום, כדי שחישוב הימים יהיה נקי משעות
+      final startOfToday = DateTime(now.year, now.month, now.day);
+
+      // משיכת כל המשימות הפעילות ממסד הנתונים
+      final snapshot = await _db
+          .collection('tasks')
+          .where('isCompleted', isEqualTo: false)
+          .get();
+
+      bool gamificationChanged = false;
+
+      for (var doc in snapshot.docs) {
+        final data = doc.data();
+        final dueDateMs = data['dueDate'] as int?;
+        final lastPenaltyMs = data['lastPenaltyDate'] as int?;
+
+        // אם אין תאריך יעד, מדלגים על המשימה
+        if (dueDateMs == null) continue;
+
+        final dueDate = DateTime.fromMillisecondsSinceEpoch(dueDateMs);
+        final startOfDueDate = DateTime(
+          dueDate.year,
+          dueDate.month,
+          dueDate.day,
+        );
+
+        // בודקים אם תאריך היעד עבר
+        if (startOfDueDate.isBefore(startOfToday)) {
+          // מחשבים ממתי צריך לקנוס - מתאריך היעד, או מהפעם האחרונה שקנסנו
+          DateTime calculationDate = startOfDueDate;
+          if (lastPenaltyMs != null) {
+            calculationDate = DateTime.fromMillisecondsSinceEpoch(
+              lastPenaltyMs,
+            );
+            calculationDate = DateTime(
+              calculationDate.year,
+              calculationDate.month,
+              calculationDate.day,
+            );
+          }
+
+          // חישוב מספר הימים שעברו
+          int daysLate = startOfToday.difference(calculationDate).inDays;
+
+          if (daysLate > 0) {
+            // החלת הקנסות
+            int xpPenalty = daysLate * 5;
+            int coinsPenalty = daysLate * 1;
+
+            currentXp -= xpPenalty;
+            if (currentXp < 0) currentXp = 0; // מונע מ-XP לרדת מתחת לאפס
+
+            currentCoins -= coinsPenalty;
+            if (currentCoins < 0) {
+              currentCoins = 0;
+            }
+            // עדכון תאריך הקנס האחרון למשימה במסד הנתונים
+            await _db.collection('tasks').doc(doc.id).update({
+              'lastPenaltyDate': startOfToday.millisecondsSinceEpoch,
+            });
+
+            gamificationChanged = true;
+          }
+        }
+      }
+
+      // אם היו שינויים, שומרים ומודיעים למסך להתעדכן
+      if (gamificationChanged) {
+        await _saveData();
+        notifyListeners();
+      }
+    } catch (e) {
+      print('שגיאה בחישוב קנסות: $e');
+    }
+  }
 }

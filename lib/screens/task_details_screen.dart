@@ -64,6 +64,7 @@ class _TaskDetailsScreenState extends State<TaskDetailsScreen> {
         subTasks: _subTasks,
         isGolden: widget.task?.isGolden ?? false,
         isCompleted: widget.task?.isCompleted ?? false,
+        lastPenaltyDate: widget.task?.lastPenaltyDate,
         orderIndex:
             widget.task?.orderIndex ??
             DateTime.now().millisecondsSinceEpoch * -1,

@@ -36,6 +36,7 @@ class TaskItem {
   int orderIndex;
   DateTime createdAt;
   DateTime? completedAt;
+  DateTime? lastPenaltyDate;
 
   TaskItem({
     required this.id,
@@ -53,6 +54,7 @@ class TaskItem {
     this.orderIndex = 0,
     DateTime? createdAt,
     this.completedAt,
+    this.lastPenaltyDate,
   }) : subTasks = subTasks ?? [],
        this.createdAt = createdAt ?? DateTime.now();
 
@@ -72,6 +74,7 @@ class TaskItem {
       'orderIndex': orderIndex,
       'createdAt': createdAt.millisecondsSinceEpoch,
       'completedAt': completedAt?.millisecondsSinceEpoch,
+      'lastPenaltyDate': lastPenaltyDate?.millisecondsSinceEpoch,
     };
   }
 
@@ -79,6 +82,7 @@ class TaskItem {
     final dueDateMs = map['dueDate'] as int?;
     final subTasksList = map['subTasks'] as List<dynamic>?;
     final completedAtMs = map['completedAt'] as int?;
+    final lastPenaltyMs = map['lastPenaltyDate'] as int?;
 
     return TaskItem(
       id: id,
@@ -105,6 +109,9 @@ class TaskItem {
           : DateTime.now(),
       completedAt: completedAtMs != null
           ? DateTime.fromMillisecondsSinceEpoch(completedAtMs)
+          : null,
+      lastPenaltyDate: lastPenaltyMs != null
+          ? DateTime.fromMillisecondsSinceEpoch(lastPenaltyMs)
           : null,
     );
   }
