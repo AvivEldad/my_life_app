@@ -14,6 +14,24 @@ class TaskService {
     }
   }
 
+  /// Saves multiple tasks in a single write batch — one round trip and
+  /// one local-cache snapshot event instead of one per task. Use this for
+  /// reordering/sorting where many tasks change orderIndex at once.
+  Future<bool> saveTasksBatch(List<TaskItem> tasks) async {
+    if (tasks.isEmpty) return true;
+    try {
+      final batch = _db.batch();
+      for (final task in tasks) {
+        batch.set(_db.collection('tasks').doc(task.id), task.toMap());
+      }
+      await batch.commit();
+      return true;
+    } catch (e) {
+      print('Error saving tasks batch: $e');
+      throw Exception('error saving tasks batch');
+    }
+  }
+
   Stream<List<TaskItem>> streamTasks() {
     try {
       return _db
@@ -53,6 +71,9 @@ class TaskService {
       // Creates a timestamp for today exactly at 00:00:00 (Midnight)
       final startOfToday = DateTime(now.year, now.month, now.day);
 
+      final batch = _db.batch();
+      var hasDeletes = false;
+
       for (var doc in snapshot.docs) {
         // Convert the raw Firebase data into our TaskItem object to read it easily
         final task = TaskItem.fromMap(doc.id, doc.data());
@@ -60,11 +81,17 @@ class TaskService {
         if (task.completedAt != null &&
             task.completedAt!.isBefore(startOfToday)) {
           // If the task was completed before today started, delete it
-          await doc.reference.delete();
+          batch.delete(doc.reference);
+          hasDeletes = true;
         } else if (task.completedAt == null) {
           // Fallback: If it's an old task from before we added this feature, delete it
-          await doc.reference.delete();
+          batch.delete(doc.reference);
+          hasDeletes = true;
         }
+      }
+
+      if (hasDeletes) {
+        await batch.commit();
       }
     } catch (e) {
       print('Error clearing completed tasks: $e');
