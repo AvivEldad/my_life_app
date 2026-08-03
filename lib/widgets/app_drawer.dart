@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:my_todo_app/screens/projects_page.dart';
 import '../screens/main_layout.dart';
 import 'package:provider/provider.dart';
 import '../services/gamification_service.dart';
@@ -81,10 +82,11 @@ class AppDrawer extends StatelessWidget {
               leading: const Icon(Icons.task),
               title: const Text('המשימות שלי'),
               onTap: () {
-                Navigator.pop(context);
-                Navigator.push(
+                Navigator.pushReplacement(
                   context,
-                  MaterialPageRoute(builder: (context) => const HomePage()),
+                  MaterialPageRoute(
+                    builder: (context) => const MainLayout(initialIndex: 0),
+                  ),
                 );
               },
             ),
@@ -92,12 +94,10 @@ class AppDrawer extends StatelessWidget {
               leading: const Icon(Icons.folder_outlined),
               title: const Text('הפרויקטים שלי'),
               onTap: () {
-                // This completely replaces the current screen with the MainLayout,
-                // forcing it to open on the Projects tab (index 1).
                 Navigator.pushReplacement(
                   context,
                   MaterialPageRoute(
-                    builder: (context) => const MainLayout(initialIndex: 2),
+                    builder: (context) => const MainLayout(initialIndex: 1),
                   ),
                 );
               },

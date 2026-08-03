@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../services/gamification_service.dart';
 import '../widgets/app_drawer.dart';
+import 'main_layout.dart';
 
 class BinderScreen extends StatelessWidget {
   const BinderScreen({super.key});
@@ -70,6 +71,30 @@ class BinderScreen extends StatelessWidget {
                   ),
                 ),
               ],
+            ),
+          );
+        },
+      ),
+      bottomNavigationBar: BottomNavigationBar(
+        // הגדרנו צבע אפור כדי להראות שאף אחת מהלשוניות האלו לא פעילה כרגע
+        unselectedItemColor: Colors.grey,
+        selectedItemColor: Colors.grey,
+        items: const [
+          BottomNavigationBarItem(
+            icon: Icon(Icons.check_circle_outline),
+            label: 'משימות',
+          ),
+          BottomNavigationBarItem(
+            icon: Icon(Icons.folder_outlined),
+            label: 'פרויקטים',
+          ),
+        ],
+        onTap: (index) {
+          // ברגע שלוחצים על משימות (0) או פרויקטים (1), מנווטים חזרה ל-MainLayout
+          Navigator.pushReplacement(
+            context,
+            MaterialPageRoute(
+              builder: (context) => MainLayout(initialIndex: index),
             ),
           );
         },
