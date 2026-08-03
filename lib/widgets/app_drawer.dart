@@ -1,10 +1,9 @@
 import 'package:flutter/material.dart';
-import 'package:my_todo_app/screens/projects_page.dart';
 import '../screens/main_layout.dart';
 import 'package:provider/provider.dart';
 import '../services/gamification_service.dart';
 import '../screens/binder_screen.dart';
-import '../screens/home_page.dart';
+import '../screens/categories_page.dart';
 
 class AppDrawer extends StatelessWidget {
   const AppDrawer({super.key});
@@ -103,6 +102,18 @@ class AppDrawer extends StatelessWidget {
               },
             ),
             ListTile(
+              leading: const Icon(Icons.label),
+              title: const Text('קטגוריות'),
+              onTap: () {
+                Navigator.pushReplacement(
+                  context,
+                  MaterialPageRoute(
+                    builder: (context) => const CategoriesPage(),
+                  ),
+                );
+              },
+            ),
+            ListTile(
               leading: const Icon(Icons.emoji_events),
               title: const Text('הפרסים שלי'),
               onTap: () {
@@ -119,7 +130,7 @@ class AppDrawer extends StatelessWidget {
               },
             ),
             ListTile(
-              leading: const Icon(Icons.book), // אייקון של ספר/אלבום
+              leading: const Icon(Icons.book),
               title: const Text('ביינדר'),
               onTap: () {
                 Navigator.pop(context); // סוגר את התפריט הצדדי

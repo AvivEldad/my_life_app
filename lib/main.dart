@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
+import 'package:my_todo_app/services/category_service.dart';
 import 'package:provider/provider.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'firebase_options.dart';
@@ -13,6 +14,7 @@ import 'services/strike_service.dart';
 import 'services/mantra_service.dart';
 import 'services/daily_task_service.dart';
 import 'services/gamification_service.dart';
+import 'services/category_service.dart';
 
 import 'screens/test_screen.dart';
 
@@ -51,6 +53,7 @@ class TaskApp extends StatelessWidget {
         Provider<StrikeService>(create: (_) => StrikeService()),
         Provider<MantraService>(create: (_) => MantraService()),
         Provider<DailyTaskService>(create: (_) => DailyTaskService()),
+        Provider<CategoryService>(create: (_) => CategoryService()),
       ],
       child: MaterialApp(
         debugShowCheckedModeBanner: false,

@@ -2,8 +2,10 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../models/task_item.dart';
+import '../models/category_item.dart';
 import '../services/task_service.dart';
 import '../services/gamification_service.dart';
+import '../services/category_service.dart';
 import '../widgets/task_card.dart';
 import 'task_details_screen.dart';
 import '../widgets/app_drawer.dart';
@@ -20,8 +22,10 @@ class HomePage extends StatefulWidget {
 
 class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
   StreamSubscription<List<TaskItem>>? _tasksSub;
+  StreamSubscription<List<CategoryItem>>? _categoriesSub;
 
   List<TaskItem> _allTasks = [];
+  List<CategoryItem> _categories = [];
   bool _isLoading = true;
   bool _hasError = false;
 
@@ -38,6 +42,7 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
     WidgetsBinding.instance.addObserver(this);
 
     _subscribeToTasks();
+    _subscribeToCategories();
 
     // 2. הפעלה ראשונית של בדיקות הבוקר (למקרה של פתיחה מחדש - Cold Start)
     WidgetsBinding.instance.addPostFrameCallback((_) {
@@ -66,9 +71,18 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
     );
   }
 
+  void _subscribeToCategories() {
+    final categoryService = context.read<CategoryService>();
+    _categoriesSub = categoryService.streamCategories().listen((categories) {
+      if (_suppressStreamUpdates) return;
+      setState(() => _categories = categories);
+    });
+  }
+
   @override
   void dispose() {
     _tasksSub?.cancel();
+    _categoriesSub?.cancel();
     WidgetsBinding.instance.removeObserver(this);
     super.dispose();
   }
@@ -225,6 +239,8 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
 
     activeTasks.sort((a, b) => a.orderIndex.compareTo(b.orderIndex));
 
+    final categoryById = {for (final c in _categories) c.id: c};
+
     return Column(
       children: [
         const Padding(padding: EdgeInsets.all(16.0), child: XpBar()),
@@ -257,6 +273,7 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
                     child: TaskCard(
                       key: Key(goldenTask.id),
                       task: goldenTask,
+                      category: categoryById[goldenTask.categoryId],
                       onTap: () => _showTaskDetails(context, goldenTask),
                       onToggleGolden: () =>
                           _toggleGolden(goldenTask!, _allTasks),
@@ -282,6 +299,7 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
                           // קריאה נוספת לווידג'ט
                           key: Key(task.id),
                           task: task,
+                          category: categoryById[task.categoryId],
                           onTap: () => _showTaskDetails(context, task),
                           onToggleGolden: () => _toggleGolden(task, _allTasks),
                         ),
@@ -296,6 +314,7 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
                     // וקריאה אחרונה לווידג'ט
                     key: Key(task.id),
                     task: task,
+                    category: categoryById[task.categoryId],
                     onTap: () => _showTaskDetails(context, task),
                     onToggleGolden: () => _toggleGolden(task, _allTasks),
                   ),
