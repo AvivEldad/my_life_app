@@ -12,10 +12,7 @@ class BinderScreen extends StatelessWidget {
     final unlocked = gamificationService.unlockedPokemons;
 
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('My Collection (Gen 1)'),
-        centerTitle: true,
-      ),
+      appBar: AppBar(centerTitle: true),
       drawer: const AppDrawer(),
       // A GridView that creates exactly 151 slots
       body: GridView.builder(
