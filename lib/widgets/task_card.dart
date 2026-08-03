@@ -66,7 +66,9 @@ class TaskCard extends StatelessWidget {
                     }
                   } else if (!isNowCompleted) {
                     // If the user unchecks the box, remove the timestamp
+                    // and reverse whatever this completion had granted.
                     task.completedAt = null;
+                    await gamificationService.processTaskUncompletion(task);
                   }
 
                   task.isCompleted = isNowCompleted;

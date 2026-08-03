@@ -38,6 +38,15 @@ class TaskItem {
   DateTime? completedAt;
   DateTime? lastPenaltyDate;
 
+  // Records exactly what the current completion granted, so that
+  // un-completing the task can reverse it precisely (independent of
+  // whatever task.level happens to be later, e.g. after an edit).
+  int? awardedXp;
+  int? awardedCoins;
+  bool causedLevelUp;
+  int? xpThresholdBeforeLevelUp;
+  int? awardedPokemonId;
+
   TaskItem({
     required this.id,
     required this.title,
@@ -55,6 +64,11 @@ class TaskItem {
     DateTime? createdAt,
     this.completedAt,
     this.lastPenaltyDate,
+    this.awardedXp,
+    this.awardedCoins,
+    this.causedLevelUp = false,
+    this.xpThresholdBeforeLevelUp,
+    this.awardedPokemonId,
   }) : subTasks = subTasks ?? [],
        this.createdAt = createdAt ?? DateTime.now();
 
@@ -75,6 +89,11 @@ class TaskItem {
       'createdAt': createdAt.millisecondsSinceEpoch,
       'completedAt': completedAt?.millisecondsSinceEpoch,
       'lastPenaltyDate': lastPenaltyDate?.millisecondsSinceEpoch,
+      'awardedXp': awardedXp,
+      'awardedCoins': awardedCoins,
+      'causedLevelUp': causedLevelUp,
+      'xpThresholdBeforeLevelUp': xpThresholdBeforeLevelUp,
+      'awardedPokemonId': awardedPokemonId,
     };
   }
 
@@ -113,6 +132,11 @@ class TaskItem {
       lastPenaltyDate: lastPenaltyMs != null
           ? DateTime.fromMillisecondsSinceEpoch(lastPenaltyMs)
           : null,
+      awardedXp: map['awardedXp'] as int?,
+      awardedCoins: map['awardedCoins'] as int?,
+      causedLevelUp: (map['causedLevelUp'] as bool?) ?? false,
+      xpThresholdBeforeLevelUp: map['xpThresholdBeforeLevelUp'] as int?,
+      awardedPokemonId: map['awardedPokemonId'] as int?,
     );
   }
 }

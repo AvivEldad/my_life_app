@@ -70,6 +70,11 @@ class _TaskDetailsScreenState extends State<TaskDetailsScreen> {
             DateTime.now().millisecondsSinceEpoch * -1,
         createdAt: widget.task?.createdAt ?? DateTime.now(),
         completedAt: widget.task?.completedAt,
+        awardedXp: widget.task?.awardedXp,
+        awardedCoins: widget.task?.awardedCoins,
+        causedLevelUp: widget.task?.causedLevelUp ?? false,
+        xpThresholdBeforeLevelUp: widget.task?.xpThresholdBeforeLevelUp,
+        awardedPokemonId: widget.task?.awardedPokemonId,
       );
 
       await taskService.saveTask(updatedTask);

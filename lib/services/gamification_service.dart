@@ -77,16 +77,27 @@ class GamificationService extends ChangeNotifier {
     currentCoins += earnedCoins;
 
     int? pulledPokemonId;
-
+    bool leveledUp = false;
+    int? thresholdBeforeLevelUp;
     // Check if we hit the threshold
     if (currentXp >= currentXpThreshold) {
+      thresholdBeforeLevelUp = currentXpThreshold;
       currentXp -= currentXpThreshold;
       currentXpThreshold = (currentXpThreshold * 1.1).toInt();
-      currentLevel++; // <--- כאן אנחנו מעלים את הרמה ב-1!
+      currentLevel++;
+      leveledUp = true;
       pulledPokemonId = _pullPokemon();
     }
 
-    // Save the new progress to Firebase immediately
+    // Stamp exactly what this completion granted onto the task itself,
+    // so processTaskUncompletion can reverse it precisely later even if
+    // task.level or task.isGolden change in the meantime (e.g. via edit).
+    task.awardedXp = earnedXp;
+    task.awardedCoins = earnedCoins;
+    task.causedLevelUp = leveledUp;
+    task.xpThresholdBeforeLevelUp = thresholdBeforeLevelUp;
+    task.awardedPokemonId = pulledPokemonId;
+
     await _saveData();
     notifyListeners();
 
@@ -107,6 +118,51 @@ class GamificationService extends ChangeNotifier {
     ),
     // קל מאוד להוסיף כאן את Dragon Ball Z בעתיד!
   ];
+
+  /// Triggered when a previously-completed task is unchecked. Reverses
+  /// exactly what processTaskCompletion granted for THIS task — using the
+  /// amounts stamped on the task at completion time, not whatever
+  /// task.level/isGolden happen to be now.
+  Future<void> processTaskUncompletion(TaskItem task) async {
+    // This task was never completed through processTaskCompletion (e.g.
+    // legacy data from before this feature), so there's nothing to undo.
+    if (task.awardedXp == null && task.awardedCoins == null) return;
+
+    final xpToRemove = task.awardedXp ?? 0;
+    final coinsToRemove = task.awardedCoins ?? 0;
+
+    if (task.causedLevelUp) {
+      // Step the level back down (never below 1) and restore the XP
+      // threshold that was in effect before this completion's level-up.
+      currentLevel = currentLevel > 1 ? currentLevel - 1 : 1;
+      currentXp += task.xpThresholdBeforeLevelUp ?? 0;
+      if (task.xpThresholdBeforeLevelUp != null) {
+        currentXpThreshold = task.xpThresholdBeforeLevelUp!;
+      }
+
+      // Remove the specific Pokémon this completion's level-up pulled.
+      if (task.awardedPokemonId != null) {
+        unlockedPokemons.remove(task.awardedPokemonId);
+      }
+    }
+
+    currentXp -= xpToRemove;
+    if (currentXp < 0) currentXp = 0;
+
+    currentCoins -= coinsToRemove;
+    if (currentCoins < 0) currentCoins = 0;
+
+    // Clear the awarded-state so a future re-completion of this task
+    // awards fresh, rather than accumulating stale bookkeeping.
+    task.awardedXp = null;
+    task.awardedCoins = null;
+    task.causedLevelUp = false;
+    task.xpThresholdBeforeLevelUp = null;
+    task.awardedPokemonId = null;
+
+    await _saveData();
+    notifyListeners();
+  }
 
   /// לוגיקת משיכה אוניברסלית (ללא if-else!)
   int? _pullPokemon() {
