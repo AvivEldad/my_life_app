@@ -99,7 +99,55 @@ class TaskCard extends StatelessWidget {
               ),
               IconButton(
                 icon: const Icon(Icons.delete_outline, color: Colors.redAccent),
-                onPressed: () => taskService.deleteTask(task.id),
+                onPressed: () {
+                  // הצגת חלון אישור לפני מחיקה
+                  showDialog(
+                    context: context,
+                    builder: (BuildContext context) {
+                      return AlertDialog(
+                        backgroundColor: Colors.grey.shade900,
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(16.0),
+                        ),
+                        title: const Text(
+                          'מחיקת משימה',
+                          style: TextStyle(color: Colors.white),
+                        ),
+                        content: const Text(
+                          'האם אתה בטוח שברצונך למחוק את המשימה?',
+                          style: TextStyle(color: Colors.white70),
+                        ),
+                        actions: [
+                          // כפתור ביטול
+                          TextButton(
+                            onPressed: () {
+                              Navigator.of(context).pop(); // סגירת החלון
+                            },
+                            child: const Text(
+                              'ביטול',
+                              style: TextStyle(color: Colors.grey),
+                            ),
+                          ),
+                          // כפתור אישור מחיקה
+                          ElevatedButton(
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: Colors.redAccent,
+                            ),
+                            onPressed: () {
+                              // ביצוע המחיקה בפועל דרך השירות
+                              taskService.deleteTask(task.id);
+                              Navigator.of(context).pop(); // סגירת החלון
+                            },
+                            child: const Text(
+                              'מחק',
+                              style: TextStyle(color: Colors.white),
+                            ),
+                          ),
+                        ],
+                      );
+                    },
+                  );
+                },
               ),
             ],
           ),
