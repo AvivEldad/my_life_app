@@ -3,6 +3,18 @@ import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import '../models/task_item.dart';
 
+class BinderConfig {
+  final int level;
+  final String theme;
+  final List<int> itemIds;
+
+  BinderConfig({
+    required this.level,
+    required this.theme,
+    required this.itemIds,
+  });
+}
+
 class GamificationService extends ChangeNotifier {
   // Database instance for saving our gamification stats
   final FirebaseFirestore _db = FirebaseFirestore.instance;
@@ -12,6 +24,7 @@ class GamificationService extends ChangeNotifier {
   int currentXpThreshold = 100;
   int currentLevel = 1;
   List<int> unlockedPokemons = [];
+  int currentBinder = 1;
 
   // The constructor runs automatically when the service is initialized
   GamificationService() {
@@ -29,8 +42,8 @@ class GamificationService extends ChangeNotifier {
         currentXpThreshold = data['currentXpThreshold'] ?? 100;
         currentLevel = data['currentLevel'] ?? 1;
         unlockedPokemons = List<int>.from(data['unlockedPokemons'] ?? []);
+        currentBinder = data['currentBinder'] ?? 1;
 
-        // Tell the UI to refresh with the saved data
         notifyListeners();
       }
     } catch (e) {
@@ -47,6 +60,7 @@ class GamificationService extends ChangeNotifier {
         'currentXpThreshold': currentXpThreshold,
         'currentLevel': currentLevel,
         'unlockedPokemons': unlockedPokemons,
+        'currentBinder': currentBinder,
       });
     } catch (e) {
       print('Error saving gamification data: $e');
@@ -79,13 +93,35 @@ class GamificationService extends ChangeNotifier {
     return pulledPokemonId;
   }
 
-  /// Handles the random pull logic without duplicates
+  final List<BinderConfig> binderConfigs = [
+    BinderConfig(
+      level: 1,
+      theme: 'Pokemon Gen 1',
+      itemIds: List.generate(151, (index) => index + 1), // מזהים 1 עד 151
+    ),
+    BinderConfig(
+      level: 2,
+      theme: 'Marvel MCU',
+      // זמני: עד שנמצא API למארוול, נגדיר כאן מזהים דמיוניים מ-1000 עד 1050
+      itemIds: List.generate(50, (index) => index + 1000),
+    ),
+    // קל מאוד להוסיף כאן את Dragon Ball Z בעתיד!
+  ];
+
+  /// לוגיקת משיכה אוניברסלית (ללא if-else!)
   int? _pullPokemon() {
-    List<int> allGen1Ids = List.generate(151, (index) => index + 1);
-    List<int> availableIds = allGen1Ids
+    // 1. מוצאים את הגדרות האלבום הנוכחי מתוך הרשימה
+    final currentConfig = binderConfigs.firstWhere(
+      (config) => config.level == currentBinder,
+      orElse: () => binderConfigs.last, // גיבוי למקרה חירום
+    );
+
+    // 2. מסננים את המזהים הפנויים לאלבום הזה
+    List<int> availableIds = currentConfig.itemIds
         .where((id) => !unlockedPokemons.contains(id))
         .toList();
 
+    // 3. משיכת הדמות
     if (availableIds.isNotEmpty) {
       final random = Random();
       int randomIndex = random.nextInt(availableIds.length);
@@ -93,8 +129,19 @@ class GamificationService extends ChangeNotifier {
 
       unlockedPokemons.add(pulledId);
       return pulledId;
+    } else {
+      // 4. אם האלבום מלא, עוברים אוטומטית לאלבום הבא
+      if (currentBinder < binderConfigs.length) {
+        currentBinder++; // מעלים רמה לאלבום הבא
+        print(
+          '🎉 מזל טוב! פתחת את אלבום: ${binderConfigs[currentBinder - 1].theme}',
+        );
+        return _pullPokemon(); // מנסים למשוך שוב מיד מהאלבום החדש
+      } else {
+        print('מדהים! סיימת את כל האלבומים באפליקציה!');
+        return null;
+      }
     }
-    return null; // All Gen 1 unlocked
   }
 
   /// Checks if enough time has passed to purchase a prize

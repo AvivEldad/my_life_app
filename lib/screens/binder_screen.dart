@@ -11,93 +11,128 @@ class BinderScreen extends StatelessWidget {
   Widget build(BuildContext context) {
     final gamificationService = context.watch<GamificationService>();
     final unlocked = gamificationService.unlockedPokemons;
+    // אנו שולפים את רשימת האלבומים מהשירות
+    final configs = gamificationService.binderConfigs;
 
-    return Scaffold(
-      appBar: AppBar(centerTitle: true),
-      drawer: const AppDrawer(),
-      // A GridView that creates exactly 151 slots
-      body: GridView.builder(
-        padding: const EdgeInsets.all(12),
-        gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-          crossAxisCount: 3, // 3 characters per row
-          crossAxisSpacing: 10,
-          mainAxisSpacing: 10,
+    // עוטפים את המסך בבקר לשוניות שמתאים אוטומטית למספר האלבומים שלנו
+    return DefaultTabController(
+      length: configs.length,
+      child: Scaffold(
+        appBar: AppBar(
+          title: const Text('האלבומים שלי'),
+          centerTitle: true,
+          // יצירת הלשוניות בחלק התחתון של סרגל הכלים העליון
+          bottom: TabBar(
+            isScrollable: true,
+            indicatorColor: Colors.amber,
+            labelColor: Colors.amber,
+            unselectedLabelColor: Colors.grey,
+            // עוברים על כל אלבום ומייצרים לו לשונית עם השם שלו
+            tabs: configs.map((config) => Tab(text: config.theme)).toList(),
+          ),
         ),
-        itemCount: 151,
-        itemBuilder: (context, index) {
-          final pokemonId = index + 1;
-          final isUnlocked = unlocked.contains(pokemonId);
-          final imageUrl =
-              'https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/other/official-artwork/$pokemonId.png';
+        drawer: const AppDrawer(),
 
-          return Card(
-            color: Colors.grey.shade900,
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(12),
-              side: BorderSide(
-                color: isUnlocked ? Colors.amber : Colors.transparent,
-                width: isUnlocked ? 2 : 0,
+        // כאן נמצא התוכן של כל לשונית
+        body: TabBarView(
+          children: configs.map((config) {
+            return GridView.builder(
+              padding: const EdgeInsets.all(12),
+              gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                crossAxisCount: 3,
+                crossAxisSpacing: 10,
+                mainAxisSpacing: 10,
               ),
-            ),
-            child: Stack(
-              alignment: Alignment.center,
-              children: [
-                // If unlocked, show normal image. If locked, apply a solid black silhouette filter!
-                ColorFiltered(
-                  colorFilter: isUnlocked
-                      ? const ColorFilter.mode(
-                          Colors.transparent,
-                          BlendMode.multiply,
-                        )
-                      : const ColorFilter.mode(Colors.black, BlendMode.srcIn),
-                  child: Image.network(
-                    imageUrl,
-                    fit: BoxFit.contain,
-                    errorBuilder: (context, error, stackTrace) =>
-                        const Icon(Icons.pest_control, color: Colors.grey),
-                  ),
-                ),
-                // Show the ID number at the bottom right
-                Positioned(
-                  bottom: 4,
-                  right: 6,
-                  child: Text(
-                    '#$pokemonId',
-                    style: TextStyle(
-                      fontSize: 12,
-                      fontWeight: FontWeight.bold,
-                      color: isUnlocked ? Colors.white : Colors.grey.shade600,
+              // כמות הפריטים עכשיו תלויה בדיוק באלבום הספציפי!
+              itemCount: config.itemIds.length,
+              itemBuilder: (context, index) {
+                // שליפת המזהה המדויק מתוך רשימת המזהים של האלבום
+                final itemId = config.itemIds[index];
+                final isUnlocked = unlocked.contains(itemId);
+
+                // הקישור של פוקימון. עבור אלבום 2 זה יחזיר שגיאה ויופעל הגיבוי
+                final imageUrl =
+                    'https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/other/official-artwork/$itemId.png';
+
+                return Card(
+                  color: Colors.grey.shade900,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12),
+                    side: BorderSide(
+                      color: isUnlocked ? Colors.amber : Colors.transparent,
+                      width: isUnlocked ? 2 : 0,
                     ),
                   ),
-                ),
-              ],
+                  child: Stack(
+                    alignment: Alignment.center,
+                    children: [
+                      ColorFiltered(
+                        colorFilter: isUnlocked
+                            ? const ColorFilter.mode(
+                                Colors.transparent,
+                                BlendMode.multiply,
+                              )
+                            : const ColorFilter.mode(
+                                Colors.black,
+                                BlendMode.srcIn,
+                              ),
+                        child: Image.network(
+                          imageUrl,
+                          fit: BoxFit.contain,
+                          // במקרה שאין תמונה (כמו באלבום מארוול הזמני), נציג אייקון
+                          errorBuilder: (context, error, stackTrace) => Icon(
+                            Icons.star_rounded,
+                            color: isUnlocked
+                                ? Colors.amber
+                                : Colors.grey.shade800,
+                            size: 50,
+                          ),
+                        ),
+                      ),
+                      Positioned(
+                        bottom: 4,
+                        right: 6,
+                        child: Text(
+                          '#$itemId',
+                          style: TextStyle(
+                            fontSize: 12,
+                            fontWeight: FontWeight.bold,
+                            color: isUnlocked
+                                ? Colors.white
+                                : Colors.grey.shade600,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                );
+              },
+            );
+          }).toList(),
+        ),
+
+        bottomNavigationBar: BottomNavigationBar(
+          unselectedItemColor: Colors.grey,
+          selectedItemColor: Colors.grey,
+          items: const [
+            BottomNavigationBarItem(
+              icon: Icon(Icons.check_circle_outline),
+              label: 'משימות',
             ),
-          );
-        },
-      ),
-      bottomNavigationBar: BottomNavigationBar(
-        // הגדרנו צבע אפור כדי להראות שאף אחת מהלשוניות האלו לא פעילה כרגע
-        unselectedItemColor: Colors.grey,
-        selectedItemColor: Colors.grey,
-        items: const [
-          BottomNavigationBarItem(
-            icon: Icon(Icons.check_circle_outline),
-            label: 'משימות',
-          ),
-          BottomNavigationBarItem(
-            icon: Icon(Icons.folder_outlined),
-            label: 'פרויקטים',
-          ),
-        ],
-        onTap: (index) {
-          // ברגע שלוחצים על משימות (0) או פרויקטים (1), מנווטים חזרה ל-MainLayout
-          Navigator.pushReplacement(
-            context,
-            MaterialPageRoute(
-              builder: (context) => MainLayout(initialIndex: index),
+            BottomNavigationBarItem(
+              icon: Icon(Icons.folder_outlined),
+              label: 'פרויקטים',
             ),
-          );
-        },
+          ],
+          onTap: (index) {
+            Navigator.pushReplacement(
+              context,
+              MaterialPageRoute(
+                builder: (context) => MainLayout(initialIndex: index),
+              ),
+            );
+          },
+        ),
       ),
     );
   }
