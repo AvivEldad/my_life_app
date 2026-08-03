@@ -17,6 +17,14 @@ class HomePage extends StatefulWidget {
 }
 
 class _HomePageState extends State<HomePage> {
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      context.read<TaskService>().clearCompletedTasks();
+    });
+  }
+
   void _showTaskDetails(BuildContext context, TaskItem? task) {
     Navigator.push(
       context,
