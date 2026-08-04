@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../models/task_item.dart';
+import '../models/category_item.dart'; // יבוא מודל הקטגוריה
 import '../services/task_service.dart';
+import '../services/category_service.dart'; // יבוא שירות הקטגוריות
 
 class TaskDetailsScreen extends StatefulWidget {
   final TaskItem? task;
@@ -20,8 +22,11 @@ class _TaskDetailsScreenState extends State<TaskDetailsScreen> {
   late TextEditingController _subTaskController;
 
   int _level = 1;
-  DateTime? _dueDate; // משתנה חדש לשמירת תאריך היעד
+  DateTime? _dueDate;
   List<SubTask> _subTasks = [];
+
+  // משתנה חדש לשמירת מזהה הקטגוריה שנבחרה
+  String? _selectedCategoryId;
 
   @override
   void initState() {
@@ -33,7 +38,10 @@ class _TaskDetailsScreenState extends State<TaskDetailsScreen> {
     _subTaskController = TextEditingController();
 
     _level = widget.task?.level ?? 1;
-    _dueDate = widget.task?.dueDate; // טעינת התאריך הקיים אם יש
+    _dueDate = widget.task?.dueDate;
+
+    // טעינת הקטגוריה הקיימת במשימה אם יש כזו
+    _selectedCategoryId = widget.task?.categoryId;
 
     if (widget.task != null) {
       _subTasks = List.from(widget.task!.subTasks);
@@ -62,6 +70,7 @@ class _TaskDetailsScreenState extends State<TaskDetailsScreen> {
         level: _level,
         dueDate: _dueDate,
         subTasks: _subTasks,
+        categoryId: _selectedCategoryId, // שמירת הקטגוריה שנבחרה!
         isGolden: widget.task?.isGolden ?? false,
         isCompleted: widget.task?.isCompleted ?? false,
         lastPenaltyDate: widget.task?.lastPenaltyDate,
@@ -101,6 +110,9 @@ class _TaskDetailsScreenState extends State<TaskDetailsScreen> {
 
   @override
   Widget build(BuildContext context) {
+    // משיכת שירות הקטגוריות כדי לקרוא את רשימת הקטגוריות הקיימות
+    final categoryService = context.watch<CategoryService>();
+
     return Scaffold(
       appBar: AppBar(
         title: Text(widget.task == null ? 'משימה חדשה' : 'עריכת משימה'),
@@ -130,9 +142,78 @@ class _TaskDetailsScreenState extends State<TaskDetailsScreen> {
               controller: _descriptionController,
               maxLines: 3,
               decoration: const InputDecoration(
-                labelText: 'תיאור (אופציונלי)',
+                labelText: 'תיאור',
                 border: OutlineInputBorder(),
               ),
+            ),
+            const SizedBox(height: 16),
+
+            // --- תפריט לבחירת קטגוריה כולל תצוגת צבע ---
+            StreamBuilder<List<CategoryItem>>(
+              stream: categoryService.streamCategories(),
+              builder: (context, snapshot) {
+                // 1. מצב המתנה: אם הנתונים עדיין לא הגיעו, נציג טעינה במקום לקרוס
+                if (snapshot.connectionState == ConnectionState.waiting) {
+                  return const Padding(
+                    padding: EdgeInsets.symmetric(vertical: 16.0),
+                    child: Center(child: CircularProgressIndicator()),
+                  );
+                }
+
+                final categories = snapshot.data ?? [];
+
+                // 2. בדיקת בטיחות: האם הקטגוריה שנשמרה במשימה עדיין קיימת?
+                // אם היא לא קיימת (למשל נמחקה), נאפס ל-null (ללא קטגוריה).
+                if (_selectedCategoryId != null) {
+                  bool categoryExists = categories.any(
+                    (cat) => cat.id == _selectedCategoryId,
+                  );
+                  if (!categoryExists) {
+                    _selectedCategoryId = null;
+                  }
+                }
+
+                return DropdownButtonFormField<String>(
+                  value: _selectedCategoryId,
+                  decoration: const InputDecoration(
+                    labelText: 'קטגוריה',
+                    border: OutlineInputBorder(),
+                  ),
+                  items: [
+                    // אופציה לאיפוס/ללא קטגוריה
+                    const DropdownMenuItem<String>(
+                      value: null,
+                      child: Text('ללא קטגוריה'),
+                    ),
+                    // יצירת פריט לכל קטגוריה ברשימה
+                    ...categories.map((category) {
+                      return DropdownMenuItem<String>(
+                        value: category.id,
+                        child: Row(
+                          children: [
+                            // עיגול הצבע של הקטגוריה
+                            Container(
+                              width: 16,
+                              height: 16,
+                              decoration: BoxDecoration(
+                                color: category.color,
+                                shape: BoxShape.circle,
+                              ),
+                            ),
+                            const SizedBox(width: 10),
+                            Text(category.name),
+                          ],
+                        ),
+                      );
+                    }),
+                  ],
+                  onChanged: (value) {
+                    setState(() {
+                      _selectedCategoryId = value;
+                    });
+                  },
+                );
+              },
             ),
             const SizedBox(height: 16),
 
@@ -151,19 +232,17 @@ class _TaskDetailsScreenState extends State<TaskDetailsScreen> {
               trailing: _dueDate != null
                   ? IconButton(
                       icon: const Icon(Icons.clear, color: Colors.red),
-                      onPressed: () =>
-                          setState(() => _dueDate = null), // איפוס תאריך
+                      onPressed: () => setState(() => _dueDate = null),
                     )
                   : null,
               onTap: () async {
                 final pickedDate = await showDatePicker(
                   context: context,
                   initialDate: _dueDate ?? DateTime.now(),
-                  firstDate: DateTime(2000), // מאיזו שנה אפשר לבחור
-                  lastDate: DateTime(2100), // עד איזה שנה אפשר לבחור
+                  firstDate: DateTime(2000),
+                  lastDate: DateTime(2100),
                 );
 
-                // אם המשתמש בחר תאריך, נעדכן את המצב
                 if (pickedDate != null) {
                   setState(() {
                     _dueDate = pickedDate;

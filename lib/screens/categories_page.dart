@@ -3,6 +3,8 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../models/category_item.dart';
 import '../services/category_service.dart';
+import '../widgets/app_drawer.dart';
+import 'main_layout.dart';
 
 class CategoriesPage extends StatefulWidget {
   const CategoriesPage({super.key});
@@ -137,6 +139,8 @@ class _CategoriesPageState extends State<CategoriesPage> {
     return Directionality(
       textDirection: TextDirection.rtl,
       child: Scaffold(
+        appBar: AppBar(title: const Text('קטגוריות'), centerTitle: true),
+        drawer: const AppDrawer(),
         body: _isLoading
             ? const Center(child: CircularProgressIndicator())
             : _categories.isEmpty
@@ -194,6 +198,28 @@ class _CategoriesPageState extends State<CategoriesPage> {
         floatingActionButton: FloatingActionButton(
           onPressed: () => _showCategoryDialog(),
           child: const Icon(Icons.add),
+        ),
+        bottomNavigationBar: BottomNavigationBar(
+          unselectedItemColor: Colors.grey,
+          selectedItemColor: Colors.grey,
+          items: const [
+            BottomNavigationBarItem(
+              icon: Icon(Icons.check_circle_outline),
+              label: 'משימות',
+            ),
+            BottomNavigationBarItem(
+              icon: Icon(Icons.folder_outlined),
+              label: 'פרויקטים',
+            ),
+          ],
+          onTap: (index) {
+            Navigator.pushReplacement(
+              context,
+              MaterialPageRoute(
+                builder: (context) => MainLayout(initialIndex: index),
+              ),
+            );
+          },
         ),
       ),
     );

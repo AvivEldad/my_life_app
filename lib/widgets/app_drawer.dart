@@ -102,9 +102,10 @@ class AppDrawer extends StatelessWidget {
               },
             ),
             ListTile(
-              leading: const Icon(Icons.label),
+              leading: const Icon(Icons.category),
               title: const Text('קטגוריות'),
               onTap: () {
+                Navigator.pop(context);
                 Navigator.pushReplacement(
                   context,
                   MaterialPageRoute(
