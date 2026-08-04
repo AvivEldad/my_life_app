@@ -102,6 +102,15 @@ class AppDrawer extends StatelessWidget {
               },
             ),
             ListTile(
+              // TODO: לשנות אימוג'י
+              leading: const Icon(Icons.category),
+              title: const Text('ההרגלים שלי'),
+              onTap: () {
+                Navigator.pop(context);
+                // TODO: ניווט למסך
+              },
+            ),
+            ListTile(
               leading: const Icon(Icons.category),
               title: const Text('קטגוריות'),
               onTap: () {
@@ -115,11 +124,12 @@ class AppDrawer extends StatelessWidget {
               },
             ),
             ListTile(
+              // TODO: לשנות אימוג'י
               leading: const Icon(Icons.emoji_events),
-              title: const Text('הפרסים שלי'),
+              title: const Text('סטרייקים'),
               onTap: () {
                 Navigator.pop(context);
-                // TODO: ניווט למסך פרסים
+                // TODO: ניווט למסך
               },
             ),
             ListTile(
@@ -128,6 +138,14 @@ class AppDrawer extends StatelessWidget {
               onTap: () {
                 Navigator.pop(context);
                 // TODO: ניווט למסך מנטרות
+              },
+            ),
+            ListTile(
+              leading: const Icon(Icons.emoji_events),
+              title: const Text('הפרסים שלי'),
+              onTap: () {
+                Navigator.pop(context);
+                // TODO: ניווט למסך פרסים
               },
             ),
             ListTile(
