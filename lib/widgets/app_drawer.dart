@@ -21,36 +21,29 @@ class AppDrawer extends StatelessWidget {
     final screenWidth = MediaQuery.of(context).size.width;
     final bottomPadding = MediaQuery.of(context).padding.bottom;
 
-    // משתנים זמניים לרמה ומטבעות
-    // (כשתהיה לנו מערכת גיימיפיקציה, נמשוך אותם מ-Provider כאן)
     // משיכת נתונים אמיתיים מתוך השירות שיצרנו
     final gamificationService = context.watch<GamificationService>();
     int currentLevel = gamificationService.currentLevel;
     int currentCoins = gamificationService.currentCoins;
 
     return SizedBox(
-      // התפריט יתפוס בדיוק 50% מרוחב המסך, כמו שביקשת
+      // התפריט יתפוס בדיוק 50% מרוחב המסך
       width: screenWidth * 0.50,
       child: Drawer(
         child: Column(
           children: [
-            // שים לב: הסרנו את ה-const מכאן, כי הנתונים בפנים משתנים!
+            // הכותרת נשארת קבועה למעלה
             DrawerHeader(
-              // קצת שליטה על הריווח הפנימי כדי שזה יישב טוב
               padding: const EdgeInsets.fromLTRB(16, 20, 16, 12),
               decoration: const BoxDecoration(
                 border: Border(
                   bottom: BorderSide(color: Colors.white24, width: 1),
                 ),
               ),
-              // החלפנו Row ב-Column!
               child: Column(
-                crossAxisAlignment: CrossAxisAlignment
-                    .start, // מיישר את התוכן לימין (בגלל שהאפליקציה ב-RTL)
-                mainAxisAlignment: MainAxisAlignment
-                    .end, // דוחף את התוכן לחלק התחתון של הכותרת
+                crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisAlignment: MainAxisAlignment.end,
                 children: [
-                  // התמונה הוקטנה ל-40
                   Image.asset(
                     _getBadgePath(currentLevel),
                     width: 40,
@@ -62,8 +55,7 @@ class AppDrawer extends StatelessWidget {
                       );
                     },
                   ),
-                  const SizedBox(height: 12), // רווח אנכי בין התמונה לטקסט
-
+                  const SizedBox(height: 12),
                   Text(
                     'רמה $currentLevel  |  $currentCoins 🪙',
                     style: const TextStyle(
@@ -76,93 +68,113 @@ class AppDrawer extends StatelessWidget {
               ),
             ),
             const SizedBox(height: 4),
-            // --- פריטי התפריט העליונים ---
-            ListTile(
-              leading: const Icon(Icons.task),
-              title: const Text('המשימות שלי'),
-              onTap: () {
-                Navigator.pushReplacement(
-                  context,
-                  MaterialPageRoute(
-                    builder: (context) => const MainLayout(initialIndex: 0),
-                  ),
-                );
-              },
-            ),
-            ListTile(
-              leading: const Icon(Icons.folder_outlined),
-              title: const Text('הפרויקטים שלי'),
-              onTap: () {
-                Navigator.pushReplacement(
-                  context,
-                  MaterialPageRoute(
-                    builder: (context) => const MainLayout(initialIndex: 1),
-                  ),
-                );
-              },
-            ),
-            ListTile(
-              // TODO: לשנות אימוג'י
-              leading: const Icon(Icons.category),
-              title: const Text('ההרגלים שלי'),
-              onTap: () {
-                Navigator.pop(context);
-                // TODO: ניווט למסך
-              },
-            ),
-            ListTile(
-              leading: const Icon(Icons.category),
-              title: const Text('קטגוריות'),
-              onTap: () {
-                Navigator.pop(context);
-                Navigator.pushReplacement(
-                  context,
-                  MaterialPageRoute(
-                    builder: (context) => const CategoriesPage(),
-                  ),
-                );
-              },
-            ),
-            ListTile(
-              // TODO: לשנות אימוג'י
-              leading: const Icon(Icons.emoji_events),
-              title: const Text('סטרייקים'),
-              onTap: () {
-                Navigator.pop(context);
-                // TODO: ניווט למסך
-              },
-            ),
-            ListTile(
-              leading: const Icon(Icons.auto_awesome),
-              title: const Text('מנטרות'),
-              onTap: () {
-                Navigator.pop(context);
-                // TODO: ניווט למסך מנטרות
-              },
-            ),
-            ListTile(
-              leading: const Icon(Icons.emoji_events),
-              title: const Text('הפרסים שלי'),
-              onTap: () {
-                Navigator.pop(context);
-                // TODO: ניווט למסך פרסים
-              },
-            ),
-            ListTile(
-              leading: const Icon(Icons.book),
-              title: const Text('ביינדר'),
-              onTap: () {
-                Navigator.pop(context); // סוגר את התפריט הצדדי
-                // מנווט למסך האלבום
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(builder: (context) => const BinderScreen()),
-                );
-              },
-            ),
-            const Spacer(),
 
-            // --- פריטים בתחתית התפריט ---
+            // --- אזור התפריט הנגלל ---
+            // ה-Expanded דואג שהרשימה תתפוס את כל המקום הפנוי ותאפשר גלילה
+            Expanded(
+              child: ListView(
+                padding: EdgeInsets.zero, // מסיר ריווח מיותר למעלה
+                children: [
+                  ListTile(
+                    leading: const Icon(Icons.task),
+                    title: const Text('המשימות שלי'),
+                    onTap: () {
+                      Navigator.pushReplacement(
+                        context,
+                        MaterialPageRoute(
+                          builder: (context) =>
+                              const MainLayout(initialIndex: 0),
+                        ),
+                      );
+                    },
+                  ),
+                  ListTile(
+                    leading: const Icon(Icons.folder_outlined),
+                    title: const Text('הפרויקטים שלי'),
+                    onTap: () {
+                      Navigator.pushReplacement(
+                        context,
+                        MaterialPageRoute(
+                          builder: (context) =>
+                              const MainLayout(initialIndex: 1),
+                        ),
+                      );
+                    },
+                  ),
+                  ListTile(
+                    // TODO: לשנות אימוג'י
+                    leading: const Icon(Icons.category),
+                    title: const Text('ההרגלים שלי'),
+                    onTap: () {
+                      Navigator.pop(context);
+                      // TODO: ניווט למסך
+                    },
+                  ),
+                  ListTile(
+                    leading: const Icon(Icons.category),
+                    title: const Text('קטגוריות'),
+                    onTap: () {
+                      Navigator.pop(context);
+                      Navigator.pushReplacement(
+                        context,
+                        MaterialPageRoute(
+                          builder: (context) => const CategoriesPage(),
+                        ),
+                      );
+                    },
+                  ),
+                  ListTile(
+                    // TODO: לשנות אימוג'י
+                    leading: const Icon(Icons.emoji_events),
+                    title: const Text('סטרייקים'),
+                    onTap: () {
+                      Navigator.pop(context);
+                      // TODO: ניווט למסך
+                    },
+                  ),
+                  ListTile(
+                    // TODO: לשנות אימוג'י
+                    leading: const Icon(Icons.emoji_events),
+                    title: const Text('רשימה יומית'),
+                    onTap: () {
+                      Navigator.pop(context);
+                      // TODO: ניווט למסך
+                    },
+                  ),
+                  ListTile(
+                    leading: const Icon(Icons.auto_awesome),
+                    title: const Text('מנטרות'),
+                    onTap: () {
+                      Navigator.pop(context);
+                      // TODO: ניווט למסך מנטרות
+                    },
+                  ),
+                  ListTile(
+                    leading: const Icon(Icons.emoji_events),
+                    title: const Text('הפרסים שלי'),
+                    onTap: () {
+                      Navigator.pop(context);
+                      // TODO: ניווט למסך פרסים
+                    },
+                  ),
+                  ListTile(
+                    leading: const Icon(Icons.book),
+                    title: const Text('ביינדר'),
+                    onTap: () {
+                      Navigator.pop(context);
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (context) => const BinderScreen(),
+                        ),
+                      );
+                    },
+                  ),
+                ],
+              ),
+            ),
+
+            // --- פריטים בתחתית התפריט (קבועים למטה תמיד) ---
             const Divider(color: Colors.white24, height: 1),
             ListTile(
               leading: const Icon(Icons.settings),
@@ -174,13 +186,7 @@ class AppDrawer extends StatelessWidget {
                 );
               },
             ),
-            ListTile(
-              leading: const Icon(Icons.info_outline),
-              title: const Text('אודות האפליקציה'),
-              onTap: () {
-                Navigator.pop(context);
-              },
-            ),
+
             SizedBox(height: bottomPadding > 0 ? bottomPadding : 16.0),
           ],
         ),
