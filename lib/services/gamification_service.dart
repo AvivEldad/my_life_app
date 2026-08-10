@@ -164,6 +164,10 @@ class GamificationService extends ChangeNotifier {
     notifyListeners();
   }
 
+  String getItemName(int id) {
+    return 'Character #$id';
+  }
+
   /// לוגיקת משיכה אוניברסלית (ללא if-else!)
   int? _pullPokemon() {
     // 1. מוצאים את הגדרות האלבום הנוכחי מתוך הרשימה

@@ -9,7 +9,11 @@ import '../services/category_service.dart';
 import '../widgets/task_card.dart';
 import 'task_details_screen.dart';
 import '../widgets/app_drawer.dart';
-import '../widgets/xp_bar.dart';
+
+// הייבוא של האנימציות והווידג'טים החדשים שלנו!
+import '../widgets/glowing_xp_bar.dart';
+import '../widgets/floating_reward.dart';
+import '../widgets/confetti_dialog.dart';
 
 enum TaskSort { level, date }
 
@@ -29,22 +33,16 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
   bool _isLoading = true;
   bool _hasError = false;
 
-  // While true, incoming stream snapshots are ignored so a background
-  // write (from reordering/sorting/toggling) can't rebuild the list
-  // out from under an in-progress user interaction.
   bool _suppressStreamUpdates = false;
 
   @override
   void initState() {
     super.initState();
-
-    // 1. רישום המסך כמאזין למחזור החיים של האפליקציה
     WidgetsBinding.instance.addObserver(this);
 
     _subscribeToTasks();
     _subscribeToCategories();
 
-    // 2. הפעלה ראשונית של בדיקות הבוקר (למקרה של פתיחה מחדש - Cold Start)
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _runDailyChecks();
     });
@@ -95,9 +93,7 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
   }
 
   void _runDailyChecks() {
-    // מנקה משימות שהושלמו אתמול
     context.read<TaskService>().clearCompletedTasks();
-    // בודק ומחיל קנסות על משימות שפג תוקפן
     context.read<GamificationService>().processOverduePenalties();
   }
 
@@ -195,6 +191,70 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
     }
   }
 
+  // הפונקציה המרכזית החדשה שמנהלת את כל האנימציות לאחר סימון משימה
+  Future<void> _handleTaskStatusChanged(
+    TaskItem task,
+    bool isNowCompleted,
+  ) async {
+    final taskService = context.read<TaskService>();
+    final gamificationService = context.read<GamificationService>();
+
+    if (isNowCompleted && !task.isCompleted) {
+      task.completedAt = DateTime.now();
+
+      // 1. אנימציית המטבעות צפה מיד
+      final earnedCoins = task.level * 5 * (task.isGolden ? 2 : 1);
+      showFloatingReward(context, earnedCoins);
+
+      // 2. חישוב XP מול השירות
+      int? pulledId = await gamificationService.processTaskCompletion(task);
+
+      // 3. בדיקה אם עלינו רמה ויש דמות חדשה להציג
+      if (pulledId != null && context.mounted) {
+        // המתנה של שנייה כדי ליהנות מהאנימציה של מד ה-XP
+        await Future.delayed(const Duration(milliseconds: 1000));
+
+        if (context.mounted) {
+          // חלון קונפטי ראשון: עליית רמה
+          await showDialog(
+            context: context,
+            builder: (context) => ConfettiDialog(
+              // שמנו לב שהסרנו את ה-'const' כדי שנוכל להעביר משתנה
+              title: 'LEVEL UP!',
+              // כאן אנחנו מושכים את מספר הרמה הנוכחי מתוך השירות!
+              message:
+                  'You have reached level ${gamificationService.currentLevel}!',
+            ),
+          );
+        }
+
+        if (context.mounted) {
+          // חלון קונפטי שני: הדמות שקיבלנו
+          final pulledName = gamificationService.getItemName(pulledId);
+          final imageUrl =
+              'https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/other/official-artwork/$pulledId.png';
+
+          await showDialog(
+            context: context,
+            builder: (context) => ConfettiDialog(
+              title: 'New Character Unlocked!',
+              message: 'You got $pulledName!',
+              image: Image.network(imageUrl, height: 120),
+            ),
+          );
+        }
+      }
+    } else if (!isNowCompleted) {
+      // אם המשתמש ביטל את סימון המשימה
+      task.completedAt = null;
+      await gamificationService.processTaskUncompletion(task);
+    }
+
+    // עדכון המצב ושמירה למסד הנתונים
+    task.isCompleted = isNowCompleted;
+    taskService.saveTask(task);
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -240,10 +300,19 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
     activeTasks.sort((a, b) => a.orderIndex.compareTo(b.orderIndex));
 
     final categoryById = {for (final c in _categories) c.id: c};
+    // משיכת השירות כדי להעביר את הנתונים העדכניים ל-GlowingXpBar
+    final gamificationService = context.watch<GamificationService>();
 
     return Column(
       children: [
-        const Padding(padding: EdgeInsets.all(16.0), child: XpBar()),
+        // הבר החדש והזוהר שלנו!
+        Padding(
+          padding: const EdgeInsets.all(16.0),
+          child: GlowingXpBar(
+            currentXp: gamificationService.currentXp,
+            threshold: gamificationService.currentXpThreshold,
+          ),
+        ),
         Padding(
           padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0),
           child: Row(
@@ -269,7 +338,6 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
             header: goldenTask != null
                 ? Padding(
                     padding: const EdgeInsets.only(bottom: 12.0),
-                    // קריאה לווידג'ט המופרד שלנו!
                     child: TaskCard(
                       key: Key(goldenTask.id),
                       task: goldenTask,
@@ -277,6 +345,9 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
                       onTap: () => _showTaskDetails(context, goldenTask),
                       onToggleGolden: () =>
                           _toggleGolden(goldenTask!, _allTasks),
+                      // חיבור הפונקציה החדשה שלנו
+                      onStatusChanged: (isCompleted) =>
+                          _handleTaskStatusChanged(goldenTask!, isCompleted),
                     ),
                   )
                 : const SizedBox.shrink(),
@@ -296,12 +367,14 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
                       const Divider(),
                       ...completedTasks.map(
                         (task) => TaskCard(
-                          // קריאה נוספת לווידג'ט
                           key: Key(task.id),
                           task: task,
                           category: categoryById[task.categoryId],
                           onTap: () => _showTaskDetails(context, task),
                           onToggleGolden: () => _toggleGolden(task, _allTasks),
+                          // חיבור הפונקציה החדשה שלנו
+                          onStatusChanged: (isCompleted) =>
+                              _handleTaskStatusChanged(task, isCompleted),
                         ),
                       ),
                     ],
@@ -311,12 +384,14 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
             children: activeTasks
                 .map(
                   (task) => TaskCard(
-                    // וקריאה אחרונה לווידג'ט
                     key: Key(task.id),
                     task: task,
                     category: categoryById[task.categoryId],
                     onTap: () => _showTaskDetails(context, task),
                     onToggleGolden: () => _toggleGolden(task, _allTasks),
+                    // חיבור הפונקציה החדשה שלנו
+                    onStatusChanged: (isCompleted) =>
+                        _handleTaskStatusChanged(task, isCompleted),
                   ),
                 )
                 .toList(),

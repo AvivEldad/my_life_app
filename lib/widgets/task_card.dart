@@ -3,13 +3,12 @@ import 'package:provider/provider.dart';
 import '../models/task_item.dart';
 import '../models/category_item.dart';
 import '../services/task_service.dart';
-import '../services/gamification_service.dart';
-import 'pokemon_pull_dialog.dart';
 
 class TaskCard extends StatelessWidget {
   final TaskItem task;
   final VoidCallback onTap;
   final VoidCallback onToggleGolden;
+  final Function(bool) onStatusChanged; // הוספנו פונקציית דיווח חדשה
   final CategoryItem? category;
 
   const TaskCard({
@@ -17,14 +16,13 @@ class TaskCard extends StatelessWidget {
     required this.task,
     required this.onTap,
     required this.onToggleGolden,
+    required this.onStatusChanged, // חובה לספק אותה בעת יצירת הכרטיס
     this.category,
   });
 
   @override
   Widget build(BuildContext context) {
     final taskService = context.read<TaskService>();
-    // קריאה לשירות הגיימיפיקציה שלנו כדי להשתמש בו בלחיצה
-    final gamificationService = context.read<GamificationService>();
 
     bool isOverdue =
         task.dueDate != null &&
@@ -43,14 +41,10 @@ class TaskCard extends StatelessWidget {
             ? const BorderSide(color: Colors.amber, width: 2.0)
             : BorderSide.none,
       ),
-      // עטפנו את ה-Row ב-IntrinsicHeight כדי לפתור את קריסת הפריסה
       child: IntrinsicHeight(
         child: Row(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            // Category color marker — only shown when the task has a
-            // category. Placed first so it renders on the leading (right,
-            // in this RTL app) edge of the card.
             if (category != null) Container(width: 6, color: category!.color),
             Expanded(
               child: InkWell(
@@ -64,34 +58,9 @@ class TaskCard extends StatelessWidget {
                     children: [
                       Checkbox(
                         value: task.isCompleted,
-                        onChanged: (bool? value) async {
-                          bool isNowCompleted = value ?? false;
-
-                          if (isNowCompleted && !task.isCompleted) {
-                            task.completedAt = DateTime.now();
-                            // Wait for the service to calculate rewards and return a potential pulled ID
-                            int? pulledId = await gamificationService
-                                .processTaskCompletion(task);
-
-                            // If we got a new ID and the screen is still active, show the dialog!
-                            if (pulledId != null && context.mounted) {
-                              showDialog(
-                                context: context,
-                                builder: (context) =>
-                                    PokemonPullDialog(pokemonId: pulledId),
-                              );
-                            }
-                          } else if (!isNowCompleted) {
-                            // If the user unchecks the box, remove the timestamp
-                            // and reverse whatever this completion had granted.
-                            task.completedAt = null;
-                            await gamificationService.processTaskUncompletion(
-                              task,
-                            );
-                          }
-
-                          task.isCompleted = isNowCompleted;
-                          taskService.saveTask(task);
+                        // כאן הכרטיס רק מדווח החוצה שנלחץ! הוא לא מנהל שום לוגיקה.
+                        onChanged: (bool? value) {
+                          onStatusChanged(value ?? false);
                         },
                         activeColor: Colors.amber,
                       ),
