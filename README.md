@@ -15,18 +15,3 @@ A few resources to get you started if this is your first Flutter project:
 For help getting started with Flutter development, view the
 [online documentation](https://docs.flutter.dev/), which offers tutorials,
 samples, guidance on mobile development, and a full API reference.
-
-
-טסטים:
-
-- יצירת משימה חדשה (לבדוק שכל השדות מופיעים כמו שצריך - כותרת, תיאור שכתוב תיאור, תאירך סיום עם אייקון של לוח, בחירת רמה)
- 	- יצירת משימה עם רמה 4
-	- יצירת משימה עם תאריך סיום
-	- יצירת משימה עם תאריך סיום דומה ורמה אחרת
-- לסדר לפי רמה
-- לסדר לפי תאריך
-- יצירת משימה נוספת, ואז עריכה שלה ואז סידור
-- יצירת משימה ומחיקה
-- בחירת משימת זהב
-- החלפת משימת זהב
-- עדכון משימת זהב
