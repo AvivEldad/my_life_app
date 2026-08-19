@@ -58,9 +58,28 @@ class TaskCard extends StatelessWidget {
                     children: [
                       Checkbox(
                         value: task.isCompleted,
-                        // כאן הכרטיס רק מדווח החוצה שנלחץ! הוא לא מנהל שום לוגיקה.
                         onChanged: (bool? value) {
-                          onStatusChanged(value ?? false);
+                          bool isNowCompleted = value ?? false;
+                          if (isNowCompleted) {
+                            bool hasOpenSubTasks = task.subTasks.any(
+                              (subTask) => !subTask.isCompleted,
+                            );
+
+                            if (hasOpenSubTasks) {
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                const SnackBar(
+                                  content: Text(
+                                    'יש להשלים קודם את כל תתי-המשימות!',
+                                    textAlign: TextAlign.right,
+                                  ),
+                                  backgroundColor: Colors.redAccent,
+                                  duration: Duration(seconds: 2),
+                                ),
+                              );
+                              return;
+                            }
+                          }
+                          onStatusChanged(isNowCompleted);
                         },
                         activeColor: Colors.amber,
                       ),
