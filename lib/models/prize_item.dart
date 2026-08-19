@@ -1,9 +1,10 @@
 class PrizeItem {
   final String id;
   String title;
-  double cost;
+  int cost;
   bool isRedeemed;
-  int cooldownHours; // How long until it can be bought again
+  bool isRepeatable;
+  int cooldownHours;
   DateTime? lastRedeemed;
 
   PrizeItem({
@@ -11,14 +12,21 @@ class PrizeItem {
     required this.title,
     required this.cost,
     this.isRedeemed = false,
+    this.isRepeatable = false,
     this.cooldownHours = 24,
     this.lastRedeemed,
   });
 
   bool get isOnCooldown {
-    if (lastRedeemed == null) return false;
+    if (lastRedeemed == null || !isRepeatable) return false;
     final timeSinceRedeemed = DateTime.now().difference(lastRedeemed!);
     return timeSinceRedeemed.inHours < cooldownHours;
+  }
+
+  int get remainingCooldownHours {
+    if (lastRedeemed == null || !isRepeatable) return 0;
+    final timeSinceRedeemed = DateTime.now().difference(lastRedeemed!);
+    return cooldownHours - timeSinceRedeemed.inHours;
   }
 
   Map<String, dynamic> toMap() {
@@ -26,6 +34,7 @@ class PrizeItem {
       'title': title,
       'cost': cost,
       'isRedeemed': isRedeemed,
+      'isRepeatable': isRepeatable,
       'cooldownHours': cooldownHours,
       'lastRedeemed': lastRedeemed?.millisecondsSinceEpoch,
     };
@@ -35,8 +44,9 @@ class PrizeItem {
     return PrizeItem(
       id: id,
       title: map['title'] ?? '',
-      cost: (map['cost'] ?? 0).toDouble(),
+      cost: (map['cost'] ?? 0).toInt(),
       isRedeemed: map['isRedeemed'] ?? false,
+      isRepeatable: map['isRepeatable'] ?? false,
       cooldownHours: map['cooldownHours'] ?? 24,
       lastRedeemed: map['lastRedeemed'] != null
           ? DateTime.fromMillisecondsSinceEpoch(map['lastRedeemed'])

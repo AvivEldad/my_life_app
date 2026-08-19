@@ -67,6 +67,16 @@ class GamificationService extends ChangeNotifier {
     }
   }
 
+  Future<bool> spendCoins(int amount) async {
+    if (currentCoins >= amount) {
+      currentCoins -= amount;
+      await _saveData();
+      notifyListeners();
+      return true;
+    }
+    return false;
+  }
+
   /// Triggered when a task is checked off
   Future<int?> processTaskCompletion(TaskItem task) async {
     final multiplier = task.isGolden ? 2 : 1;

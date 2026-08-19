@@ -4,6 +4,7 @@ import 'package:provider/provider.dart';
 import '../services/gamification_service.dart';
 import '../screens/binder_screen.dart';
 import '../screens/categories_page.dart';
+import '../screens/prizes_page.dart';
 
 class AppDrawer extends StatelessWidget {
   const AppDrawer({super.key});
@@ -154,7 +155,12 @@ class AppDrawer extends StatelessWidget {
                     title: const Text('הפרסים שלי'),
                     onTap: () {
                       Navigator.pop(context);
-                      // TODO: ניווט למסך פרסים
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (context) => const PrizesPage(),
+                        ),
+                      );
                     },
                   ),
                   ListTile(
