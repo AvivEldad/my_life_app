@@ -5,6 +5,7 @@ import '../services/prize_service.dart';
 import '../services/gamification_service.dart';
 import '../widgets/app_drawer.dart';
 import '../widgets/confetti_dialog.dart';
+import 'main_layout.dart';
 
 class PrizesPage extends StatelessWidget {
   const PrizesPage({super.key});
@@ -150,7 +151,7 @@ class PrizesPage extends StatelessWidget {
           context: context,
           builder: (context) => ConfettiDialog(
             title: 'פרס נרכש!',
-            message: '-תהנה מ\n${prize.title}',
+            message: 'תהנה מ-\n${prize.title}',
             image: const Icon(
               Icons.card_giftcard,
               color: Colors.amber,
@@ -160,12 +161,9 @@ class PrizesPage extends StatelessWidget {
         );
       }
 
-      // הלוגיקה החדשה: האם למחוק או לעדכן?
       if (!prize.isRepeatable) {
-        // פרס חד-פעמי -> מחיקה מוחלטת
         await prizeService.deletePrize(prize.id);
       } else {
-        // פרס מתחדש -> עדכון זמן הרכישה
         prize.isRedeemed = true;
         prize.lastRedeemed = DateTime.now();
         await prizeService.savePrize(prize);
@@ -177,8 +175,6 @@ class PrizesPage extends StatelessWidget {
   Widget build(BuildContext context) {
     final gamificationService = context.watch<GamificationService>();
     final currentCoins = gamificationService.currentCoins;
-
-    // אנו שומרים את ה-Context הראשי של המסך כולו כדי שהאנימציה לא תלך לאיבוד
     final parentContext = context;
 
     return Directionality(
@@ -189,6 +185,7 @@ class PrizesPage extends StatelessWidget {
           centerTitle: true,
         ),
         drawer: const AppDrawer(),
+
         body: StreamBuilder<List<PrizeItem>>(
           stream: context.read<PrizeService>().streamPrizes(),
           builder: (context, snapshot) {
@@ -223,7 +220,9 @@ class PrizesPage extends StatelessWidget {
 
                 return Card(
                   elevation: isAvailable ? 8 : 0,
-                  margin: const EdgeInsets.symmetric(vertical: 8.0),
+                  margin: const EdgeInsets.symmetric(
+                    vertical: 6.0,
+                  ), // צמצום המרווח בין הכרטיסים
                   shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(16),
                     side: BorderSide(
@@ -245,7 +244,9 @@ class PrizesPage extends StatelessWidget {
                         end: Alignment.bottomRight,
                       ),
                     ),
-                    padding: const EdgeInsets.all(16),
+                    padding: const EdgeInsets.all(
+                      10,
+                    ), // הקטנת הריווח הפנימי למראה צר יותר
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
@@ -256,7 +257,7 @@ class PrizesPage extends StatelessWidget {
                               child: Text(
                                 prize.title,
                                 style: TextStyle(
-                                  fontSize: 20,
+                                  fontSize: 18, // הקטנת גודל הכותרת קלות
                                   fontWeight: FontWeight.bold,
                                   color: isAvailable
                                       ? Colors.white
@@ -267,35 +268,44 @@ class PrizesPage extends StatelessWidget {
                                 ),
                               ),
                             ),
-                            IconButton(
-                              icon: const Icon(
-                                Icons.edit,
-                                color: Colors.blueAccent,
+                            // הקטנת כפתורי העריכה והמחיקה כדי לחסוך מקום
+                            SizedBox(
+                              width: 32,
+                              height: 32,
+                              child: IconButton(
+                                icon: const Icon(
+                                  Icons.edit,
+                                  color: Colors.blueAccent,
+                                  size: 20,
+                                ),
+                                padding: EdgeInsets.zero,
+                                onPressed: () =>
+                                    _showPrizeDialog(context, prize: prize),
                               ),
-                              padding: EdgeInsets.zero,
-                              constraints: const BoxConstraints(),
-                              onPressed: () =>
-                                  _showPrizeDialog(context, prize: prize),
                             ),
-                            const SizedBox(width: 16),
-                            IconButton(
-                              icon: const Icon(
-                                Icons.delete_outline,
-                                color: Colors.redAccent,
+                            SizedBox(
+                              width: 32,
+                              height: 32,
+                              child: IconButton(
+                                icon: const Icon(
+                                  Icons.delete_outline,
+                                  color: Colors.redAccent,
+                                  size: 20,
+                                ),
+                                padding: EdgeInsets.zero,
+                                onPressed: () => _confirmDelete(context, prize),
                               ),
-                              padding: EdgeInsets.zero,
-                              constraints: const BoxConstraints(),
-                              onPressed: () => _confirmDelete(context, prize),
                             ),
                           ],
                         ),
-                        const SizedBox(height: 8),
+                        const SizedBox(height: 4), // צמצום הרווח האנכי
+
                         Row(
                           children: [
                             Container(
                               padding: const EdgeInsets.symmetric(
-                                horizontal: 10,
-                                vertical: 4,
+                                horizontal: 8,
+                                vertical: 2,
                               ),
                               decoration: BoxDecoration(
                                 color: Colors.amber.withOpacity(0.2),
@@ -304,7 +314,7 @@ class PrizesPage extends StatelessWidget {
                               child: Text(
                                 '${prize.cost} 🪙',
                                 style: TextStyle(
-                                  fontSize: 16,
+                                  fontSize: 14,
                                   fontWeight: FontWeight.bold,
                                   color: isAvailable
                                       ? Colors.amber
@@ -318,7 +328,7 @@ class PrizesPage extends StatelessWidget {
                                   ? 'מתחדש (24 שעות)'
                                   : 'חד-פעמי',
                               style: TextStyle(
-                                fontSize: 13,
+                                fontSize: 12,
                                 color: isAvailable
                                     ? Colors.white70
                                     : Colors.grey.shade700,
@@ -326,9 +336,13 @@ class PrizesPage extends StatelessWidget {
                             ),
                           ],
                         ),
-                        const SizedBox(height: 16),
+                        const SizedBox(
+                          height: 8,
+                        ), // צמצום הרווח העליון של הכפתור
+
                         SizedBox(
                           width: double.infinity,
+                          height: 40, // הגדרת גובה כפתור נמוך וקומפקטי יותר
                           child: ElevatedButton(
                             style: ElevatedButton.styleFrom(
                               backgroundColor: isAvailable
@@ -337,19 +351,18 @@ class PrizesPage extends StatelessWidget {
                               foregroundColor: isAvailable
                                   ? Colors.black
                                   : Colors.grey,
-                              padding: const EdgeInsets.symmetric(vertical: 12),
+                              padding: EdgeInsets.zero,
                               shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(12),
+                                borderRadius: BorderRadius.circular(8),
                               ),
                             ),
-                            // שימוש ב-parentContext כדי להבטיח שהאנימציה תוצג!
                             onPressed: isAvailable
                                 ? () => _redeemPrize(parentContext, prize)
                                 : null,
                             child: Text(
                               buttonText,
                               style: const TextStyle(
-                                fontSize: 16,
+                                fontSize: 14,
                                 fontWeight: FontWeight.bold,
                               ),
                             ),
@@ -367,6 +380,28 @@ class PrizesPage extends StatelessWidget {
           onPressed: () => _showPrizeDialog(context),
           backgroundColor: Colors.amber,
           child: const Icon(Icons.add, color: Colors.black),
+        ),
+        bottomNavigationBar: BottomNavigationBar(
+          unselectedItemColor: Colors.grey,
+          selectedItemColor: Colors.grey,
+          items: const [
+            BottomNavigationBarItem(
+              icon: Icon(Icons.check_circle_outline),
+              label: 'משימות',
+            ),
+            BottomNavigationBarItem(
+              icon: Icon(Icons.folder_outlined),
+              label: 'פרויקטים',
+            ),
+          ],
+          onTap: (index) {
+            Navigator.pushReplacement(
+              context,
+              MaterialPageRoute(
+                builder: (context) => MainLayout(initialIndex: index),
+              ),
+            );
+          },
         ),
       ),
     );
