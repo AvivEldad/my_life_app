@@ -11,51 +11,59 @@ class BinderScreen extends StatelessWidget {
   Widget build(BuildContext context) {
     final gamificationService = context.watch<GamificationService>();
     final unlocked = gamificationService.unlockedPokemons;
-    // אנו שולפים את רשימת האלבומים מהשירות
-    final configs = gamificationService.binderConfigs;
+    final allConfigs = gamificationService.binderConfigs;
 
-    // עוטפים את המסך בבקר לשוניות שמתאים אוטומטית למספר האלבומים שלנו
+    // הלוגיקה החשובה: חותכים את רשימת האלבומים כך שתציג רק עד לאלבום הנוכחי של המשתמש.
+    // אם המשתמש ב-currentBinder מספר 1, הוא יראה רק את דור 1.
+    final visibleConfigs = allConfigs
+        .take(gamificationService.currentBinder)
+        .toList();
+
     return DefaultTabController(
-      length: configs.length,
+      length: visibleConfigs.length,
       child: Scaffold(
         appBar: AppBar(
-          title: const Text('האלבומים שלי'),
+          title: const Text('ביינדר'),
           centerTitle: true,
-          // יצירת הלשוניות בחלק התחתון של סרגל הכלים העליון
           bottom: TabBar(
             isScrollable: true,
+            tabAlignment: TabAlignment.center,
             indicatorColor: Colors.amber,
             labelColor: Colors.amber,
             unselectedLabelColor: Colors.grey,
-            // עוברים על כל אלבום ומייצרים לו לשונית עם השם שלו
-            tabs: configs.map((config) => Tab(text: config.theme)).toList(),
+            tabs: visibleConfigs
+                .map((config) => Tab(text: config.theme))
+                .toList(),
           ),
         ),
         drawer: const AppDrawer(),
-
-        // כאן נמצא התוכן של כל לשונית
         body: TabBarView(
-          children: configs.map((config) {
+          children: visibleConfigs.map((config) {
             return GridView.builder(
               padding: const EdgeInsets.all(12),
               gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
                 crossAxisCount: 3,
                 crossAxisSpacing: 10,
                 mainAxisSpacing: 10,
+                childAspectRatio:
+                    0.8, // הארכנו מעט את הקלף כדי שיהיה מקום לטקסט
               ),
-              // כמות הפריטים עכשיו תלויה בדיוק באלבום הספציפי!
               itemCount: config.itemIds.length,
               itemBuilder: (context, index) {
-                // שליפת המזהה המדויק מתוך רשימת המזהים של האלבום
                 final itemId = config.itemIds[index];
                 final isUnlocked = unlocked.contains(itemId);
 
-                // הקישור של פוקימון. עבור אלבום 2 זה יחזיר שגיאה ויופעל הגיבוי
+                // משיכת השם מהשירות. אם נעול, נציג סימני שאלה.
+                final pokemonName = isUnlocked
+                    ? gamificationService.getItemName(itemId)
+                    : '???';
                 final imageUrl =
                     'https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/other/official-artwork/$itemId.png';
 
                 return Card(
                   color: Colors.grey.shade900,
+                  clipBehavior:
+                      Clip.antiAlias, // מוודא שהפס התחתון לא חורג מפינות הקלף
                   shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(12),
                     side: BorderSide(
@@ -66,40 +74,71 @@ class BinderScreen extends StatelessWidget {
                   child: Stack(
                     alignment: Alignment.center,
                     children: [
-                      ColorFiltered(
-                        colorFilter: isUnlocked
-                            ? const ColorFilter.mode(
-                                Colors.transparent,
-                                BlendMode.multiply,
-                              )
-                            : const ColorFilter.mode(
-                                Colors.black,
-                                BlendMode.srcIn,
-                              ),
-                        child: Image.network(
-                          imageUrl,
-                          fit: BoxFit.contain,
-                          // במקרה שאין תמונה (כמו באלבום מארוול הזמני), נציג אייקון
-                          errorBuilder: (context, error, stackTrace) => Icon(
-                            Icons.star_rounded,
-                            color: isUnlocked
-                                ? Colors.amber
-                                : Colors.grey.shade800,
-                            size: 50,
+                      // התמונה של הפוקימון
+                      Positioned(
+                        top: 4,
+                        bottom: 35, // משאיר מקום לפס הטקסט למטה
+                        child: ColorFiltered(
+                          colorFilter: isUnlocked
+                              ? const ColorFilter.mode(
+                                  Colors.transparent,
+                                  BlendMode.multiply,
+                                )
+                              : const ColorFilter.mode(
+                                  Colors.black,
+                                  BlendMode.srcIn,
+                                ),
+                          child: Image.network(
+                            imageUrl,
+                            fit: BoxFit.contain,
+                            errorBuilder: (context, error, stackTrace) => Icon(
+                              Icons.catching_pokemon,
+                              color: isUnlocked
+                                  ? Colors.amber
+                                  : Colors.grey.shade800,
+                              size: 40,
+                            ),
                           ),
                         ),
                       ),
+
+                      // פס המידע בתחתית הקלף (שם ומספר)
                       Positioned(
-                        bottom: 4,
-                        right: 6,
-                        child: Text(
-                          '#$itemId',
-                          style: TextStyle(
-                            fontSize: 12,
-                            fontWeight: FontWeight.bold,
-                            color: isUnlocked
-                                ? Colors.white
-                                : Colors.grey.shade600,
+                        bottom: 0,
+                        left: 0,
+                        right: 0,
+                        child: Container(
+                          color: Colors.black.withOpacity(0.8),
+                          padding: const EdgeInsets.symmetric(
+                            vertical: 4,
+                            horizontal: 2,
+                          ),
+                          child: Column(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Text(
+                                pokemonName,
+                                style: TextStyle(
+                                  fontSize: 12,
+                                  fontWeight: FontWeight.bold,
+                                  color: isUnlocked
+                                      ? Colors.white
+                                      : Colors.grey.shade500,
+                                ),
+                                textAlign: TextAlign.center,
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                              Text(
+                                '#$itemId',
+                                style: TextStyle(
+                                  fontSize: 10,
+                                  color: isUnlocked
+                                      ? Colors.amber
+                                      : Colors.grey.shade700,
+                                ),
+                                textAlign: TextAlign.center,
+                              ),
+                            ],
                           ),
                         ),
                       ),
@@ -110,7 +149,6 @@ class BinderScreen extends StatelessWidget {
             );
           }).toList(),
         ),
-
         bottomNavigationBar: BottomNavigationBar(
           unselectedItemColor: Colors.grey,
           selectedItemColor: Colors.grey,

@@ -2,6 +2,7 @@ import 'dart:math';
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import '../models/task_item.dart';
+import '../constants/pokemon_constants.dart';
 
 class BinderConfig {
   final int level;
@@ -117,16 +118,49 @@ class GamificationService extends ChangeNotifier {
   final List<BinderConfig> binderConfigs = [
     BinderConfig(
       level: 1,
-      theme: 'Pokemon Gen 1',
-      itemIds: List.generate(151, (index) => index + 1), // מזהים 1 עד 151
+      theme: 'Gen 1 (Kanto)',
+      itemIds: List.generate(151, (index) => index + 1),
     ),
     BinderConfig(
       level: 2,
-      theme: 'Marvel MCU',
-      // זמני: עד שנמצא API למארוול, נגדיר כאן מזהים דמיוניים מ-1000 עד 1050
-      itemIds: List.generate(50, (index) => index + 1000),
+      theme: 'Gen 2 (Johto)',
+      itemIds: List.generate(100, (index) => index + 152),
     ),
-    // קל מאוד להוסיף כאן את Dragon Ball Z בעתיד!
+    BinderConfig(
+      level: 3,
+      theme: 'Gen 3 (Hoenn)',
+      itemIds: List.generate(135, (index) => index + 252),
+    ),
+    BinderConfig(
+      level: 4,
+      theme: 'Gen 4 (Sinnoh)',
+      itemIds: List.generate(107, (index) => index + 387),
+    ),
+    BinderConfig(
+      level: 5,
+      theme: 'Gen 5 (Unova)',
+      itemIds: List.generate(156, (index) => index + 494),
+    ),
+    BinderConfig(
+      level: 6,
+      theme: 'Gen 6 (Kalos)',
+      itemIds: List.generate(72, (index) => index + 650),
+    ),
+    BinderConfig(
+      level: 7,
+      theme: 'Gen 7 (Alola)',
+      itemIds: List.generate(88, (index) => index + 722),
+    ),
+    BinderConfig(
+      level: 8,
+      theme: 'Gen 8 (Galar)',
+      itemIds: List.generate(96, (index) => index + 810),
+    ),
+    BinderConfig(
+      level: 9,
+      theme: 'Gen 9 (Paldea)',
+      itemIds: List.generate(120, (index) => index + 906),
+    ),
   ];
 
   /// Triggered when a previously-completed task is unchecked. Reverses
@@ -175,73 +209,6 @@ class GamificationService extends ChangeNotifier {
   }
 
   String getItemName(int id) {
-    const Map<int, String> pokemonNames = {
-      1: 'Bulbasaur',
-      2: 'Ivysaur',
-      3: 'Venusaur',
-      4: 'Charmander',
-      5: 'Charmeleon',
-      6: 'Charizard',
-      7: 'Squirtle',
-      8: 'Wartortle',
-      9: 'Blastoise',
-      10: 'Caterpie',
-      11: 'Metapod',
-      12: 'Butterfree',
-      13: 'Weedle',
-      14: 'Kakuna',
-      15: 'Beedrill',
-      16: 'Pidgey',
-      17: 'Pidgeotto',
-      18: 'Pidgeot',
-      19: 'Rattata',
-      20: 'Raticate',
-      21: 'Spearow',
-      22: 'Fearow',
-      23: 'Ekans',
-      24: 'Arbok',
-      25: 'Pikachu',
-      26: 'Raichu',
-      27: 'Sandshrew',
-      28: 'Sandslash',
-      29: 'Nidoran♀',
-      30: 'Nidorina',
-      31: 'Nidoqueen',
-      32: 'Nidoran♂',
-      33: 'Nidorino',
-      34: 'Nidoking',
-      35: 'Clefairy',
-      36: 'Clefable',
-      37: 'Vulpix',
-      38: 'Ninetales',
-      39: 'Jigglypuff',
-      40: 'Wigglytuff',
-      41: 'Zubat',
-      42: 'Golbat',
-      43: 'Oddish',
-      44: 'Gloom',
-      45: 'Vileplume',
-      46: 'Paras',
-      47: 'Parasect',
-      48: 'Venonat',
-      49: 'Venomoth',
-      50: 'Diglett',
-      51: 'Dugtrio',
-      52: 'Meowth',
-      53: 'Persian',
-      54: 'Psyduck',
-      55: 'Golduck',
-      56: 'Mankey',
-      57: 'Primeape',
-      58: 'Growlithe',
-      59: 'Arcanine',
-      60: 'Poliwag',
-      61: 'Poliwhirl',
-      62: 'Poliwrath',
-      63: 'Abra',
-      // ניתן להוסיף כאן עוד מזהים ושמות לפי רצונך
-    };
-
     return pokemonNames[id] ?? 'Pokemon #$id';
   }
 
