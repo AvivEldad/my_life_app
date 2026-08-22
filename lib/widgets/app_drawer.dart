@@ -5,6 +5,7 @@ import '../services/gamification_service.dart';
 import '../screens/binder_screen.dart';
 import '../screens/categories_page.dart';
 import '../screens/prizes_page.dart';
+import '../screens/settings_page.dart';
 
 class AppDrawer extends StatelessWidget {
   const AppDrawer({super.key});
@@ -186,9 +187,10 @@ class AppDrawer extends StatelessWidget {
               leading: const Icon(Icons.settings),
               title: const Text('הגדרות'),
               onTap: () {
-                Navigator.pop(context);
-                ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(content: Text('מסך הגדרות ייבנה בקרוב...')),
+                Navigator.pop(context); // סגירת התפריט הצדדי
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(builder: (context) => const SettingsPage()),
                 );
               },
             ),

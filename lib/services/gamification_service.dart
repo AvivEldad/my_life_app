@@ -26,6 +26,8 @@ class GamificationService extends ChangeNotifier {
   int currentLevel = 1;
   List<int> unlockedPokemons = [];
   int currentBinder = 1;
+  int totalCoinsSpent = 0;
+  int totalXpEarned = 0;
 
   // The constructor runs automatically when the service is initialized
   GamificationService() {
@@ -45,6 +47,10 @@ class GamificationService extends ChangeNotifier {
         unlockedPokemons = List<int>.from(data['unlockedPokemons'] ?? []);
         currentBinder = data['currentBinder'] ?? 1;
 
+        // טעינת הסטטיסטיקות החדשות (אם הן לא קיימות, ניקח את ה-XP הנוכחי כברירת מחדל)
+        totalCoinsSpent = data['totalCoinsSpent'] ?? 0;
+        totalXpEarned = data['totalXpEarned'] ?? currentXp;
+
         notifyListeners();
       }
     } catch (e) {
@@ -52,7 +58,6 @@ class GamificationService extends ChangeNotifier {
     }
   }
 
-  /// Pushes the current state to Firebase
   Future<void> _saveData() async {
     try {
       await _db.collection('gamification').doc('user_stats').set({
@@ -62,6 +67,10 @@ class GamificationService extends ChangeNotifier {
         'currentLevel': currentLevel,
         'unlockedPokemons': unlockedPokemons,
         'currentBinder': currentBinder,
+
+        // שמירת הסטטיסטיקות החדשות
+        'totalCoinsSpent': totalCoinsSpent,
+        'totalXpEarned': totalXpEarned,
       });
     } catch (e) {
       print('Error saving gamification data: $e');
@@ -71,6 +80,7 @@ class GamificationService extends ChangeNotifier {
   Future<bool> spendCoins(int amount) async {
     if (currentCoins >= amount) {
       currentCoins -= amount;
+      totalCoinsSpent += amount;
       await _saveData();
       notifyListeners();
       return true;
@@ -86,6 +96,7 @@ class GamificationService extends ChangeNotifier {
 
     currentXp += earnedXp;
     currentCoins += earnedCoins;
+    totalXpEarned += earnedXp;
 
     int? pulledPokemonId;
     bool leveledUp = false;
@@ -192,7 +203,8 @@ class GamificationService extends ChangeNotifier {
 
     currentXp -= xpToRemove;
     if (currentXp < 0) currentXp = 0;
-
+    totalXpEarned -= xpToRemove;
+    if (totalXpEarned < 0) totalXpEarned = 0;
     currentCoins -= coinsToRemove;
     if (currentCoins < 0) currentCoins = 0;
 
