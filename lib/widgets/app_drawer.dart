@@ -177,6 +177,20 @@ class AppDrawer extends StatelessWidget {
                       );
                     },
                   ),
+                  ListTile(
+                    //TODO: Change icon
+                    leading: const Icon(Icons.book),
+                    title: const Text('רעיונות'),
+                    onTap: () {
+                      Navigator.pop(context);
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (context) => const BinderScreen(),
+                        ),
+                      );
+                    },
+                  ),
                 ],
               ),
             ),
