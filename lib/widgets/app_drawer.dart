@@ -6,6 +6,7 @@ import '../screens/binder_screen.dart';
 import '../screens/categories_page.dart';
 import '../screens/prizes_page.dart';
 import '../screens/settings_page.dart';
+import '../screens/ideas_page.dart';
 
 class AppDrawer extends StatelessWidget {
   const AppDrawer({super.key});
@@ -178,15 +179,14 @@ class AppDrawer extends StatelessWidget {
                     },
                   ),
                   ListTile(
-                    //TODO: Change icon
-                    leading: const Icon(Icons.book),
+                    leading: const Icon(Icons.lightbulb),
                     title: const Text('רעיונות'),
                     onTap: () {
                       Navigator.pop(context);
                       Navigator.push(
                         context,
                         MaterialPageRoute(
-                          builder: (context) => const BinderScreen(),
+                          builder: (context) => const IdeasPage(),
                         ),
                       );
                     },

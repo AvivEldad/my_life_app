@@ -15,8 +15,7 @@ import 'services/mantra_service.dart';
 import 'services/daily_task_service.dart';
 import 'services/gamification_service.dart';
 import 'services/category_service.dart';
-
-import 'screens/test_screen.dart';
+import 'services/idea_service.dart';
 
 import 'screens/main_layout.dart';
 
@@ -56,6 +55,7 @@ class TaskApp extends StatelessWidget {
         Provider<MantraService>(create: (_) => MantraService()),
         Provider<DailyTaskService>(create: (_) => DailyTaskService()),
         Provider<CategoryService>(create: (_) => CategoryService()),
+        Provider(create: (_) => IdeaService()),
       ],
       child: MaterialApp(
         debugShowCheckedModeBanner: false,
