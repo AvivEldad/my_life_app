@@ -1,12 +1,48 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import '../models/task_item.dart';
+import 'notification_service.dart';
 
 class TaskService {
   final FirebaseFirestore _db = FirebaseFirestore.instance;
 
+  /// סורק את המשימות הפתוחות ומעדכן את כמות המשימות הדחופות בהתראות
+  Future<void> updateDueTasksNotification() async {
+    try {
+      // משיכת כל המשימות שעדיין לא הושלמו ממסד הנתונים
+      final snapshot = await _db
+          .collection('tasks')
+          .where('isCompleted', isEqualTo: false)
+          .get();
+
+      int dueTasksCount = 0;
+      final now = DateTime.now();
+
+      // נגדיר "קרוב" כמשימה שפגת תוקף או שתאריך היעד שלה הוא עד 48 שעות מעכשיו
+      final inTwoDays = now.add(const Duration(days: 2));
+
+      for (var doc in snapshot.docs) {
+        final task = TaskItem.fromMap(doc.id, doc.data());
+
+        // אם יש תאריך יעד והוא לפני "עוד יומיים" (כולל משימות שכבר באיחור)
+        if (task.dueDate != null && task.dueDate!.isBefore(inTwoDays)) {
+          dueTasksCount++;
+        }
+      }
+
+      // מעדכן את ההתראה עם המספר האמיתי
+      await NotificationService().refreshDueDateReminder(dueTasksCount);
+    } catch (e) {
+      print('Error updating due tasks notification: $e');
+    }
+  }
+
   Future<bool> saveTask(TaskItem task) async {
     try {
       await _db.collection('tasks').doc(task.id).set(task.toMap());
+
+      // עדכון התראת תאריכי היעד לאחר שמירת המשימה!
+      await updateDueTasksNotification();
+
       return true;
     } catch (e) {
       print('Error saving task: $e');
@@ -52,6 +88,10 @@ class TaskService {
   Future<bool> deleteTask(String taskId) async {
     try {
       await _db.collection('tasks').doc(taskId).delete();
+
+      // עדכון התראת תאריכי היעד לאחר מחיקת המשימה!
+      await updateDueTasksNotification();
+
       return true;
     } catch (e) {
       print('Error deleting task: $e');

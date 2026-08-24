@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'statistics_page.dart';
 import '../widgets/app_drawer.dart';
 import 'main_layout.dart';
+import '../screens/notifications_settings_page.dart';
 
 class SettingsPage extends StatelessWidget {
   const SettingsPage({super.key});
@@ -26,6 +27,20 @@ class SettingsPage extends StatelessWidget {
                   context,
                   MaterialPageRoute(
                     builder: (context) => const StatisticsPage(),
+                  ),
+                );
+              },
+            ),
+            ListTile(
+              leading: const Icon(Icons.access_alarm, color: Colors.amber),
+              title: const Text('התראות', style: TextStyle(fontSize: 18)),
+              subtitle: const Text('עדכן או שנה התראות'),
+              trailing: const Icon(Icons.arrow_forward_ios, size: 16),
+              onTap: () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (context) => const NotificationsSettingsPage(),
                   ),
                 );
               },

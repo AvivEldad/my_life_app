@@ -195,6 +195,7 @@ class TaskCard extends StatelessWidget {
                       ),
 
                       // --- שורה 2: רשימת תתי-המשימות ---
+                      // --- שורה 2: רשימת תתי-המשימות (עד 2 בלבד במסך הבית) ---
                       if (task.subTasks.isNotEmpty)
                         Padding(
                           padding: const EdgeInsets.only(
@@ -204,40 +205,60 @@ class TaskCard extends StatelessWidget {
                           ),
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
-                            children: task.subTasks.map((subTask) {
-                              return Row(
-                                children: [
-                                  SizedBox(
-                                    width: 24,
-                                    height: 24,
-                                    child: Checkbox(
-                                      value: subTask.isCompleted,
-                                      onChanged: (bool? val) {
-                                        subTask.isCompleted = val ?? false;
-                                        taskService.saveTask(task);
-                                      },
-                                      activeColor: Colors.blueAccent,
-                                      checkColor: Colors.white,
-                                    ),
-                                  ),
-                                  const SizedBox(width: 8),
-                                  Expanded(
-                                    child: Text(
-                                      subTask.title,
-                                      style: TextStyle(
-                                        fontSize: 14,
-                                        color: subTask.isCompleted
-                                            ? Colors.grey
-                                            : Colors.white70,
-                                        decoration: subTask.isCompleted
-                                            ? TextDecoration.lineThrough
-                                            : null,
+                            children: [
+                              // מציג אך ורק את 2 תתי-המשימות הראשונות
+                              ...task.subTasks.take(2).map((subTask) {
+                                return Row(
+                                  children: [
+                                    SizedBox(
+                                      width: 24,
+                                      height: 24,
+                                      child: Checkbox(
+                                        value: subTask.isCompleted,
+                                        onChanged: (bool? val) {
+                                          subTask.isCompleted = val ?? false;
+                                          taskService.saveTask(task);
+                                        },
+                                        activeColor: Colors.blueAccent,
+                                        checkColor: Colors.white,
                                       ),
                                     ),
+                                    const SizedBox(width: 8),
+                                    Expanded(
+                                      child: Text(
+                                        subTask.title,
+                                        style: TextStyle(
+                                          fontSize: 14,
+                                          color: subTask.isCompleted
+                                              ? Colors.grey
+                                              : Colors.white70,
+                                          decoration: subTask.isCompleted
+                                              ? TextDecoration.lineThrough
+                                              : null,
+                                        ),
+                                      ),
+                                    ),
+                                  ],
+                                );
+                              }).toList(),
+
+                              // אם יש יותר מ-2 תתי-משימות, נציג חיווי קטן
+                              if (task.subTasks.length > 2)
+                                Padding(
+                                  padding: const EdgeInsets.only(
+                                    top: 4.0,
+                                    right: 32.0,
                                   ),
-                                ],
-                              );
-                            }).toList(),
+                                  child: Text(
+                                    'ועוד ${task.subTasks.length - 2} תתי-משימות נוספות (צפה בעריכה)...',
+                                    style: TextStyle(
+                                      fontSize: 12,
+                                      color: Colors.grey.shade500,
+                                      fontStyle: FontStyle.italic,
+                                    ),
+                                  ),
+                                ),
+                            ],
                           ),
                         ),
                     ],

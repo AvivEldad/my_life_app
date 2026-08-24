@@ -5,7 +5,7 @@ import 'package:provider/provider.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'firebase_options.dart';
 import 'package:firebase_auth/firebase_auth.dart';
-
+import 'services/notification_service.dart';
 import 'services/task_service.dart';
 import 'services/project_service.dart';
 import 'services/ritual_service.dart';
@@ -33,6 +33,8 @@ void main() async {
       print("Unknown error during anonymous sign-in: ${e.message}");
     }
   }
+  final notificationService = NotificationService();
+  await notificationService.init();
   runApp(const TaskApp());
 }
 

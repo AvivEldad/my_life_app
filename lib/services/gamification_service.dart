@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import '../models/task_item.dart';
 import '../constants/pokemon_constants.dart';
+import 'notification_service.dart';
 
 class BinderConfig {
   final int level;
@@ -72,6 +73,8 @@ class GamificationService extends ChangeNotifier {
         'totalCoinsSpent': totalCoinsSpent,
         'totalXpEarned': totalXpEarned,
       });
+
+      await NotificationService().refreshCoinReminder(currentCoins);
     } catch (e) {
       print('Error saving gamification data: $e');
     }
