@@ -4,6 +4,7 @@ import 'package:timezone/data/latest_all.dart' as tz;
 import 'package:timezone/timezone.dart' as tz;
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:flutter_timezone/flutter_timezone.dart';
+import 'dart:math';
 
 class NotificationService {
   // יצירת מופע יחיד (Singleton) כדי שנוכל לגשת אליו מכל מקום באפליקציה
@@ -223,7 +224,6 @@ class NotificationService {
       await cancelNotification(3);
       return;
     }
-
     final hour = prefs.getInt('dueReminderHour') ?? 17;
     final minute = prefs.getInt('dueReminderMinute') ?? 0;
 
@@ -237,6 +237,47 @@ class NotificationService {
       body: bodyText,
       hour: hour,
       minute: minute,
+    );
+  }
+
+  Future<void> scheduleRandomMantras(List<String> mantrasTexts) async {
+    // אם אין מנטרות, נבטל התראות קיימות
+    if (mantrasTexts.isEmpty) {
+      await cancelNotification(101);
+      await cancelNotification(102);
+      return;
+    }
+
+    final random = Random();
+
+    // נחלק את היום לפעמיים כדי שלא יקפצו שתיהן באותה שעה:
+    // התראה 1: בין 08:00 ל-14:00
+    final hour1 = 8 + random.nextInt(7);
+    final minute1 = random.nextInt(60);
+
+    // התראה 2: בין 15:00 ל-20:00 (עד 20:59 שזה מתאים לדרישה של 21:00)
+    final hour2 = 15 + random.nextInt(6);
+    final minute2 = random.nextInt(60);
+
+    // נגריל 2 מנטרות
+    final text1 = mantrasTexts[random.nextInt(mantrasTexts.length)];
+    final text2 = mantrasTexts[random.nextInt(mantrasTexts.length)];
+
+    // נשתמש בפונקציה הקיימת שלנו כדי לתזמן אותן
+    await scheduleDailyNotification(
+      id: 101, // מזהה קבוע למנטרה הראשונה
+      title: 'מוטיבציה בשבילך 🌟',
+      body: text1,
+      hour: hour1,
+      minute: minute1,
+    );
+
+    await scheduleDailyNotification(
+      id: 102, // מזהה קבוע למנטרה השנייה
+      title: 'רגע של השראה ✨',
+      body: text2,
+      hour: hour2,
+      minute: minute2,
     );
   }
 }

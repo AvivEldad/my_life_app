@@ -14,7 +14,6 @@ import 'services/strike_service.dart';
 import 'services/mantra_service.dart';
 import 'services/daily_task_service.dart';
 import 'services/gamification_service.dart';
-import 'services/category_service.dart';
 import 'services/idea_service.dart';
 
 import 'screens/main_layout.dart';
@@ -50,6 +49,7 @@ class TaskApp extends StatelessWidget {
         ),
         Provider<ProjectService>(create: (_) => ProjectService()),
         Provider<RitualService>(create: (_) => RitualService()),
+        Provider(create: (_) => MantraService()),
         Provider<PrizeService>(create: (_) => PrizeService()),
         Provider<StrikeService>(create: (_) => StrikeService()),
         Provider<MantraService>(create: (_) => MantraService()),

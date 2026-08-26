@@ -1,42 +1,42 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import '../models/mantra_item.dart';
+import 'notification_service.dart';
 
 class MantraService {
   final FirebaseFirestore _db = FirebaseFirestore.instance;
 
-  Future<bool> saveMantra(MantraItem mantra) async {
+  Future<void> saveMantra(MantraItem mantra) async {
     try {
       await _db.collection('mantras').doc(mantra.id).set(mantra.toMap());
-      return true;
+      await _updateNotifications();
     } catch (e) {
       print('Error saving mantra: $e');
-      throw Exception('error saving mantra');
+    }
+  }
+
+  Future<void> deleteMantra(String id) async {
+    try {
+      await _db.collection('mantras').doc(id).delete();
+      await _updateNotifications();
+    } catch (e) {
+      print('Error deleting mantra: $e');
     }
   }
 
   Stream<List<MantraItem>> streamMantras() {
-    try {
-      return _db
-          .collection('mantras')
-          .snapshots()
-          .map(
-            (snapshot) => snapshot.docs
-                .map((doc) => MantraItem.fromMap(doc.id, doc.data()))
-                .toList(),
-          );
-    } catch (e) {
-      print('Error streaming mantras: $e');
-      return const Stream.empty();
-    }
+    return _db.collection('mantras').snapshots().map((snapshot) {
+      return snapshot.docs
+          .map((doc) => MantraItem.fromMap(doc.id, doc.data()))
+          .toList();
+    });
   }
 
-  Future<bool> deleteMantra(String mantraId) async {
-    try {
-      await _db.collection('mantras').doc(mantraId).delete();
-      return true;
-    } catch (e) {
-      print('Error deleting mantra: $e');
-      throw Exception('mantra deletion faild');
-    }
+  // פונקציית עזר ששולפת את כל המנטרות כדי לעדכן את ההתראות ברקע
+  Future<void> _updateNotifications() async {
+    final snapshot = await _db.collection('mantras').get();
+    final texts = snapshot.docs
+        .map((doc) => doc.data()['text'] as String)
+        .toList();
+    await NotificationService().scheduleRandomMantras(texts);
   }
 }

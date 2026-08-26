@@ -7,6 +7,7 @@ import '../screens/categories_page.dart';
 import '../screens/prizes_page.dart';
 import '../screens/settings_page.dart';
 import '../screens/ideas_page.dart';
+import '../screens/mantras_page.dart';
 
 class AppDrawer extends StatelessWidget {
   const AppDrawer({super.key});
@@ -145,11 +146,16 @@ class AppDrawer extends StatelessWidget {
                     },
                   ),
                   ListTile(
-                    leading: const Icon(Icons.auto_awesome),
+                    leading: const Icon(Icons.bolt),
                     title: const Text('מנטרות'),
                     onTap: () {
                       Navigator.pop(context);
-                      // TODO: ניווט למסך מנטרות
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (context) => const MantrasPage(),
+                        ),
+                      );
                     },
                   ),
                   ListTile(
