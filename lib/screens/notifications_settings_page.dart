@@ -6,6 +6,8 @@ import '../services/gamification_service.dart';
 import '../widgets/app_drawer.dart';
 import 'main_layout.dart';
 
+enum _ReminderType { morning, coin, due }
+
 class NotificationsSettingsPage extends StatefulWidget {
   const NotificationsSettingsPage({super.key});
 
@@ -33,6 +35,7 @@ class _NotificationsSettingsPageState extends State<NotificationsSettingsPage> {
   // טעינת ההגדרות השמורות מהמכשיר
   Future<void> _loadPreferences() async {
     final prefs = await SharedPreferences.getInstance();
+    if (!mounted) return;
     setState(() {
       _isMorningReminderEnabled =
           prefs.getBool('isMorningReminderEnabled') ?? false;
@@ -55,11 +58,30 @@ class _NotificationsSettingsPageState extends State<NotificationsSettingsPage> {
     });
   }
 
-  // שמירת שעות הפעילות ותזמון ההתראות
-  Future<void> _selectTime(BuildContext context, bool isMorning) async {
-    final TimeOfDay initialTime = isMorning
-        ? _morningReminderTime
-        : _coinReminderTime;
+  /// מבקש הרשאות התראות (רגילות + מדויקות) לפני הפעלת כל תזכורת.
+  /// חשוב: בלי זה, תזכורות מתוזמנות עלולות להיכשל בשקט על מכשירים
+  /// שמעולם לא ביקשו את הרשאת ה-Exact Alarms.
+  Future<void> _ensurePermissions() async {
+    final granted = await NotificationService().requestPermissions();
+    if (!granted && mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text(
+            'כדי שהתזכורות יעבדו כמו שצריך, יש לאשר הרשאות התראות '
+            'ו"התראות מדויקות" בהגדרות המכשיר.',
+          ),
+        ),
+      );
+    }
+  }
+
+  // בחירת שעה עבור כל אחת משלושת התזכורות, כולל שמירה ותזמון מחדש
+  Future<void> _selectTime(BuildContext context, _ReminderType type) async {
+    final TimeOfDay initialTime = switch (type) {
+      _ReminderType.morning => _morningReminderTime,
+      _ReminderType.coin => _coinReminderTime,
+      _ReminderType.due => _dueReminderTime,
+    };
 
     final TimeOfDay? pickedTime = await showTimePicker(
       context: context,
@@ -68,31 +90,44 @@ class _NotificationsSettingsPageState extends State<NotificationsSettingsPage> {
           Directionality(textDirection: TextDirection.rtl, child: child!),
     );
 
-    if (pickedTime != null) {
-      final prefs = await SharedPreferences.getInstance();
-      setState(() {
-        if (isMorning) {
+    if (pickedTime == null || !mounted) return;
+
+    final prefs = await SharedPreferences.getInstance();
+    if (!mounted) return;
+
+    setState(() {
+      switch (type) {
+        case _ReminderType.morning:
           _morningReminderTime = pickedTime;
           prefs.setInt('morningReminderHour', pickedTime.hour);
           prefs.setInt('morningReminderMinute', pickedTime.minute);
           if (_isMorningReminderEnabled) _scheduleMorningReminder();
-        } else {
+          break;
+        case _ReminderType.coin:
           _coinReminderTime = pickedTime;
           prefs.setInt('coinReminderHour', pickedTime.hour);
           prefs.setInt('coinReminderMinute', pickedTime.minute);
           if (_isCoinReminderEnabled) _refreshCoinReminderViaService();
-        }
-      });
-    }
+          break;
+        case _ReminderType.due:
+          _dueReminderTime = pickedTime;
+          prefs.setInt('dueReminderHour', pickedTime.hour);
+          prefs.setInt('dueReminderMinute', pickedTime.minute);
+          if (_isDueReminderEnabled) _refreshDueReminderViaService();
+          break;
+      }
+    });
   }
 
   // הדלקה/כיבוי של התראת הבוקר
   Future<void> _toggleMorningReminder(bool value) async {
     final prefs = await SharedPreferences.getInstance();
+    if (!mounted) return;
     setState(() => _isMorningReminderEnabled = value);
     await prefs.setBool('isMorningReminderEnabled', value);
 
     if (value) {
+      await _ensurePermissions();
       _scheduleMorningReminder();
     } else {
       await NotificationService().cancelNotification(1);
@@ -102,10 +137,12 @@ class _NotificationsSettingsPageState extends State<NotificationsSettingsPage> {
   // הדלקה/כיבוי של התראת המטבעות
   Future<void> _toggleCoinReminder(bool value) async {
     final prefs = await SharedPreferences.getInstance();
+    if (!mounted) return;
     setState(() => _isCoinReminderEnabled = value);
     await prefs.setBool('isCoinReminderEnabled', value);
 
     if (value) {
+      await _ensurePermissions();
       _refreshCoinReminderViaService();
     } else {
       await NotificationService().cancelNotification(2);
@@ -114,10 +151,12 @@ class _NotificationsSettingsPageState extends State<NotificationsSettingsPage> {
 
   Future<void> _toggleDueReminder(bool value) async {
     final prefs = await SharedPreferences.getInstance();
+    if (!mounted) return;
     setState(() => _isDueReminderEnabled = value);
     await prefs.setBool('isDueReminderEnabled', value);
 
     if (value) {
+      await _ensurePermissions();
       _refreshDueReminderViaService();
     } else {
       await NotificationService().cancelNotification(3);
@@ -133,7 +172,7 @@ class _NotificationsSettingsPageState extends State<NotificationsSettingsPage> {
     NotificationService().scheduleDailyNotification(
       id: 1,
       title: 'בוקר טוב! ☀️',
-      body: 'אל תשכח לבדוק את המשימות הפתוחות שלך להיום.',
+      body: 'אל תשכח לבדוק את המשימות הפתוחות שלך!.',
       hour: _morningReminderTime.hour,
       minute: _morningReminderTime.minute,
     );
@@ -180,7 +219,7 @@ class _NotificationsSettingsPageState extends State<NotificationsSettingsPage> {
                 ),
               ),
             ),
-            const SizedBox(height: 16), // ריווח קטן לפני הכרטיסיות
+            const SizedBox(height: 16),
             // --- תזכורת בוקר ---
             Card(
               color: Colors.grey.shade900,
@@ -207,19 +246,20 @@ class _NotificationsSettingsPageState extends State<NotificationsSettingsPage> {
                           fontWeight: FontWeight.bold,
                         ),
                       ),
-                      onTap: () => _selectTime(context, true),
+                      onTap: () => _selectTime(context, _ReminderType.morning),
                     ),
                 ],
               ),
             ),
             const SizedBox(height: 16),
+            // --- תזכורת תאריכי יעד ---
             Card(
               color: Colors.grey.shade900,
               child: Column(
                 children: [
                   SwitchListTile(
                     activeColor: Colors.amber,
-                    title: const Text('תזכורת תאריכי יעד (Due Dates)'),
+                    title: const Text('משימות עם תאריך יעד'),
                     subtitle: const Text(
                       'קבל עדכון על משימות שחייבים לסיים בקרוב',
                     ),
@@ -240,26 +280,12 @@ class _NotificationsSettingsPageState extends State<NotificationsSettingsPage> {
                           fontWeight: FontWeight.bold,
                         ),
                       ),
-                      onTap: () async {
-                        final picked = await showTimePicker(
-                          context: context,
-                          initialTime: _dueReminderTime,
-                        );
-                        if (picked != null) {
-                          final prefs = await SharedPreferences.getInstance();
-                          setState(() {
-                            _dueReminderTime = picked;
-                            prefs.setInt('dueReminderHour', picked.hour);
-                            prefs.setInt('dueReminderMinute', picked.minute);
-                            if (_isDueReminderEnabled)
-                              _refreshDueReminderViaService();
-                          });
-                        }
-                      },
+                      onTap: () => _selectTime(context, _ReminderType.due),
                     ),
                 ],
               ),
             ),
+            const SizedBox(height: 16),
             // --- תזכורת מטבעות דינמית ---
             Card(
               color: Colors.grey.shade900,
@@ -288,7 +314,7 @@ class _NotificationsSettingsPageState extends State<NotificationsSettingsPage> {
                           fontWeight: FontWeight.bold,
                         ),
                       ),
-                      onTap: () => _selectTime(context, false),
+                      onTap: () => _selectTime(context, _ReminderType.coin),
                     ),
                 ],
               ),

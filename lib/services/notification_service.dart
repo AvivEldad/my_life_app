@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:timezone/data/latest_all.dart' as tz;
 import 'package:timezone/timezone.dart' as tz;
@@ -13,17 +14,27 @@ class NotificationService {
   final FlutterLocalNotificationsPlugin _notificationsPlugin =
       FlutterLocalNotificationsPlugin();
 
+  bool _initialized = false;
+
   /// אתחול המערכת (נקרא לזה כשהאפליקציה עולה)
   Future<void> init() async {
+    if (_initialized) return; // מונע אתחול כפול אם init() נקרא יותר מפעם אחת
+
     // אתחול מסד הנתונים של אזורי הזמן
     tz.initializeTimeZones();
 
-    // קריאת אזור הזמן המקומי של המכשיר והגדרתו כברירת המחדל (מעודכן לגרסה החדשה)
-    final TimezoneInfo tzInfo = await FlutterTimezone.getLocalTimezone();
-    final String timeZoneName = tzInfo.identifier;
-    tz.setLocalLocation(tz.getLocation(timeZoneName));
+    // קריאת אזור הזמן המקומי של המכשיר והגדרתו כברירת המחדל
+    try {
+      final TimezoneInfo tzInfo = await FlutterTimezone.getLocalTimezone();
+      tz.setLocalLocation(tz.getLocation(tzInfo.identifier));
+    } catch (e) {
+      // אם קריאת אזור הזמן נכשלת, נופלים חזרה ל-UTC במקום לקרוס
+      debugPrint(
+        'NotificationService: failed to read local timezone, falling back to UTC: $e',
+      );
+      tz.setLocalLocation(tz.getLocation('UTC'));
+    }
 
-    // הגדרות לאנדרואיד
     const AndroidInitializationSettings androidSettings =
         AndroidInitializationSettings('@mipmap/ic_launcher');
 
@@ -32,21 +43,51 @@ class NotificationService {
     );
 
     await _notificationsPlugin.initialize(initSettings);
+    _initialized = true;
   }
 
-  /// בקשת הרשאה מהמשתמש באנדרואיד 13 ומעלה
-  Future<void> requestPermissions() async {
-    final AndroidFlutterLocalNotificationsPlugin? androidImplementation =
-        _notificationsPlugin
-            .resolvePlatformSpecificImplementation<
-              AndroidFlutterLocalNotificationsPlugin
-            >();
+  AndroidFlutterLocalNotificationsPlugin? get _androidPlugin =>
+      _notificationsPlugin
+          .resolvePlatformSpecificImplementation<
+            AndroidFlutterLocalNotificationsPlugin
+          >();
 
-    await androidImplementation?.requestNotificationsPermission();
-    await androidImplementation?.requestExactAlarmsPermission();
+  /// בקשת הרשאה מהמשתמש באנדרואיד 13 ומעלה.
+  /// מחזירה true אם גם הרשאת ההתראות וגם הרשאת ההתראות המדויקות אושרו.
+  Future<bool> requestPermissions() async {
+    final androidImplementation = _androidPlugin;
+    if (androidImplementation == null) return false;
+
+    final bool notificationsGranted =
+        await androidImplementation.requestNotificationsPermission() ?? false;
+    final bool exactAlarmsGranted =
+        await androidImplementation.requestExactAlarmsPermission() ?? false;
+
+    if (!exactAlarmsGranted) {
+      debugPrint(
+        'NotificationService: exact alarm permission NOT granted — '
+        'scheduled reminders will fall back to inexact timing.',
+      );
+    }
+
+    return notificationsGranted && exactAlarmsGranted;
   }
 
-  /// פונקציה גמישה לתזמון התראה יומית קבועה
+  /// בודק בזמן אמת האם מותר לתזמן התראות מדויקות (Android 12+).
+  Future<bool> _canScheduleExact() async {
+    final androidImplementation = _androidPlugin;
+    if (androidImplementation == null) return false;
+    try {
+      return await androidImplementation.canScheduleExactNotifications() ??
+          false;
+    } catch (_) {
+      // ישן מדי כדי לתמוך בבדיקה הזו - נניח שמותר
+      return true;
+    }
+  }
+
+  /// פונקציה גמישה לתזמון התראה יומית קבועה.
+  /// אף פעם לא זורקת - אם התזמון נכשל, מתועד ב-log ולא מפיל את האפליקציה.
   Future<void> scheduleDailyNotification({
     required int id,
     required String title,
@@ -54,26 +95,46 @@ class NotificationService {
     required int hour,
     required int minute,
   }) async {
-    await _notificationsPlugin.zonedSchedule(
-      id,
-      title,
-      body,
-      _nextInstanceOfTime(hour, minute), // חישוב הזמן המדויק הבא
-      const NotificationDetails(
-        android: AndroidNotificationDetails(
-          'daily_reminders', // מזהה ערוץ (Channel ID)
-          'Daily Reminders', // שם ערוץ שיופיע בהגדרות המכשיר
-          channelDescription: 'Reminders for daily tasks and coins',
-          importance: Importance.max,
-          priority: Priority.high,
+    if (!_initialized) {
+      debugPrint(
+        'NotificationService: scheduleDailyNotification called before init() — initializing now.',
+      );
+      await init();
+    }
+
+    // אם אין הרשאת התראות מדויקות, נשתמש בתזמון לא-מדויק
+    // במקום לתת ל-zonedSchedule לזרוק חריגה שקטה שאף אחד לא תופס.
+    final bool exactAllowed = await _canScheduleExact();
+    final AndroidScheduleMode scheduleMode = exactAllowed
+        ? AndroidScheduleMode.exactAllowWhileIdle
+        : AndroidScheduleMode.inexactAllowWhileIdle;
+
+    try {
+      await _notificationsPlugin.zonedSchedule(
+        id,
+        title,
+        body,
+        _nextInstanceOfTime(hour, minute),
+        NotificationDetails(
+          android: AndroidNotificationDetails(
+            'daily_reminders', // מזהה ערוץ (Channel ID)
+            'Daily Reminders', // שם ערוץ שיופיע בהגדרות המכשיר
+            channelDescription: 'Reminders for daily tasks and coins',
+            importance: Importance.max,
+            priority: Priority.high,
+          ),
         ),
-      ),
-      androidScheduleMode: AndroidScheduleMode.exactAllowWhileIdle,
-      uiLocalNotificationDateInterpretation:
-          UILocalNotificationDateInterpretation.absoluteTime,
-      matchDateTimeComponents:
-          DateTimeComponents.time, // אומר למערכת לחזור על זה כל יום באותה שעה
-    );
+        androidScheduleMode: scheduleMode,
+        uiLocalNotificationDateInterpretation:
+            UILocalNotificationDateInterpretation.absoluteTime,
+        matchDateTimeComponents: DateTimeComponents.time,
+      );
+    } catch (e, st) {
+      debugPrint(
+        'NotificationService: failed to schedule notification id=$id: $e',
+      );
+      debugPrintStack(stackTrace: st);
+    }
   }
 
   /// פונקציית עזר שמחשבת מתי הפעם הבאה שהשעה הזו מתרחשת
@@ -105,21 +166,18 @@ class NotificationService {
     final prefs = await SharedPreferences.getInstance();
     final isEnabled = prefs.getBool('isCoinReminderEnabled') ?? false;
 
-    // אם ההתראה כבויה, נוודא שהיא מבוטלת ולא נמשיך
     if (!isEnabled) {
       await cancelNotification(2);
       return;
     }
 
-    // שליפת השעה שהמשתמש שמר (או ברירת מחדל 11:00)
     final hour = prefs.getInt('coinReminderHour') ?? 11;
     final minute = prefs.getInt('coinReminderMinute') ?? 0;
 
-    // תזמון מחדש עם הטקסט המעודכן
     await scheduleDailyNotification(
       id: 2, // מזהה התראת מטבעות
       title: 'סטטוס מטבעות 🪙',
-      body: 'יש לך כרגע $currentCoins מטבעות! כנס לראות איזה פרס אפשר לרכוש.',
+      body: 'יש לך כרגע $currentCoins מטבעות! כנס לראות איזה פרס אפשר לממש.',
       hour: hour,
       minute: minute,
     );
@@ -127,6 +185,10 @@ class NotificationService {
 
   /// פונקציה לשליחת התראה מיידית (מעולה לבדיקות)
   Future<void> showImmediateTestNotification() async {
+    if (!_initialized) {
+      await init();
+    }
+
     const AndroidNotificationDetails androidDetails =
         AndroidNotificationDetails(
           'test_channel', // מזהה ערוץ נפרד לבדיקות
@@ -140,12 +202,16 @@ class NotificationService {
       android: androidDetails,
     );
 
-    await _notificationsPlugin.show(
-      99, // מזהה ייחודי להתראת הבדיקה
-      'בדיקת מערכת 🚀',
-      'מעולה! מערכת ההתראות שלך עובדת בצורה מושלמת.',
-      platformDetails,
-    );
+    try {
+      await _notificationsPlugin.show(
+        99, // מזהה ייחודי להתראת הבדיקה
+        'בדיקת מערכת 🚀',
+        'מעולה! מערכת ההתראות שלך עובדת בצורה מושלמת.',
+        platformDetails,
+      );
+    } catch (e) {
+      debugPrint('NotificationService: failed to show test notification: $e');
+    }
   }
 
   /// פונקציה חכמה לרענון התראת תאריכי יעד
@@ -153,13 +219,11 @@ class NotificationService {
     final prefs = await SharedPreferences.getInstance();
     final isEnabled = prefs.getBool('isDueReminderEnabled') ?? false;
 
-    // אם ההתראה כבויה, מבטלים אותה (משתמשים במזהה 3)
     if (!isEnabled) {
       await cancelNotification(3);
       return;
     }
 
-    // שליפת השעה שהמשתמש שמר (או ברירת מחדל 17:00)
     final hour = prefs.getInt('dueReminderHour') ?? 17;
     final minute = prefs.getInt('dueReminderMinute') ?? 0;
 
@@ -167,7 +231,6 @@ class NotificationService {
         ? 'יש לך $dueTasksCount משימות עם תאריך יעד קרוב! כדאי להעיף מבט.'
         : 'אין לך משימות עם תאריכי יעד דחופים, אפשר להיות רגועים! ☕';
 
-    // תזמון מחדש עם הטקסט המעודכן
     await scheduleDailyNotification(
       id: 3, // מזהה ייחודי להתראת תאריכי יעד
       title: 'תאריכי יעד מתקרבים ⏰',
