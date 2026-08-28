@@ -95,6 +95,9 @@ class NotificationService {
     required String body,
     required int hour,
     required int minute,
+    String channelId = 'daily_reminders',
+    String channelName = 'Daily Reminders',
+    String channelDescription = 'Reminders for daily tasks and coins',
   }) async {
     if (!_initialized) {
       debugPrint(
@@ -136,6 +139,108 @@ class NotificationService {
       );
       debugPrintStack(stackTrace: st);
     }
+  }
+
+  /// Schedules a notification that repeats every week on the same weekday
+  /// and time (natively handled by the OS via matchDateTimeComponents, so
+  /// this never needs to be rescheduled manually).
+  Future<void> scheduleWeeklyNotification({
+    required int id,
+    required String title,
+    required String body,
+    required int weekday, // 1 = Monday ... 7 = Sunday (DateTime.weekday)
+    required int hour,
+    required int minute,
+    String channelId = 'habit_reminders',
+    String channelName = 'Habit Reminders',
+    String channelDescription = 'Reminders for weekly and monthly habits',
+  }) async {
+    if (!_initialized) await init();
+    final bool exactAllowed = await _canScheduleExact();
+    final AndroidScheduleMode scheduleMode = exactAllowed
+        ? AndroidScheduleMode.exactAllowWhileIdle
+        : AndroidScheduleMode.inexactAllowWhileIdle;
+    try {
+      await _notificationsPlugin.zonedSchedule(
+        id,
+        title,
+        body,
+        _nextInstanceOfWeekday(weekday, hour, minute),
+        NotificationDetails(
+          android: AndroidNotificationDetails(
+            channelId,
+            channelName,
+            channelDescription: channelDescription,
+            importance: Importance.max,
+            priority: Priority.high,
+          ),
+        ),
+        androidScheduleMode: scheduleMode,
+        uiLocalNotificationDateInterpretation:
+            UILocalNotificationDateInterpretation.absoluteTime,
+        matchDateTimeComponents: DateTimeComponents.dayOfWeekAndTime,
+      );
+    } catch (e, st) {
+      debugPrint(
+        'NotificationService: failed to schedule weekly notification id=$id: $e',
+      );
+      debugPrintStack(stackTrace: st);
+    }
+  }
+
+  /// Schedules a single, non-repeating notification at [dateTime]. Used for
+  /// monthly habits: flutter_local_notifications has no built-in "every N
+  /// months" repeat, so each occurrence is scheduled one at a time and the
+  /// next one is (re)scheduled after this one fires or when the app is
+  /// opened (see HabitService.catchUpOverdueMonthlyHabits).
+  Future<void> scheduleOneShotNotification({
+    required int id,
+    required String title,
+    required String body,
+    required DateTime dateTime,
+    String channelId = 'habit_reminders',
+    String channelName = 'Habit Reminders',
+    String channelDescription = 'Reminders for weekly and monthly habits',
+  }) async {
+    if (!_initialized) await init();
+    final bool exactAllowed = await _canScheduleExact();
+    final AndroidScheduleMode scheduleMode = exactAllowed
+        ? AndroidScheduleMode.exactAllowWhileIdle
+        : AndroidScheduleMode.inexactAllowWhileIdle;
+    try {
+      await _notificationsPlugin.zonedSchedule(
+        id,
+        title,
+        body,
+        tz.TZDateTime.from(dateTime, tz.local),
+        NotificationDetails(
+          android: AndroidNotificationDetails(
+            channelId,
+            channelName,
+            channelDescription: channelDescription,
+            importance: Importance.max,
+            priority: Priority.high,
+          ),
+        ),
+        androidScheduleMode: scheduleMode,
+        uiLocalNotificationDateInterpretation:
+            UILocalNotificationDateInterpretation.absoluteTime,
+        // No matchDateTimeComponents -> fires exactly once.
+      );
+    } catch (e, st) {
+      debugPrint(
+        'NotificationService: failed to schedule one-shot notification id=$id: $e',
+      );
+      debugPrintStack(stackTrace: st);
+    }
+  }
+
+  tz.TZDateTime _nextInstanceOfWeekday(int weekday, int hour, int minute) {
+    var scheduled = _nextInstanceOfTime(hour, minute);
+    while (scheduled.weekday != weekday) {
+      scheduled = scheduled.add(const Duration(days: 1));
+    }
+    return scheduled;
   }
 
   /// פונקציית עזר שמחשבת מתי הפעם הבאה שהשעה הזו מתרחשת

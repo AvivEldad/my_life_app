@@ -9,6 +9,7 @@ import '../screens/settings_page.dart';
 import '../screens/ideas_page.dart';
 import '../screens/mantras_page.dart';
 import '../screens/daily_tasks_page.dart';
+import '../screens/habits_page.dart';
 
 class AppDrawer extends StatelessWidget {
   const AppDrawer({super.key});
@@ -107,12 +108,16 @@ class AppDrawer extends StatelessWidget {
                     },
                   ),
                   ListTile(
-                    // TODO: לשנות אימוג'י
-                    leading: const Icon(Icons.category),
+                    leading: const Icon(Icons.repeat),
                     title: const Text('ההרגלים שלי'),
                     onTap: () {
                       Navigator.pop(context);
-                      // TODO: ניווט למסך
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (context) => const HabitsPage(),
+                        ),
+                      );
                     },
                   ),
                   ListTile(

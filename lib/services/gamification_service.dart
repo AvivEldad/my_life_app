@@ -194,6 +194,43 @@ class GamificationService extends ChangeNotifier {
     notifyListeners();
   }
 
+  // A habit is worth the same as a level-1 task.
+  static const int habitXpValue = 10;
+  static const int habitCoinsValue = 5;
+
+  /// Triggered when a habit is marked done.
+  Future<int?> processHabitCompletion() async {
+    currentXp += habitXpValue;
+    currentCoins += habitCoinsValue;
+    totalXpEarned += habitXpValue;
+
+    int? pulledPokemonId;
+    if (currentXp >= currentXpThreshold) {
+      currentXp -= currentXpThreshold;
+      currentXpThreshold = (currentXpThreshold * 1.1).toInt();
+      currentLevel++;
+      pulledPokemonId = _pullPokemon();
+    }
+
+    await _saveData();
+    notifyListeners();
+
+    return pulledPokemonId;
+  }
+
+  /// Triggered when a habit's occurrence deadline (including any snoozes)
+  /// passes without it being marked done — with or without snoozing along
+  /// the way, an incomplete habit still costs the same coins/XP.
+  Future<void> processHabitMiss() async {
+    currentXp -= habitXpValue;
+    if (currentXp < 0) currentXp = 0;
+    currentCoins -= habitCoinsValue;
+    if (currentCoins < 0) currentCoins = 0;
+
+    await _saveData();
+    notifyListeners();
+  }
+
   final List<BinderConfig> binderConfigs = [
     BinderConfig(
       level: 1,

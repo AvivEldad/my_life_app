@@ -8,7 +8,7 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'services/notification_service.dart';
 import 'services/task_service.dart';
 import 'services/project_service.dart';
-import 'services/ritual_service.dart';
+import 'services/habit_service.dart';
 import 'services/prize_service.dart';
 import 'services/strike_service.dart';
 import 'services/mantra_service.dart';
@@ -48,7 +48,7 @@ class TaskApp extends StatelessWidget {
           create: (_) => GamificationService(),
         ),
         Provider<ProjectService>(create: (_) => ProjectService()),
-        Provider<RitualService>(create: (_) => RitualService()),
+        Provider<HabitService>(create: (_) => HabitService()),
         Provider(create: (_) => MantraService()),
         Provider<PrizeService>(create: (_) => PrizeService()),
         Provider<StrikeService>(create: (_) => StrikeService()),
