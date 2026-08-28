@@ -4,6 +4,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import '../models/task_item.dart';
 import '../constants/pokemon_constants.dart';
 import 'notification_service.dart';
+import '../models/project_item.dart';
 
 class BinderConfig {
   final int level;
@@ -127,6 +128,70 @@ class GamificationService extends ChangeNotifier {
     notifyListeners();
 
     return pulledPokemonId;
+  }
+
+  /// Triggered when every task in a project has been completed.
+  /// Grants a flat 100 coins / 200 xp bonus (on top of whatever each task
+  /// already granted individually).
+  Future<int?> processProjectCompletion(ProjectItem project) async {
+    const earnedXp = 200;
+    const earnedCoins = 100;
+    currentXp += earnedXp;
+    currentCoins += earnedCoins;
+    totalXpEarned += earnedXp;
+    int? pulledPokemonId;
+    bool leveledUp = false;
+    int? thresholdBeforeLevelUp;
+    if (currentXp >= currentXpThreshold) {
+      thresholdBeforeLevelUp = currentXpThreshold;
+      currentXp -= currentXpThreshold;
+      currentXpThreshold = (currentXpThreshold * 1.1).toInt();
+      currentLevel++;
+      leveledUp = true;
+      pulledPokemonId = _pullPokemon();
+    }
+    // Stamp what this completion granted onto the project itself, so
+    // un-completing it later (e.g. re-opening one of its tasks) can
+    // reverse it precisely — same pattern as processTaskCompletion.
+    project.awardedXp = earnedXp;
+    project.awardedCoins = earnedCoins;
+    project.causedLevelUp = leveledUp;
+    project.xpThresholdBeforeLevelUp = thresholdBeforeLevelUp;
+    project.awardedPokemonId = pulledPokemonId;
+    await _saveData();
+    notifyListeners();
+    return pulledPokemonId;
+  }
+
+  /// Reverses a project-completion reward — used if a task inside an
+  /// already-completed project gets un-checked again.
+  Future<void> processProjectUncompletion(ProjectItem project) async {
+    if (project.awardedXp == null && project.awardedCoins == null) return;
+    final xpToRemove = project.awardedXp ?? 0;
+    final coinsToRemove = project.awardedCoins ?? 0;
+    if (project.causedLevelUp) {
+      currentLevel = currentLevel > 1 ? currentLevel - 1 : 1;
+      currentXp += project.xpThresholdBeforeLevelUp ?? 0;
+      if (project.xpThresholdBeforeLevelUp != null) {
+        currentXpThreshold = project.xpThresholdBeforeLevelUp!;
+      }
+      if (project.awardedPokemonId != null) {
+        unlockedPokemons.remove(project.awardedPokemonId);
+      }
+    }
+    currentXp -= xpToRemove;
+    if (currentXp < 0) currentXp = 0;
+    totalXpEarned -= xpToRemove;
+    if (totalXpEarned < 0) totalXpEarned = 0;
+    currentCoins -= coinsToRemove;
+    if (currentCoins < 0) currentCoins = 0;
+    project.awardedXp = null;
+    project.awardedCoins = null;
+    project.causedLevelUp = false;
+    project.xpThresholdBeforeLevelUp = null;
+    project.awardedPokemonId = null;
+    await _saveData();
+    notifyListeners();
   }
 
   final List<BinderConfig> binderConfigs = [

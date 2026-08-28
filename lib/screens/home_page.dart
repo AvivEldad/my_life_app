@@ -6,6 +6,7 @@ import '../models/category_item.dart';
 import '../services/task_service.dart';
 import '../services/gamification_service.dart';
 import '../services/category_service.dart';
+import '../services/project_service.dart';
 import '../widgets/task_card.dart';
 import 'task_details_screen.dart';
 import '../widgets/app_drawer.dart';
@@ -94,6 +95,7 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
 
   void _runDailyChecks() {
     context.read<TaskService>().clearCompletedTasks();
+    context.read<ProjectService>().clearCompletedProjects();
     context.read<GamificationService>().processOverduePenalties();
   }
 
@@ -198,6 +200,7 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
   ) async {
     final taskService = context.read<TaskService>();
     final gamificationService = context.read<GamificationService>();
+    final projectService = context.read<ProjectService>();
 
     if (isNowCompleted && !task.isCompleted) {
       task.completedAt = DateTime.now();
@@ -244,15 +247,79 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
           );
         }
       }
+
+      // 4. אם המשימה שייכת לפרויקט - בדיקה האם זו הייתה המשימה
+      // האחרונה שנותרה, ואם כן - הענקת בונוס ההשלמה
+      if (task.projectId != null) {
+        final completedProject = await projectService
+            .checkAndAwardProjectCompletion(
+              task.projectId!,
+              gamificationService,
+            );
+
+        if (completedProject != null && context.mounted) {
+          showFloatingReward(context, completedProject.awardedCoins ?? 100);
+          await showDialog(
+            context: context,
+            builder: (context) => ConfettiDialog(
+              title: 'Project Complete!',
+              message:
+                  'You finished "${completedProject.title}" and earned '
+                  '${completedProject.awardedCoins ?? 100} coins & '
+                  '${completedProject.awardedXp ?? 200} xp!',
+            ),
+          );
+        }
+      }
     } else if (!isNowCompleted) {
       // אם המשתמש ביטל את סימון המשימה
       task.completedAt = null;
       await gamificationService.processTaskUncompletion(task);
+
+      // אם המשימה שייכת לפרויקט שכבר סומן כמושלם - נבטל את ההשלמה
+      // ואת התגמול שניתן עבורה
+      if (task.projectId != null) {
+        await projectService.revertProjectCompletionIfNeeded(
+          task.projectId!,
+          gamificationService,
+        );
+      }
     }
 
     // עדכון המצב ושמירה למסד הנתונים
     task.isCompleted = isNowCompleted;
     taskService.saveTask(task);
+  }
+
+  /// מחיקת משימה ששייכת לפרויקט, ישירות מעמוד הבית - ולאחריה בדיקה האם
+  /// נותרו רק משימות שהושלמו בפרויקט הזה, שבמקרה כזה משלימים אותו
+  /// ומעניקים את הבונוס (למקרה שהמשימה הפתוחה האחרונה נמחקה במקום
+  /// סומנה כהושלמה).
+  Future<void> _handleProjectTaskDelete(TaskItem task) async {
+    final taskService = context.read<TaskService>();
+    final gamificationService = context.read<GamificationService>();
+    final projectService = context.read<ProjectService>();
+
+    await taskService.deleteTask(task.id);
+
+    if (!task.isCompleted && task.projectId != null) {
+      final completedProject = await projectService
+          .checkAndAwardProjectCompletion(task.projectId!, gamificationService);
+
+      if (completedProject != null && context.mounted) {
+        showFloatingReward(context, completedProject.awardedCoins ?? 100);
+        await showDialog(
+          context: context,
+          builder: (context) => ConfettiDialog(
+            title: 'Project Complete!',
+            message:
+                'You finished "${completedProject.title}" and earned '
+                '${completedProject.awardedCoins ?? 100} coins & '
+                '${completedProject.awardedXp ?? 200} xp!',
+          ),
+        );
+      }
+    }
   }
 
   @override
@@ -283,10 +350,32 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
     List<TaskItem> activeTasks = [];
     List<TaskItem> completedTasks = [];
 
+    // עבור כל פרויקט מוצגת רק המשימה הפתוחה הראשונה שלו (לפי orderIndex) -
+    // אבל היא משתתפת ברשימה הרגילה בדיוק כמו כל משימה אחרת (ניתן לגרור
+    // ולמיין אותה יחד עם השאר). שאר המשימות של אותו פרויקט (נעולות/לא
+    // בתור) לא מוצגות בעמוד הבית בכלל.
+    final Map<String, List<TaskItem>> openTasksByProject = {};
+    for (final task in _allTasks) {
+      if (task.projectId == null) continue;
+      if (task.isCompleted) continue;
+      openTasksByProject.putIfAbsent(task.projectId!, () => []).add(task);
+    }
+    final Set<String> projectCurrentTaskIds = {};
+    for (final tasks in openTasksByProject.values) {
+      tasks.sort((a, b) => a.orderIndex.compareTo(b.orderIndex));
+      projectCurrentTaskIds.add(tasks.first.id);
+    }
+
     for (var task in _allTasks) {
       if (task.isCompleted) {
         completedTasks.add(task);
-      } else if (task.isGolden) {
+        continue;
+      }
+      if (task.projectId != null && !projectCurrentTaskIds.contains(task.id)) {
+        // משימה נעולה / לא בתור של הפרויקט שלה - לא מוצגת בעמוד הבית
+        continue;
+      }
+      if (task.isGolden) {
         if (goldenTask == null) {
           goldenTask = task;
         } else {
@@ -348,6 +437,9 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
                       // חיבור הפונקציה החדשה שלנו
                       onStatusChanged: (isCompleted) =>
                           _handleTaskStatusChanged(goldenTask!, isCompleted),
+                      onDelete: goldenTask.projectId != null
+                          ? () => _handleProjectTaskDelete(goldenTask!)
+                          : null,
                     ),
                   )
                 : const SizedBox.shrink(),
@@ -375,6 +467,9 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
                           // חיבור הפונקציה החדשה שלנו
                           onStatusChanged: (isCompleted) =>
                               _handleTaskStatusChanged(task, isCompleted),
+                          onDelete: task.projectId != null
+                              ? () => _handleProjectTaskDelete(task)
+                              : null,
                         ),
                       ),
                     ],
@@ -392,6 +487,9 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
                     // חיבור הפונקציה החדשה שלנו
                     onStatusChanged: (isCompleted) =>
                         _handleTaskStatusChanged(task, isCompleted),
+                    onDelete: task.projectId != null
+                        ? () => _handleProjectTaskDelete(task)
+                        : null,
                   ),
                 )
                 .toList(),

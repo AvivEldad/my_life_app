@@ -84,6 +84,25 @@ class TaskService {
     }
   }
 
+  /// Streams only the tasks that belong to a specific project — used by
+  /// the project details screen.
+  Stream<List<TaskItem>> streamTasksForProject(String projectId) {
+    try {
+      return _db
+          .collection('tasks')
+          .where('projectId', isEqualTo: projectId)
+          .snapshots()
+          .map(
+            (snapshot) => snapshot.docs
+                .map((doc) => TaskItem.fromMap(doc.id, doc.data()))
+                .toList(),
+          );
+    } catch (e) {
+      print('Error streaming project tasks: $e');
+      return const Stream.empty();
+    }
+  }
+
   /// מחיקת משימה
   Future<bool> deleteTask(String taskId) async {
     try {

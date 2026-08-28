@@ -8,7 +8,22 @@ import '../services/category_service.dart'; // יבוא שירות הקטגור�
 class TaskDetailsScreen extends StatefulWidget {
   final TaskItem? task;
 
-  const TaskDetailsScreen({super.key, this.task});
+  // כאשר המשימה נוצרת מתוך מסך פרויקט - אלו מועברים כדי לשייך אותה
+  // אליו אוטומטית (רק כשיוצרים משימה חדשה, task == null)
+  final String? projectId;
+  final String? projectName;
+
+  // סדר ברירת המחדל למשימה חדשה בתוך פרויקט - כך שהיא תתווסף בסוף
+  // רשימת המשימות של הפרויקט (ולא תדלג קדימה במשימות טוריות)
+  final int? initialOrderIndex;
+
+  const TaskDetailsScreen({
+    super.key,
+    this.task,
+    this.projectId,
+    this.projectName,
+    this.initialOrderIndex,
+  });
 
   @override
   State<TaskDetailsScreen> createState() => _TaskDetailsScreenState();
@@ -74,8 +89,14 @@ class _TaskDetailsScreenState extends State<TaskDetailsScreen> {
         isGolden: widget.task?.isGolden ?? false,
         isCompleted: widget.task?.isCompleted ?? false,
         lastPenaltyDate: widget.task?.lastPenaltyDate,
+        // אם המשימה שייכת לפרויקט (קיימת כבר או שנוצרת מתוכו) - נשמור על
+        // השיוך. משימה חדשה שנוצרת מתוך מסך פרויקט מקבלת את סדר ברירת
+        // המחדל שהועבר אליה כדי שתתווסף בסוף רשימת המשימות של הפרויקט.
+        projectId: widget.task?.projectId ?? widget.projectId,
+        projectName: widget.task?.projectName ?? widget.projectName,
         orderIndex:
             widget.task?.orderIndex ??
+            widget.initialOrderIndex ??
             DateTime.now().millisecondsSinceEpoch * -1,
         createdAt: widget.task?.createdAt ?? DateTime.now(),
         completedAt: widget.task?.completedAt,
@@ -113,6 +134,8 @@ class _TaskDetailsScreenState extends State<TaskDetailsScreen> {
     // משיכת שירות הקטגוריות כדי לקרוא את רשימת הקטגוריות הקיימות
     final categoryService = context.watch<CategoryService>();
 
+    final effectiveProjectName = widget.task?.projectName ?? widget.projectName;
+
     return Scaffold(
       appBar: AppBar(
         title: Text(widget.task == null ? 'משימה חדשה' : 'עריכת משימה'),
@@ -123,6 +146,36 @@ class _TaskDetailsScreenState extends State<TaskDetailsScreen> {
         child: ListView(
           padding: const EdgeInsets.all(16.0),
           children: [
+            if (effectiveProjectName != null && effectiveProjectName.isNotEmpty)
+              Padding(
+                padding: const EdgeInsets.only(bottom: 16.0),
+                child: Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 12,
+                    vertical: 8,
+                  ),
+                  decoration: BoxDecoration(
+                    color: Colors.amber.withOpacity(0.1),
+                    borderRadius: BorderRadius.circular(8),
+                    border: Border.all(color: Colors.amber.withOpacity(0.4)),
+                  ),
+                  child: Row(
+                    children: [
+                      const Icon(Icons.folder, color: Colors.amber, size: 18),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: Text(
+                          'משימה בתוך הפרויקט: $effectiveProjectName',
+                          style: const TextStyle(
+                            color: Colors.amber,
+                            fontSize: 13,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
             TextFormField(
               controller: _titleController,
               decoration: const InputDecoration(

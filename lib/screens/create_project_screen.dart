@@ -2,7 +2,10 @@ import 'package:flutter/material.dart';
 import '../models/project_item.dart';
 
 class CreateProjectScreen extends StatefulWidget {
-  const CreateProjectScreen({super.key});
+  // כאשר קיים פרויקט קיים - המסך עובד במצב עריכה במקום יצירה
+  final ProjectItem? existingProject;
+
+  const CreateProjectScreen({super.key, this.existingProject});
 
   @override
   State<CreateProjectScreen> createState() => _CreateProjectScreenState();
@@ -10,11 +13,24 @@ class CreateProjectScreen extends StatefulWidget {
 
 class _CreateProjectScreenState extends State<CreateProjectScreen> {
   // בקרים (Controllers) ששומרים את מה שהמשתמש מקליד בשדות הטקסט
-  final _titleController = TextEditingController();
-  final _descriptionController = TextEditingController();
+  late final _titleController = TextEditingController(
+    text: widget.existingProject?.title ?? '',
+  );
+  late final _descriptionController = TextEditingController(
+    text: widget.existingProject?.description ?? '',
+  );
 
   // משתנה ששומר האם הפרויקט הוא טורי (ברירת המחדל היא שקר - לא טורי)
-  bool _isSequential = false;
+  late bool _isSequential = widget.existingProject?.isSequential ?? false;
+
+  bool get _isEditing => widget.existingProject != null;
+
+  @override
+  void dispose() {
+    _titleController.dispose();
+    _descriptionController.dispose();
+    super.dispose();
+  }
 
   // פונקציה שתופעל כשנלחץ על כפתור השמירה
   void _saveProject() {
@@ -26,22 +42,35 @@ class _CreateProjectScreenState extends State<CreateProjectScreen> {
       return;
     }
 
-    // יוצרים את אובייקט הפרויקט החדש עם הנתונים מהטופס
-    final newProject = ProjectItem(
-      id: '', // ה-ID ייווצר בהמשך על ידי Firebase כשנשמור אותו באמת
+    // יוצרים את אובייקט הפרויקט - שומר על ה-ID והנתונים הקיימים (כולל
+    // מצב ההשלמה ותגמולים שכבר ניתנו) אם אנחנו עורכים פרויקט קיים
+    final project = ProjectItem(
+      id: widget.existingProject?.id ?? '',
       title: _titleController.text.trim(),
       description: _descriptionController.text.trim(),
       isSequential: _isSequential,
+      isCompleted: widget.existingProject?.isCompleted ?? false,
+      completedAt: widget.existingProject?.completedAt,
+      createdAt: widget.existingProject?.createdAt,
+      awardedXp: widget.existingProject?.awardedXp,
+      awardedCoins: widget.existingProject?.awardedCoins,
+      causedLevelUp: widget.existingProject?.causedLevelUp ?? false,
+      xpThresholdBeforeLevelUp:
+          widget.existingProject?.xpThresholdBeforeLevelUp,
+      awardedPokemonId: widget.existingProject?.awardedPokemonId,
     );
 
-    // סוגרים את המסך ומחזירים את הפרויקט החדש למסך הקודם
-    Navigator.pop(context, newProject);
+    // סוגרים את המסך ומחזירים את הפרויקט למסך הקודם
+    Navigator.pop(context, project);
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('פרויקט חדש'), centerTitle: true),
+      appBar: AppBar(
+        title: Text(_isEditing ? 'עריכת פרויקט' : 'פרויקט חדש'),
+        centerTitle: true,
+      ),
       body: Padding(
         padding: const EdgeInsets.all(16.0),
         child: Column(
@@ -72,7 +101,9 @@ class _CreateProjectScreenState extends State<CreateProjectScreen> {
             // מתג (Switch) להגדרת פרויקט טורי
             SwitchListTile(
               title: const Text('פרויקט טורי (Sequential)'),
-              subtitle: const Text('ניתן לבצע רק את המשימה הבאה בתור'),
+              subtitle: const Text(
+                'ניתן לבצע רק את המשימה הבאה בתור - שאר המשימות ננעלות',
+              ),
               value: _isSequential,
               activeColor: Colors.amber,
               onChanged: (bool value) {
@@ -92,9 +123,9 @@ class _CreateProjectScreenState extends State<CreateProjectScreen> {
                 style: ElevatedButton.styleFrom(
                   backgroundColor: Colors.blueAccent,
                 ),
-                child: const Text(
-                  'שמור פרויקט',
-                  style: TextStyle(fontSize: 18, color: Colors.white),
+                child: Text(
+                  _isEditing ? 'שמור שינויים' : 'שמור פרויקט',
+                  style: const TextStyle(fontSize: 18, color: Colors.white),
                 ),
               ),
             ),
