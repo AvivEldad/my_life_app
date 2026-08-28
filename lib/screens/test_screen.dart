@@ -79,12 +79,6 @@ class TestScreen extends StatelessWidget {
               onPressed: () async {
                 final dailyService = context.read<DailyTaskService>();
 
-                final newDaily = DailyTaskItem(
-                  id: DateTime.now().millisecondsSinceEpoch.toString(),
-                  title: 'לשתות מים 💧',
-                );
-
-                await dailyService.saveDailyTask(newDaily);
                 if (context.mounted)
                   _showMessage(context, '✅ משימה יומית נשמרה!');
               },
@@ -99,8 +93,6 @@ class TestScreen extends StatelessWidget {
               ),
               onPressed: () async {
                 final dailyService = context.read<DailyTaskService>();
-
-                await dailyService.clearAllDailyTasks();
                 if (context.mounted)
                   _showMessage(context, '🗑️ הרשימה היומית אופסה!');
               },

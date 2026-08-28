@@ -348,4 +348,11 @@ class GamificationService extends ChangeNotifier {
       print('שגיאה בחישוב קנסות: $e');
     }
   }
+
+  Future<void> addDailyRewards(double coins, int xp) async {
+    currentCoins += coins;
+    currentXp += xp;
+    await _saveData(); // Assuming you have a function that saves to Firebase
+    notifyListeners();
+  }
 }

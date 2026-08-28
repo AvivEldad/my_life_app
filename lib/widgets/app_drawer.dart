@@ -8,6 +8,7 @@ import '../screens/prizes_page.dart';
 import '../screens/settings_page.dart';
 import '../screens/ideas_page.dart';
 import '../screens/mantras_page.dart';
+import '../screens/daily_tasks_page.dart';
 
 class AppDrawer extends StatelessWidget {
   const AppDrawer({super.key});
@@ -137,12 +138,16 @@ class AppDrawer extends StatelessWidget {
                     },
                   ),
                   ListTile(
-                    // TODO: לשנות אימוג'י
-                    leading: const Icon(Icons.emoji_events),
+                    leading: const Icon(Icons.list),
                     title: const Text('רשימה יומית'),
                     onTap: () {
                       Navigator.pop(context);
-                      // TODO: ניווט למסך
+                      Navigator.pushReplacement(
+                        context,
+                        MaterialPageRoute(
+                          builder: (context) => const DailyTasksPage(),
+                        ),
+                      );
                     },
                   ),
                   ListTile(

@@ -1,23 +1,32 @@
 class DailyTaskItem {
   final String id;
-  String title;
+  final String summary;
   bool isCompleted;
+  final DateTime createdAt;
 
   DailyTaskItem({
     required this.id,
-    required this.title,
+    required this.summary,
     this.isCompleted = false,
-  });
+    DateTime? createdAt,
+  }) : createdAt = createdAt ?? DateTime.now();
 
   Map<String, dynamic> toMap() {
-    return {'title': title, 'isCompleted': isCompleted};
+    return {
+      'summary': summary,
+      'isCompleted': isCompleted,
+      'createdAt': createdAt.millisecondsSinceEpoch,
+    };
   }
 
   factory DailyTaskItem.fromMap(String id, Map<String, dynamic> map) {
     return DailyTaskItem(
       id: id,
-      title: map['title'] as String? ?? '',
-      isCompleted: map['isCompleted'] as bool? ?? false,
+      summary: map['summary'] ?? '',
+      isCompleted: map['isCompleted'] ?? false,
+      createdAt: map['createdAt'] != null
+          ? DateTime.fromMillisecondsSinceEpoch(map['createdAt'])
+          : DateTime.now(),
     );
   }
 }

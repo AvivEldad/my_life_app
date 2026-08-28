@@ -53,7 +53,7 @@ class TaskApp extends StatelessWidget {
         Provider<PrizeService>(create: (_) => PrizeService()),
         Provider<StrikeService>(create: (_) => StrikeService()),
         Provider<MantraService>(create: (_) => MantraService()),
-        Provider<DailyTaskService>(create: (_) => DailyTaskService()),
+        Provider(create: (_) => DailyTaskService()),
         Provider<CategoryService>(create: (_) => CategoryService()),
         Provider(create: (_) => IdeaService()),
       ],
