@@ -28,7 +28,7 @@ class AppDrawer extends StatelessWidget {
     // משיכת נתונים אמיתיים מתוך השירות שיצרנו
     final gamificationService = context.watch<GamificationService>();
     int currentLevel = gamificationService.currentLevel;
-    int currentCoins = gamificationService.currentCoins;
+    double currentCoins = gamificationService.currentCoins;
 
     return SizedBox(
       // התפריט יתפוס בדיוק 50% מרוחב המסך

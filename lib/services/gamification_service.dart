@@ -22,7 +22,7 @@ class GamificationService extends ChangeNotifier {
   final FirebaseFirestore _db = FirebaseFirestore.instance;
 
   int currentXp = 0;
-  int currentCoins = 0;
+  double currentCoins = 0.0;
   int currentXpThreshold = 100;
   int currentLevel = 1;
   List<int> unlockedPokemons = [];
@@ -42,7 +42,7 @@ class GamificationService extends ChangeNotifier {
       if (doc.exists) {
         final data = doc.data()!;
         currentXp = data['currentXp'] ?? 0;
-        currentCoins = data['currentCoins'] ?? 0;
+        currentCoins = (data['currentCoins'] ?? 0).toDouble();
         currentXpThreshold = data['currentXpThreshold'] ?? 100;
         currentLevel = data['currentLevel'] ?? 1;
         unlockedPokemons = List<int>.from(data['unlockedPokemons'] ?? []);

@@ -163,7 +163,7 @@ class NotificationService {
 
   /// פונקציה חכמה לרענון התראת המטבעות
   /// פונקציה זו תיקרא בכל פעם שמספר המטבעות שלך משתנה
-  Future<void> refreshCoinReminder(int currentCoins) async {
+  Future<void> refreshCoinReminder(double currentCoins) async {
     final prefs = await SharedPreferences.getInstance();
     final isEnabled = prefs.getBool('isCoinReminderEnabled') ?? false;
 
