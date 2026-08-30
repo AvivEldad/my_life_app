@@ -231,6 +231,25 @@ class GamificationService extends ChangeNotifier {
     notifyListeners();
   }
 
+  Future<int?> addCoinsAndXp(int coins, int xp) async {
+    currentCoins += coins;
+    currentXp += xp;
+    totalXpEarned += xp;
+
+    int? pulledPokemonId;
+    while (currentXp >= currentXpThreshold) {
+      currentXp -= currentXpThreshold;
+      currentXpThreshold = (currentXpThreshold * 1.1).toInt();
+      currentLevel++;
+      pulledPokemonId = _pullPokemon();
+    }
+
+    await _saveData();
+    notifyListeners();
+
+    return pulledPokemonId;
+  }
+
   final List<BinderConfig> binderConfigs = [
     BinderConfig(
       level: 1,

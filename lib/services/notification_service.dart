@@ -320,6 +320,28 @@ class NotificationService {
     }
   }
 
+  /// פונקציה חכמה לרענון התראת הסטרייקים
+  Future<void> refreshStrikeReminder(int pendingStrikesCount) async {
+    final prefs = await SharedPreferences.getInstance();
+    final isEnabled = prefs.getBool('isStrikeReminderEnabled') ?? false;
+    if (!isEnabled) {
+      await cancelNotification(4);
+      return;
+    }
+    final hour = prefs.getInt('strikeReminderHour') ?? 20;
+    final minute = prefs.getInt('strikeReminderMinute') ?? 0;
+    final bodyText = pendingStrikesCount > 0
+        ? 'יש לך $pendingStrikesCount סטרייקים שעדיין לא סימנת היום! אל תשבור את הרצף 🔥'
+        : 'כל הכבוד! כל הסטרייקים שלך מסומנים להיום 🔥';
+    await scheduleDailyNotification(
+      id: 4, // מזהה ייחודי להתראת סטרייקים
+      title: 'בדוק את הסטרייקים שלך 🔥',
+      body: bodyText,
+      hour: hour,
+      minute: minute,
+    );
+  }
+
   /// פונקציה חכמה לרענון התראת תאריכי יעד
   Future<void> refreshDueDateReminder(int dueTasksCount) async {
     final prefs = await SharedPreferences.getInstance();

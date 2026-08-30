@@ -10,6 +10,7 @@ import '../screens/ideas_page.dart';
 import '../screens/mantras_page.dart';
 import '../screens/daily_tasks_page.dart';
 import '../screens/habits_page.dart';
+import '../screens/strikes_page.dart';
 
 class AppDrawer extends StatelessWidget {
   const AppDrawer({super.key});
@@ -134,12 +135,16 @@ class AppDrawer extends StatelessWidget {
                     },
                   ),
                   ListTile(
-                    // TODO: לשנות אימוג'י
-                    leading: const Icon(Icons.emoji_events),
+                    leading: const Icon(Icons.local_fire_department),
                     title: const Text('סטרייקים'),
                     onTap: () {
                       Navigator.pop(context);
-                      // TODO: ניווט למסך
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (context) => const StrikesPage(),
+                        ),
+                      );
                     },
                   ),
                   ListTile(
