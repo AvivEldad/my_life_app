@@ -10,6 +10,7 @@ import '../services/project_service.dart';
 import '../widgets/task_card.dart';
 import 'task_details_screen.dart';
 import '../widgets/app_drawer.dart';
+import '../services/notification_service.dart';
 
 // הייבוא של האנימציות והווידג'טים החדשים שלנו!
 import '../widgets/glowing_xp_bar.dart';
@@ -128,6 +129,7 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
 
     try {
       await taskService.saveTasksBatch(changedTasks);
+      await NotificationService().refreshGoldenTaskReminder(task.isGolden);
     } finally {
       if (mounted) {
         setState(() => _suppressStreamUpdates = false);
@@ -285,7 +287,9 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
         );
       }
     }
-
+    if (task.isGolden) {
+      await NotificationService().refreshGoldenTaskReminder(false);
+    }
     // עדכון המצב ושמירה למסד הנתונים
     task.isCompleted = isNowCompleted;
     taskService.saveTask(task);
@@ -301,7 +305,9 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
     final projectService = context.read<ProjectService>();
 
     await taskService.deleteTask(task.id);
-
+    if (task.isGolden) {
+      await NotificationService().refreshGoldenTaskReminder(false);
+    }
     if (!task.isCompleted && task.projectId != null) {
       final completedProject = await projectService
           .checkAndAwardProjectCompletion(task.projectId!, gamificationService);

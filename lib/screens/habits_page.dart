@@ -229,7 +229,7 @@ class _HabitCard extends StatelessWidget {
                   color: habit.canSnooze ? Colors.amber : Colors.grey[700],
                   onPressed: onSnooze,
                   tooltip: habit.canSnooze
-                      ? 'דחה תזכורת ב-30 שעות (${habit.snoozeCount}/${HabitItem.maxSnoozes})'
+                      ? 'דחה תזכורת ב-30 דקות (${habit.snoozeCount}/${HabitItem.maxSnoozes})'
                       : 'נוצלו כל הדחיות (${HabitItem.maxSnoozes})',
                 ),
               ],

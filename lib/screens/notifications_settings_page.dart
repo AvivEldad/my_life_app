@@ -7,7 +7,7 @@ import '../services/strike_service.dart';
 import '../widgets/app_drawer.dart';
 import 'main_layout.dart';
 
-enum _ReminderType { morning, coin, due, strike }
+enum _ReminderType { morning, coin, due, strike, golden }
 
 class NotificationsSettingsPage extends StatefulWidget {
   const NotificationsSettingsPage({super.key});
@@ -29,6 +29,9 @@ class _NotificationsSettingsPageState extends State<NotificationsSettingsPage> {
 
   bool _isStrikeReminderEnabled = false;
   TimeOfDay _strikeReminderTime = const TimeOfDay(hour: 20, minute: 0);
+
+  bool _isGoldenReminderEnabled = false;
+  TimeOfDay _goldenReminderTime = const TimeOfDay(hour: 9, minute: 0);
 
   @override
   void initState() {
@@ -66,6 +69,13 @@ class _NotificationsSettingsPageState extends State<NotificationsSettingsPage> {
         hour: prefs.getInt('strikeReminderHour') ?? 20,
         minute: prefs.getInt('strikeReminderMinute') ?? 0,
       );
+
+      _isGoldenReminderEnabled =
+          prefs.getBool('isGoldenReminderEnabled') ?? false;
+      _goldenReminderTime = TimeOfDay(
+        hour: prefs.getInt('goldenReminderHour') ?? 9,
+        minute: prefs.getInt('goldenReminderMinute') ?? 0,
+      );
     });
   }
 
@@ -93,6 +103,7 @@ class _NotificationsSettingsPageState extends State<NotificationsSettingsPage> {
       _ReminderType.coin => _coinReminderTime,
       _ReminderType.due => _dueReminderTime,
       _ReminderType.strike => _strikeReminderTime,
+      _ReminderType.golden => _goldenReminderTime,
     };
 
     final TimeOfDay? pickedTime = await showTimePicker(
@@ -132,6 +143,12 @@ class _NotificationsSettingsPageState extends State<NotificationsSettingsPage> {
           prefs.setInt('strikeReminderHour', pickedTime.hour);
           prefs.setInt('strikeReminderMinute', pickedTime.minute);
           if (_isStrikeReminderEnabled) _refreshStrikeReminderViaService();
+          break;
+        case _ReminderType.golden:
+          _goldenReminderTime = pickedTime;
+          prefs.setInt('goldenReminderHour', pickedTime.hour);
+          prefs.setInt('goldenReminderMinute', pickedTime.minute);
+          if (_isGoldenReminderEnabled) _refreshGoldenReminderViaService();
           break;
       }
     });
@@ -193,6 +210,25 @@ class _NotificationsSettingsPageState extends State<NotificationsSettingsPage> {
     } else {
       await NotificationService().cancelNotification(4);
     }
+  }
+
+  Future<void> _toggleGoldenReminder(bool value) async {
+    final prefs = await SharedPreferences.getInstance();
+    if (!mounted) return;
+    setState(() => _isGoldenReminderEnabled = value);
+    await prefs.setBool('isGoldenReminderEnabled', value);
+
+    if (value) {
+      await _ensurePermissions();
+      _refreshGoldenReminderViaService();
+    } else {
+      await NotificationService().cancelNotification(5);
+    }
+  }
+
+  void _refreshGoldenReminderViaService() {
+    // מפעיל את ההתראה (מניח כברירת מחדל שיש משימה כשהמשתמש מדליק מההגדרות)
+    NotificationService().refreshGoldenTaskReminder(true);
   }
 
   void _refreshDueReminderViaService() {
@@ -317,6 +353,40 @@ class _NotificationsSettingsPageState extends State<NotificationsSettingsPage> {
                         ),
                       ),
                       onTap: () => _selectTime(context, _ReminderType.due),
+                    ),
+                ],
+              ),
+            ),
+            const SizedBox(height: 16),
+            // --- תזכורת משימת זהב ---
+            Card(
+              color: Colors.grey.shade900,
+              child: Column(
+                children: [
+                  SwitchListTile(
+                    activeColor: Colors.amber,
+                    title: const Text('תזכורת משימת זהב'),
+                    subtitle: const Text(
+                      'תזכורת יומית לא להזניח את משימת הזהב שלך',
+                    ),
+                    value: _isGoldenReminderEnabled,
+                    onChanged: _toggleGoldenReminder,
+                  ),
+                  if (_isGoldenReminderEnabled)
+                    ListTile(
+                      leading: const Icon(
+                        Icons.access_time,
+                        color: Colors.blueAccent,
+                      ),
+                      title: const Text('שעת התראה'),
+                      trailing: Text(
+                        _goldenReminderTime.format(context),
+                        style: const TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                      onTap: () => _selectTime(context, _ReminderType.golden),
                     ),
                 ],
               ),

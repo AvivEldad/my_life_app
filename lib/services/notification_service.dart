@@ -367,6 +367,29 @@ class NotificationService {
     );
   }
 
+  /// פונקציה חכמה לרענון התראת משימת הזהב
+  Future<void> refreshGoldenTaskReminder(bool hasGoldenTask) async {
+    final prefs = await SharedPreferences.getInstance();
+    final isEnabled = prefs.getBool('isGoldenReminderEnabled') ?? false;
+
+    // אם ההתראה כבויה או שאין משימת זהב פתוחה - נבטל את ההתראה
+    if (!isEnabled || !hasGoldenTask) {
+      await cancelNotification(5); // מזהה ייחודי להתראת משימת זהב
+      return;
+    }
+
+    final hour = prefs.getInt('goldenReminderHour') ?? 9;
+    final minute = prefs.getInt('goldenReminderMinute') ?? 0;
+
+    await scheduleDailyNotification(
+      id: 5,
+      title: 'משימת זהב! 🌟',
+      body: 'יש לך משימת זהב פתוחה, אל תזניח אותה!',
+      hour: hour,
+      minute: minute,
+    );
+  }
+
   Future<void> scheduleRandomMantras(List<String> mantrasTexts) async {
     // אם אין מנטרות, נבטל התראות קיימות
     if (mantrasTexts.isEmpty) {
