@@ -192,7 +192,8 @@ class PrizesPage extends StatelessWidget {
             if (snapshot.connectionState == ConnectionState.waiting) {
               return const Center(child: CircularProgressIndicator());
             }
-            final prizes = snapshot.data ?? [];
+            final prizes = List<PrizeItem>.from(snapshot.data ?? [])
+              ..sort((a, b) => a.cost.compareTo(b.cost));
             if (prizes.isEmpty) {
               return const Center(
                 child: Text('אין פרסים עדיין. לחץ על + כדי להוסיף.'),
