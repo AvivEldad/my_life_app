@@ -30,6 +30,8 @@ class GamificationService extends ChangeNotifier {
   int currentBinder = 1;
   int totalCoinsSpent = 0;
   int totalXpEarned = 0;
+  int totalTasksCompleted = 0;
+  Map<String, dynamic> completedCategoriesCount = {};
 
   // The constructor runs automatically when the service is initialized
   GamificationService() {
@@ -52,6 +54,10 @@ class GamificationService extends ChangeNotifier {
         // טעינת הסטטיסטיקות החדשות (אם הן לא קיימות, ניקח את ה-XP הנוכחי כברירת מחדל)
         totalCoinsSpent = data['totalCoinsSpent'] ?? 0;
         totalXpEarned = data['totalXpEarned'] ?? currentXp;
+        totalTasksCompleted = data['totalTasksCompleted'] ?? 0;
+        completedCategoriesCount = Map<String, dynamic>.from(
+          data['completedCategoriesCount'] ?? {},
+        );
 
         notifyListeners();
       }
@@ -73,6 +79,8 @@ class GamificationService extends ChangeNotifier {
         // שמירת הסטטיסטיקות החדשות
         'totalCoinsSpent': totalCoinsSpent,
         'totalXpEarned': totalXpEarned,
+        'totalTasksCompleted': totalTasksCompleted,
+        'completedCategoriesCount': completedCategoriesCount,
       });
 
       await NotificationService().refreshCoinReminder(currentCoins);
@@ -131,6 +139,11 @@ class GamificationService extends ChangeNotifier {
     task.causedLevelUp = leveledUp;
     task.xpThresholdBeforeLevelUp = thresholdBeforeLevelUp;
     task.awardedPokemonId = pulledPokemonId;
+
+    totalTasksCompleted++;
+    String catId = task.categoryId ?? 'none';
+    int catCount = (completedCategoriesCount[catId] as num?)?.toInt() ?? 0;
+    completedCategoriesCount[catId] = catCount + 1;
 
     await _saveData();
     notifyListeners();
@@ -347,6 +360,13 @@ class GamificationService extends ChangeNotifier {
     task.causedLevelUp = false;
     task.xpThresholdBeforeLevelUp = null;
     task.awardedPokemonId = null;
+
+    if (totalTasksCompleted > 0) totalTasksCompleted--;
+    String catId = task.categoryId ?? 'none';
+    int catCount = (completedCategoriesCount[catId] as num?)?.toInt() ?? 0;
+    if (catCount > 0) {
+      completedCategoriesCount[catId] = catCount - 1;
+    }
 
     await _saveData();
     notifyListeners();

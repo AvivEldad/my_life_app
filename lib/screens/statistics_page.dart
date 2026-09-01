@@ -13,7 +13,7 @@ class StatisticsPage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    // משיכת נתוני הגיימיפיקציה ישירות
+    // משיכת נתוני הגיימיפיקציה שיכילו כעת את ההיסטוריה השלמה
     final gamificationService = context.watch<GamificationService>();
 
     return Directionality(
@@ -29,68 +29,87 @@ class StatisticsPage extends StatelessWidget {
             }
 
             final tasks = taskSnapshot.data ?? [];
-            final completedTasks = tasks.where((t) => t.isCompleted).toList();
-            final int openTasksCount = tasks.length - completedTasks.length;
-            final int completedTasksCount = completedTasks.length;
+
+            // סינון רק של המשימות הפתוחות
+            final openTasks = tasks.where((t) => !t.isCompleted).toList();
+            final int openTasksCount = openTasks.length;
+
+            // הפרדה בין משימות רגילות למשימות פרויקטים
+            final int projectTasksCount = openTasks
+                .where((t) => t.projectId != null)
+                .length;
 
             return StreamBuilder<List<CategoryItem>>(
               stream: context.read<CategoryService>().streamCategories(),
               builder: (context, categorySnapshot) {
                 final categories = categorySnapshot.data ?? [];
 
-                // לוגיקה לגרף: ספירת משימות שהושלמו לפי קטגוריה
+                // המרת המידע מה-GamificationService לפורמט שהגרף מצפה לו
                 Map<String, int> categoryCounts = {};
-                for (var task in completedTasks) {
-                  final catId = task.categoryId ?? 'none';
-                  categoryCounts[catId] = (categoryCounts[catId] ?? 0) + 1;
-                }
+                gamificationService.completedCategoriesCount.forEach((
+                  key,
+                  value,
+                ) {
+                  categoryCounts[key] = (value as num).toInt();
+                });
 
                 return ListView(
                   padding: const EdgeInsets.all(16.0),
                   children: [
                     // --- כרטיסיות נתונים כלליים ---
-                    Row(
-                      children: [
-                        Expanded(
-                          child: _buildStatCard(
-                            'משימות פתוחות',
-                            openTasksCount.toString(),
-                            Icons.pending_actions,
-                            Colors.blueAccent,
+                    // עטפנו ב-IntrinsicHeight כדי שהכרטיסיות ימתחו לגובה שווה
+                    IntrinsicHeight(
+                      child: Row(
+                        crossAxisAlignment:
+                            CrossAxisAlignment.stretch, // מתיחה של שני הצדדים
+                        children: [
+                          Expanded(
+                            child: _buildStatCard(
+                              'משימות פתוחות',
+                              '$openTasksCount\n( מתוכם $projectTasksCount מפרויקטים)',
+                              Icons.pending_actions,
+                              Colors.blueAccent,
+                            ),
                           ),
-                        ),
-                        const SizedBox(width: 16),
-                        Expanded(
-                          child: _buildStatCard(
-                            'משימות שהושלמו',
-                            completedTasksCount.toString(),
-                            Icons.check_circle,
-                            Colors.green,
+                          const SizedBox(width: 16),
+                          Expanded(
+                            child: _buildStatCard(
+                              'הושלמו (כל הזמנים)',
+                              gamificationService.totalTasksCompleted
+                                  .toString(),
+                              Icons.check_circle,
+                              Colors.green,
+                            ),
                           ),
-                        ),
-                      ],
+                        ],
+                      ),
                     ),
                     const SizedBox(height: 16),
-                    Row(
-                      children: [
-                        Expanded(
-                          child: _buildStatCard(
-                            'סך XP (כל הזמנים)',
-                            '${gamificationService.totalXpEarned} 🌟',
-                            Icons.star,
-                            Colors.purpleAccent,
+                    // עטפנו ב-IntrinsicHeight גם את השורה השנייה
+                    IntrinsicHeight(
+                      child: Row(
+                        crossAxisAlignment:
+                            CrossAxisAlignment.stretch, // מתיחה של שני הצדדים
+                        children: [
+                          Expanded(
+                            child: _buildStatCard(
+                              'סך XP (כל הזמנים)',
+                              '${gamificationService.totalXpEarned} 🌟',
+                              Icons.star,
+                              Colors.purpleAccent,
+                            ),
                           ),
-                        ),
-                        const SizedBox(width: 16),
-                        Expanded(
-                          child: _buildStatCard(
-                            'מטבעות שבוזבזו',
-                            '${gamificationService.totalCoinsSpent} 🪙',
-                            Icons.shopping_cart,
-                            Colors.amber,
+                          const SizedBox(width: 16),
+                          Expanded(
+                            child: _buildStatCard(
+                              'מטבעות שבוזבזו',
+                              '${gamificationService.totalCoinsSpent} 🪙',
+                              Icons.shopping_cart,
+                              Colors.amber,
+                            ),
                           ),
-                        ),
-                      ],
+                        ],
+                      ),
                     ),
 
                     const SizedBox(height: 32),
@@ -107,7 +126,7 @@ class StatisticsPage extends StatelessWidget {
                     _buildBasicCategoryGraph(
                       categoryCounts,
                       categories,
-                      completedTasksCount,
+                      gamificationService.totalTasksCompleted,
                     ),
                   ],
                 );
@@ -141,7 +160,7 @@ class StatisticsPage extends StatelessWidget {
     );
   }
 
-  // פונקציית עזר לבניית כרטיסיות סטטיסטיקה
+  // פונקציית עזר משופרת שתומכת בשורות מרובות ומתמרכזת יפה לגובה
   Widget _buildStatCard(
     String title,
     String value,
@@ -149,20 +168,23 @@ class StatisticsPage extends StatelessWidget {
     Color color,
   ) {
     return Container(
-      padding: const EdgeInsets.all(16),
+      padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
         color: Colors.grey.shade900,
         borderRadius: BorderRadius.circular(16),
         border: Border.all(color: color.withOpacity(0.3), width: 2),
       ),
       child: Column(
+        mainAxisAlignment:
+            MainAxisAlignment.center, // ממורכז אנכית אם הכרטיסייה נמתחת
         children: [
           Icon(icon, size: 32, color: color),
           const SizedBox(height: 8),
           Text(
             value,
+            textAlign: TextAlign.center,
             style: const TextStyle(
-              fontSize: 20,
+              fontSize: 16,
               fontWeight: FontWeight.bold,
               color: Colors.white,
             ),
@@ -178,7 +200,6 @@ class StatisticsPage extends StatelessWidget {
     );
   }
 
-  // פונקציה לבניית גרף פסים אופקי בסיסי ומעוצב
   Widget _buildBasicCategoryGraph(
     Map<String, int> counts,
     List<CategoryItem> categories,
@@ -200,7 +221,6 @@ class StatisticsPage extends StatelessWidget {
       );
     }
 
-    // ממירים את המפה לרשימה וממיינים כדי שהקטגוריות עם הכי הרבה משימות יופיעו למעלה
     var sortedEntries = counts.entries.toList()
       ..sort((a, b) => b.value.compareTo(a.value));
 
@@ -215,7 +235,6 @@ class StatisticsPage extends StatelessWidget {
           final catId = entry.key;
           final count = entry.value;
 
-          // איתור שם הקטגוריה והצבע שלה (אם נמחקה או חסרה, ניתן ערך ברירת מחדל)
           final category = categories.firstWhere(
             (c) => c.id == catId,
             orElse: () => CategoryItem(
@@ -225,14 +244,12 @@ class StatisticsPage extends StatelessWidget {
             ),
           );
 
-          // חישוב אחוז ההשלמה ביחס לסך המשימות שהושלמו (0.0 עד 1.0)
           final percentage = count / totalCompleted;
 
           return Padding(
             padding: const EdgeInsets.symmetric(vertical: 8.0),
             child: Row(
               children: [
-                // שם הקטגוריה
                 SizedBox(
                   width: 80,
                   child: Text(
@@ -242,12 +259,9 @@ class StatisticsPage extends StatelessWidget {
                   ),
                 ),
                 const SizedBox(width: 8),
-
-                // פס ההתקדמות הוויזואלי (הגרף האופקי)
                 Expanded(
                   child: Stack(
                     children: [
-                      // רקע הפס
                       Container(
                         height: 12,
                         decoration: BoxDecoration(
@@ -255,7 +269,6 @@ class StatisticsPage extends StatelessWidget {
                           borderRadius: BorderRadius.circular(6),
                         ),
                       ),
-                      // הפס הצבעוני שמתמלא
                       FractionallySizedBox(
                         widthFactor: percentage,
                         child: Container(
@@ -270,8 +283,6 @@ class StatisticsPage extends StatelessWidget {
                   ),
                 ),
                 const SizedBox(width: 12),
-
-                // ספירת המשימות המספרית
                 SizedBox(
                   width: 30,
                   child: Text(
