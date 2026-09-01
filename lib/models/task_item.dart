@@ -47,6 +47,9 @@ class TaskItem {
   int? xpThresholdBeforeLevelUp;
   int? awardedPokemonId;
 
+  bool isWeekly;
+  DateTime? weeklyDeadline;
+
   TaskItem({
     required this.id,
     required this.title,
@@ -69,6 +72,8 @@ class TaskItem {
     this.causedLevelUp = false,
     this.xpThresholdBeforeLevelUp,
     this.awardedPokemonId,
+    this.isWeekly = false,
+    DateTime? weeklyDeadline,
   }) : subTasks = subTasks ?? [],
        this.createdAt = createdAt ?? DateTime.now();
 
@@ -94,6 +99,8 @@ class TaskItem {
       'causedLevelUp': causedLevelUp,
       'xpThresholdBeforeLevelUp': xpThresholdBeforeLevelUp,
       'awardedPokemonId': awardedPokemonId,
+      'isWeekly': isWeekly,
+      'weeklyDeadline': weeklyDeadline?.millisecondsSinceEpoch,
     };
   }
 
@@ -137,6 +144,10 @@ class TaskItem {
       causedLevelUp: (map['causedLevelUp'] as bool?) ?? false,
       xpThresholdBeforeLevelUp: map['xpThresholdBeforeLevelUp'] as int?,
       awardedPokemonId: map['awardedPokemonId'] as int?,
+      isWeekly: map['isWeekly'] ?? false,
+      weeklyDeadline: map['weeklyDeadline'] != null
+          ? DateTime.fromMillisecondsSinceEpoch(map['weeklyDeadline'])
+          : null,
     );
   }
 }

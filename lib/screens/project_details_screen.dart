@@ -447,6 +447,7 @@ class _ProjectDetailsScreenState extends State<ProjectDetailsScreen> {
                           category: catById[task.categoryId],
                           onTap: () => _addOrEditTask(task, nextOrderIndex),
                           onToggleGolden: () {},
+                          onToggleWeekly: () => {},
                           onStatusChanged: (isCompleted) =>
                               _handleTaskStatusChanged(task, isCompleted),
                           onDelete: () => _handleTaskDelete(task),
@@ -464,7 +465,8 @@ class _ProjectDetailsScreenState extends State<ProjectDetailsScreen> {
                 category: catById[task.categoryId],
                 locked: locked,
                 onTap: () => _addOrEditTask(task, nextOrderIndex),
-                onToggleGolden: () {}, // גולדן לא רלוונטי בתוך פרויקט
+                onToggleGolden: () {},
+                onToggleWeekly: () => {},
                 onStatusChanged: (isCompleted) =>
                     _handleTaskStatusChanged(task, isCompleted),
                 onDelete: () => _handleTaskDelete(task),

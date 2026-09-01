@@ -457,4 +457,38 @@ class NotificationService {
       minute: minute2,
     );
   }
+
+  /// תזכורת לבחירת משימה שבועית בכל שבת ב-21:00
+  Future<void> scheduleWeeklySelectionReminder() async {
+    await scheduleWeeklyNotification(
+      id: 200,
+      title: 'משימה שבועית 🗓️',
+      body: 'הגיע הזמן לבחור את המשימה השבועית שלך לשבוע הקרוב!',
+      weekday: DateTime.saturday,
+      hour: 21,
+      minute: 0,
+    );
+  }
+
+  /// תזכורת יומית למשימה השבועית הפעילה
+  Future<void> refreshWeeklyTaskReminder(bool hasWeeklyTask) async {
+    if (!hasWeeklyTask) {
+      await cancelNotification(201);
+      return;
+    }
+
+    int currentDay = DateTime.now().weekday;
+    int daysLeft = currentDay == 7 ? 6 : 6 - currentDay;
+    String bodyText = daysLeft > 0
+        ? 'נשארו לך עוד $daysLeft ימים להשלים את המשימה השבועית ולהרוויח את הבונוס!'
+        : 'זה היום האחרון! סיים את המשימה השבועית היום לפני חצות.';
+
+    await scheduleDailyNotification(
+      id: 201,
+      title: 'המשימה השבועית שלך ⏳',
+      body: bodyText,
+      hour: 16, // שעת התזכורת היומית
+      minute: 0,
+    );
+  }
 }

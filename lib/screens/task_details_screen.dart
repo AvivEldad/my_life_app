@@ -1,20 +1,14 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../models/task_item.dart';
-import '../models/category_item.dart'; // יבוא מודל הקטגוריה
+import '../models/category_item.dart';
 import '../services/task_service.dart';
-import '../services/category_service.dart'; // יבוא שירות הקטגוריות
+import '../services/category_service.dart';
 
 class TaskDetailsScreen extends StatefulWidget {
   final TaskItem? task;
-
-  // כאשר המשימה נוצרת מתוך מסך פרויקט - אלו מועברים כדי לשייך אותה
-  // אליו אוטומטית (רק כשיוצרים משימה חדשה, task == null)
   final String? projectId;
   final String? projectName;
-
-  // סדר ברירת המחדל למשימה חדשה בתוך פרויקט - כך שהיא תתווסף בסוף
-  // רשימת המשימות של הפרויקט (ולא תדלג קדימה במשימות טוריות)
   final int? initialOrderIndex;
 
   const TaskDetailsScreen({
@@ -39,9 +33,10 @@ class _TaskDetailsScreenState extends State<TaskDetailsScreen> {
   int _level = 1;
   DateTime? _dueDate;
   List<SubTask> _subTasks = [];
-
-  // משתנה חדש לשמירת מזהה הקטגוריה שנבחרה
   String? _selectedCategoryId;
+
+  // משתנה חדש למשימה שבועית
+  bool _isWeekly = false;
 
   @override
   void initState() {
@@ -54,9 +49,8 @@ class _TaskDetailsScreenState extends State<TaskDetailsScreen> {
 
     _level = widget.task?.level ?? 1;
     _dueDate = widget.task?.dueDate;
-
-    // טעינת הקטגוריה הקיימת במשימה אם יש כזו
     _selectedCategoryId = widget.task?.categoryId;
+    _isWeekly = widget.task?.isWeekly ?? false;
 
     if (widget.task != null) {
       _subTasks = List.from(widget.task!.subTasks);
@@ -78,6 +72,25 @@ class _TaskDetailsScreenState extends State<TaskDetailsScreen> {
       final String taskId =
           widget.task?.id ?? DateTime.now().millisecondsSinceEpoch.toString();
 
+      // חישוב אוטומטי של תאריך היעד לשבת במידה וזו משימה שבועית
+      DateTime? deadline = widget.task?.weeklyDeadline;
+      if (_isWeekly && deadline == null) {
+        final now = DateTime.now();
+        int daysUntilSat = DateTime.saturday - now.weekday;
+        if (daysUntilSat < 0) daysUntilSat += 7;
+        final saturday = now.add(Duration(days: daysUntilSat));
+        deadline = DateTime(
+          saturday.year,
+          saturday.month,
+          saturday.day,
+          23,
+          59,
+          59,
+        );
+      } else if (!_isWeekly) {
+        deadline = null;
+      }
+
       final updatedTask = TaskItem(
         id: taskId,
         title: _titleController.text,
@@ -85,13 +98,12 @@ class _TaskDetailsScreenState extends State<TaskDetailsScreen> {
         level: _level,
         dueDate: _dueDate,
         subTasks: _subTasks,
-        categoryId: _selectedCategoryId, // שמירת הקטגוריה שנבחרה!
+        categoryId: _selectedCategoryId,
         isGolden: widget.task?.isGolden ?? false,
         isCompleted: widget.task?.isCompleted ?? false,
         lastPenaltyDate: widget.task?.lastPenaltyDate,
-        // אם המשימה שייכת לפרויקט (קיימת כבר או שנוצרת מתוכו) - נשמור על
-        // השיוך. משימה חדשה שנוצרת מתוך מסך פרויקט מקבלת את סדר ברירת
-        // המחדל שהועבר אליה כדי שתתווסף בסוף רשימת המשימות של הפרויקט.
+        isWeekly: _isWeekly, // שדה שבועי
+        weeklyDeadline: deadline, // תאריך יעד שבועי
         projectId: widget.task?.projectId ?? widget.projectId,
         projectName: widget.task?.projectName ?? widget.projectName,
         orderIndex:
@@ -131,9 +143,7 @@ class _TaskDetailsScreenState extends State<TaskDetailsScreen> {
 
   @override
   Widget build(BuildContext context) {
-    // משיכת שירות הקטגוריות כדי לקרוא את רשימת הקטגוריות הקיימות
     final categoryService = context.watch<CategoryService>();
-
     final effectiveProjectName = widget.task?.projectName ?? widget.projectName;
 
     return Scaffold(
@@ -201,11 +211,9 @@ class _TaskDetailsScreenState extends State<TaskDetailsScreen> {
             ),
             const SizedBox(height: 16),
 
-            // --- תפריט לבחירת קטגוריה כולל תצוגת צבע ---
             StreamBuilder<List<CategoryItem>>(
               stream: categoryService.streamCategories(),
               builder: (context, snapshot) {
-                // 1. מצב המתנה: אם הנתונים עדיין לא הגיעו, נציג טעינה במקום לקרוס
                 if (snapshot.connectionState == ConnectionState.waiting) {
                   return const Padding(
                     padding: EdgeInsets.symmetric(vertical: 16.0),
@@ -215,8 +223,6 @@ class _TaskDetailsScreenState extends State<TaskDetailsScreen> {
 
                 final categories = snapshot.data ?? [];
 
-                // 2. בדיקת בטיחות: האם הקטגוריה שנשמרה במשימה עדיין קיימת?
-                // אם היא לא קיימת (למשל נמחקה), נאפס ל-null (ללא קטגוריה).
                 if (_selectedCategoryId != null) {
                   bool categoryExists = categories.any(
                     (cat) => cat.id == _selectedCategoryId,
@@ -233,18 +239,15 @@ class _TaskDetailsScreenState extends State<TaskDetailsScreen> {
                     border: OutlineInputBorder(),
                   ),
                   items: [
-                    // אופציה לאיפוס/ללא קטגוריה
                     const DropdownMenuItem<String>(
                       value: null,
                       child: Text('ללא קטגוריה'),
                     ),
-                    // יצירת פריט לכל קטגוריה ברשימה
                     ...categories.map((category) {
                       return DropdownMenuItem<String>(
                         value: category.id,
                         child: Row(
                           children: [
-                            // עיגול הצבע של הקטגוריה
                             Container(
                               width: 16,
                               height: 16,
@@ -270,7 +273,6 @@ class _TaskDetailsScreenState extends State<TaskDetailsScreen> {
             ),
             const SizedBox(height: 16),
 
-            // --- בחירת תאריך יעד ---
             ListTile(
               contentPadding: EdgeInsets.zero,
               leading: const Icon(
@@ -301,6 +303,23 @@ class _TaskDetailsScreenState extends State<TaskDetailsScreen> {
                     _dueDate = pickedDate;
                   });
                 }
+              },
+            ),
+
+            // --- מתג חדש למשימה שבועית ---
+            SwitchListTile(
+              contentPadding: EdgeInsets.zero,
+              title: const Text(
+                'משימה שבועית 🗓️',
+                style: TextStyle(fontWeight: FontWeight.bold),
+              ),
+              subtitle: const Text('השלם עד מוצ"ש לקבלת בונוס XP ומטבעות!'),
+              value: _isWeekly,
+              activeColor: Colors.amber,
+              onChanged: (bool value) {
+                setState(() {
+                  _isWeekly = value;
+                });
               },
             ),
             const Divider(height: 30, thickness: 2),

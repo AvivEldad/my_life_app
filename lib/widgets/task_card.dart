@@ -8,6 +8,7 @@ class TaskCard extends StatelessWidget {
   final TaskItem task;
   final VoidCallback onTap;
   final VoidCallback onToggleGolden;
+  final VoidCallback? onToggleWeekly;
   final Function(bool) onStatusChanged;
   final CategoryItem? category;
 
@@ -26,6 +27,7 @@ class TaskCard extends StatelessWidget {
     required this.onTap,
     required this.onToggleGolden,
     required this.onStatusChanged,
+    required this.onToggleWeekly,
     this.category,
     this.locked = false,
     this.onDelete,
@@ -54,7 +56,10 @@ class TaskCard extends StatelessWidget {
         clipBehavior: Clip.antiAlias,
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(12.0),
-          side: isOverdue
+          // סדר העדיפויות של המסגרת: שבועי (סגול) > פג תוקף (אדום) > זהב (זהב)
+          side: task.isWeekly
+              ? const BorderSide(color: Colors.deepPurpleAccent, width: 2.0)
+              : isOverdue
               ? const BorderSide(color: Colors.red, width: 2.0)
               : task.isGolden
               ? const BorderSide(color: Colors.amber, width: 2.0)
@@ -189,6 +194,20 @@ class TaskCard extends StatelessWidget {
                                 ],
                               ),
                             ),
+                            // כפתור משימה שבועית
+                            if (onToggleWeekly != null)
+                              IconButton(
+                                icon: Icon(
+                                  task.isWeekly
+                                      ? Icons.calendar_month
+                                      : Icons.calendar_month_outlined,
+                                  color: task.isWeekly
+                                      ? Colors.deepPurpleAccent
+                                      : Colors.grey,
+                                ),
+                                onPressed: onToggleWeekly,
+                              ),
+                            // כפתור משימת זהב
                             IconButton(
                               icon: Icon(
                                 task.isGolden ? Icons.star : Icons.star_border,
@@ -270,7 +289,6 @@ class TaskCard extends StatelessWidget {
                         ),
 
                         // --- שורה 2: רשימת תתי-המשימות ---
-                        // --- שורה 2: רשימת תתי-המשימות (עד 2 בלבד במסך הבית) ---
                         if (task.subTasks.isNotEmpty)
                           Padding(
                             padding: const EdgeInsets.only(

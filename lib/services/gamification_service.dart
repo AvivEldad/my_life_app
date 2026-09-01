@@ -95,9 +95,17 @@ class GamificationService extends ChangeNotifier {
   /// Triggered when a task is checked off
   Future<int?> processTaskCompletion(TaskItem task) async {
     final multiplier = task.isGolden ? 2 : 1;
-    final earnedXp = task.level * 10 * multiplier;
-    final earnedCoins = task.level * 5 * multiplier;
+    int earnedXp = task.level * 10 * multiplier;
+    int earnedCoins = task.level * 5 * multiplier;
 
+    if (task.isWeekly) {
+      int currentDay = DateTime.now().weekday;
+      int daysLeft = currentDay == 7
+          ? 6
+          : 6 - currentDay; // ראשון=6, שני=5..., שבת=0
+      earnedXp += (task.level * 10) * daysLeft;
+      earnedCoins += (task.level * 5) * daysLeft;
+    }
     currentXp += earnedXp;
     currentCoins += earnedCoins;
     totalXpEarned += earnedXp;
@@ -419,7 +427,28 @@ class GamificationService extends ChangeNotifier {
           dueDate.month,
           dueDate.day,
         );
+        // בדיקת קנס למשימה שבועית שפגה תוקפה
+        if (data['isWeekly'] == true && data['weeklyDeadline'] != null) {
+          final deadlineMs = data['weeklyDeadline'] as int;
+          final deadlineDate = DateTime.fromMillisecondsSinceEpoch(deadlineMs);
 
+          if (startOfToday.isAfter(deadlineDate)) {
+            int xpPenalty = (data['level'] ?? 1) * 10;
+            int coinsPenalty = (data['level'] ?? 1) * 5;
+
+            currentXp -= xpPenalty;
+            if (currentXp < 0) currentXp = 0;
+            currentCoins -= coinsPenalty;
+            if (currentCoins < 0) currentCoins = 0;
+
+            // ביטול סטטוס המשימה השבועית כדי לא לקנוס שוב
+            await _db.collection('tasks').doc(doc.id).update({
+              'isWeekly': false,
+              'weeklyDeadline': null,
+            });
+            gamificationChanged = true;
+          }
+        }
         // בודקים אם תאריך היעד עבר
         if (startOfDueDate.isBefore(startOfToday)) {
           // מחשבים ממתי צריך לקנוס - מתאריך היעד, או מהפעם האחרונה שקנסנו

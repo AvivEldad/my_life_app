@@ -12,7 +12,6 @@ import 'task_details_screen.dart';
 import '../widgets/app_drawer.dart';
 import '../services/notification_service.dart';
 
-// הייבוא של האנימציות והווידג'טים החדשים שלנו!
 import '../widgets/glowing_xp_bar.dart';
 import '../widgets/floating_reward.dart';
 import '../widgets/confetti_dialog.dart';
@@ -137,6 +136,53 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
     }
   }
 
+  Future<void> _toggleWeekly(TaskItem task, List<TaskItem> allTasks) async {
+    final taskService = context.read<TaskService>();
+    final changedTasks = <TaskItem>[];
+
+    setState(() {
+      _suppressStreamUpdates = true;
+      if (!task.isWeekly) {
+        // מבטל משימות שבועיות אחרות (כי מותר רק אחת)
+        for (var t in allTasks) {
+          if (t.isWeekly && t.id != task.id) {
+            t.isWeekly = false;
+            t.weeklyDeadline = null;
+            changedTasks.add(t);
+          }
+        }
+        task.isWeekly = true;
+
+        // חישוב שבת הקרובה ב-23:59:59
+        final now = DateTime.now();
+        int daysUntilSat = DateTime.saturday - now.weekday;
+        if (daysUntilSat < 0) daysUntilSat += 7;
+        final saturday = now.add(Duration(days: daysUntilSat));
+        task.weeklyDeadline = DateTime(
+          saturday.year,
+          saturday.month,
+          saturday.day,
+          23,
+          59,
+          59,
+        );
+      } else {
+        task.isWeekly = false;
+        task.weeklyDeadline = null;
+      }
+      changedTasks.add(task);
+    });
+
+    try {
+      await taskService.saveTasksBatch(changedTasks);
+      await NotificationService().refreshWeeklyTaskReminder(task.isWeekly);
+    } finally {
+      if (mounted) {
+        setState(() => _suppressStreamUpdates = false);
+      }
+    }
+  }
+
   Future<void> _applySort(TaskSort sortType, List<TaskItem> activeTasks) async {
     final taskService = context.read<TaskService>();
 
@@ -147,12 +193,9 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
       } else if (sortType == TaskSort.date) {
         activeTasks.sort((a, b) => b.createdAt.compareTo(a.createdAt));
       } else if (sortType == TaskSort.category) {
-        // מיון לפי שם הקטגוריה (אלפביתי)
         activeTasks.sort((a, b) {
-          // פונקציית עזר למשיכת השם מתוך רשימת הקטגוריות שנטענו במסך
           String getCategoryName(String? id) {
-            if (id == null)
-              return 'תתתת'; // משימות ללא קטגוריה יופיעו בסוף הרשימה
+            if (id == null) return 'תתתת';
             try {
               return _categories.firstWhere((c) => c.id == id).name;
             } catch (_) {
@@ -165,8 +208,6 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
           ).compareTo(getCategoryName(b.categoryId));
         });
       }
-
-      // עדכון האינדקס לכל המשימות
       for (int i = 0; i < activeTasks.length; i++) {
         activeTasks[i].orderIndex = i;
       }
@@ -215,7 +256,6 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
     }
   }
 
-  // הפונקציה המרכזית החדשה שמנהלת את כל האנימציות לאחר סימון משימה
   Future<void> _handleTaskStatusChanged(
     TaskItem task,
     bool isNowCompleted,
@@ -227,26 +267,19 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
     if (isNowCompleted && !task.isCompleted) {
       task.completedAt = DateTime.now();
 
-      // 1. אנימציית המטבעות צפה מיד
       final earnedCoins = task.level * 5 * (task.isGolden ? 2 : 1);
       showFloatingReward(context, earnedCoins);
 
-      // 2. חישוב XP מול השירות
       int? pulledId = await gamificationService.processTaskCompletion(task);
 
-      // 3. בדיקה אם עלינו רמה ויש דמות חדשה להציג
       if (pulledId != null && context.mounted) {
-        // המתנה של שנייה כדי ליהנות מהאנימציה של מד ה-XP
         await Future.delayed(const Duration(milliseconds: 1000));
 
         if (context.mounted) {
-          // חלון קונפטי ראשון: עליית רמה
           await showDialog(
             context: context,
             builder: (context) => ConfettiDialog(
-              // שמנו לב שהסרנו את ה-'const' כדי שנוכל להעביר משתנה
               title: 'LEVEL UP!',
-              // כאן אנחנו מושכים את מספר הרמה הנוכחי מתוך השירות!
               message:
                   'You have reached level ${gamificationService.currentLevel}!',
             ),
@@ -254,7 +287,6 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
         }
 
         if (context.mounted) {
-          // חלון קונפטי שני: הדמות שקיבלנו
           final pulledName = gamificationService.getItemName(pulledId);
           final imageUrl =
               'https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/other/official-artwork/$pulledId.png';
@@ -270,8 +302,6 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
         }
       }
 
-      // 4. אם המשימה שייכת לפרויקט - בדיקה האם זו הייתה המשימה
-      // האחרונה שנותרה, ואם כן - הענקת בונוס ההשלמה
       if (task.projectId != null) {
         final completedProject = await projectService
             .checkAndAwardProjectCompletion(
@@ -294,12 +324,9 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
         }
       }
     } else if (!isNowCompleted) {
-      // אם המשתמש ביטל את סימון המשימה
       task.completedAt = null;
       await gamificationService.processTaskUncompletion(task);
 
-      // אם המשימה שייכת לפרויקט שכבר סומן כמושלם - נבטל את ההשלמה
-      // ואת התגמול שניתן עבורה
       if (task.projectId != null) {
         await projectService.revertProjectCompletionIfNeeded(
           task.projectId!,
@@ -307,27 +334,34 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
         );
       }
     }
+
+    // ביטול התראות קשורות אם המשימה הושלמה
     if (task.isGolden) {
       await NotificationService().refreshGoldenTaskReminder(false);
     }
-    // עדכון המצב ושמירה למסד הנתונים
+    if (task.isWeekly) {
+      await NotificationService().refreshWeeklyTaskReminder(false);
+    }
+
     task.isCompleted = isNowCompleted;
     taskService.saveTask(task);
   }
 
-  /// מחיקת משימה ששייכת לפרויקט, ישירות מעמוד הבית - ולאחריה בדיקה האם
-  /// נותרו רק משימות שהושלמו בפרויקט הזה, שבמקרה כזה משלימים אותו
-  /// ומעניקים את הבונוס (למקרה שהמשימה הפתוחה האחרונה נמחקה במקום
-  /// סומנה כהושלמה).
   Future<void> _handleProjectTaskDelete(TaskItem task) async {
     final taskService = context.read<TaskService>();
     final gamificationService = context.read<GamificationService>();
     final projectService = context.read<ProjectService>();
 
     await taskService.deleteTask(task.id);
+
+    // ניקוי התראות
     if (task.isGolden) {
       await NotificationService().refreshGoldenTaskReminder(false);
     }
+    if (task.isWeekly) {
+      await NotificationService().refreshWeeklyTaskReminder(false);
+    }
+
     if (!task.isCompleted && task.projectId != null) {
       final completedProject = await projectService
           .checkAndAwardProjectCompletion(task.projectId!, gamificationService);
@@ -373,13 +407,10 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
     }
 
     TaskItem? goldenTask;
+    TaskItem? weeklyTask; // משתנה למשימה השבועית
     List<TaskItem> activeTasks = [];
     List<TaskItem> completedTasks = [];
 
-    // עבור כל פרויקט מוצגת רק המשימה הפתוחה הראשונה שלו (לפי orderIndex) -
-    // אבל היא משתתפת ברשימה הרגילה בדיוק כמו כל משימה אחרת (ניתן לגרור
-    // ולמיין אותה יחד עם השאר). שאר המשימות של אותו פרויקט (נעולות/לא
-    // בתור) לא מוצגות בעמוד הבית בכלל.
     final Map<String, List<TaskItem>> openTasksByProject = {};
     for (final task in _allTasks) {
       if (task.projectId == null) continue;
@@ -398,12 +429,19 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
         continue;
       }
       if (task.projectId != null && !projectCurrentTaskIds.contains(task.id)) {
-        // משימה נעולה / לא בתור של הפרויקט שלה - לא מוצגת בעמוד הבית
         continue;
       }
+
+      // מיון המשימות המיוחדות לראש הרשימה
       if (task.isGolden) {
         if (goldenTask == null) {
           goldenTask = task;
+        } else {
+          activeTasks.add(task);
+        }
+      } else if (task.isWeekly) {
+        if (weeklyTask == null) {
+          weeklyTask = task;
         } else {
           activeTasks.add(task);
         }
@@ -415,12 +453,10 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
     activeTasks.sort((a, b) => a.orderIndex.compareTo(b.orderIndex));
 
     final categoryById = {for (final c in _categories) c.id: c};
-    // משיכת השירות כדי להעביר את הנתונים העדכניים ל-GlowingXpBar
     final gamificationService = context.watch<GamificationService>();
 
     return Column(
       children: [
-        // הבר החדש והזוהר שלנו!
         Padding(
           padding: const EdgeInsets.all(16.0),
           child: GlowingXpBar(
@@ -431,9 +467,8 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
         Padding(
           padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0),
           child: Wrap(
-            // השתמשנו ב-Wrap במקום Row כדי למנוע גלישה של הכפתורים
             alignment: WrapAlignment.end,
-            spacing: 8.0, // רווח קל בין הכפתורים
+            spacing: 8.0,
             children: [
               TextButton.icon(
                 icon: const Icon(Icons.category, size: 18),
@@ -457,8 +492,10 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
         Expanded(
           child: ReorderableListView(
             padding: const EdgeInsets.symmetric(horizontal: 12.0),
-            header: goldenTask != null
-                ? Padding(
+            header: Column(
+              children: [
+                if (goldenTask != null)
+                  Padding(
                     padding: const EdgeInsets.only(bottom: 12.0),
                     child: TaskCard(
                       key: Key(goldenTask.id),
@@ -467,15 +504,37 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
                       onTap: () => _showTaskDetails(context, goldenTask),
                       onToggleGolden: () =>
                           _toggleGolden(goldenTask!, _allTasks),
-                      // חיבור הפונקציה החדשה שלנו
+                      onToggleWeekly: () =>
+                          _toggleWeekly(goldenTask!, _allTasks),
                       onStatusChanged: (isCompleted) =>
                           _handleTaskStatusChanged(goldenTask!, isCompleted),
-                      onDelete: goldenTask.projectId != null
+                      onDelete: goldenTask!.projectId != null
                           ? () => _handleProjectTaskDelete(goldenTask!)
                           : null,
                     ),
-                  )
-                : const SizedBox.shrink(),
+                  ),
+                // הצגת המשימה השבועית בראש הרשימה
+                if (weeklyTask != null)
+                  Padding(
+                    padding: const EdgeInsets.only(bottom: 12.0),
+                    child: TaskCard(
+                      key: Key(weeklyTask.id),
+                      task: weeklyTask,
+                      category: categoryById[weeklyTask.categoryId],
+                      onTap: () => _showTaskDetails(context, weeklyTask),
+                      onToggleGolden: () =>
+                          _toggleGolden(weeklyTask!, _allTasks),
+                      onToggleWeekly: () =>
+                          _toggleWeekly(weeklyTask!, _allTasks),
+                      onStatusChanged: (isCompleted) =>
+                          _handleTaskStatusChanged(weeklyTask!, isCompleted),
+                      onDelete: weeklyTask!.projectId != null
+                          ? () => _handleProjectTaskDelete(weeklyTask!)
+                          : null,
+                    ),
+                  ),
+              ],
+            ),
 
             onReorder: (int oldIndex, int newIndex) {
               _onReorder(oldIndex, newIndex, activeTasks);
@@ -497,7 +556,7 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
                           category: categoryById[task.categoryId],
                           onTap: () => _showTaskDetails(context, task),
                           onToggleGolden: () => _toggleGolden(task, _allTasks),
-                          // חיבור הפונקציה החדשה שלנו
+                          onToggleWeekly: () => _toggleWeekly(task, _allTasks),
                           onStatusChanged: (isCompleted) =>
                               _handleTaskStatusChanged(task, isCompleted),
                           onDelete: task.projectId != null
@@ -517,7 +576,7 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
                     category: categoryById[task.categoryId],
                     onTap: () => _showTaskDetails(context, task),
                     onToggleGolden: () => _toggleGolden(task, _allTasks),
-                    // חיבור הפונקציה החדשה שלנו
+                    onToggleWeekly: () => _toggleWeekly(task, _allTasks),
                     onStatusChanged: (isCompleted) =>
                         _handleTaskStatusChanged(task, isCompleted),
                     onDelete: task.projectId != null
