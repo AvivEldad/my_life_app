@@ -17,7 +17,7 @@ import '../widgets/glowing_xp_bar.dart';
 import '../widgets/floating_reward.dart';
 import '../widgets/confetti_dialog.dart';
 
-enum TaskSort { level, date }
+enum TaskSort { level, date, category }
 
 class HomePage extends StatefulWidget {
   const HomePage({super.key});
@@ -146,7 +146,27 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
         activeTasks.sort((a, b) => b.level.compareTo(a.level));
       } else if (sortType == TaskSort.date) {
         activeTasks.sort((a, b) => b.createdAt.compareTo(a.createdAt));
+      } else if (sortType == TaskSort.category) {
+        // מיון לפי שם הקטגוריה (אלפביתי)
+        activeTasks.sort((a, b) {
+          // פונקציית עזר למשיכת השם מתוך רשימת הקטגוריות שנטענו במסך
+          String getCategoryName(String? id) {
+            if (id == null)
+              return 'תתתת'; // משימות ללא קטגוריה יופיעו בסוף הרשימה
+            try {
+              return _categories.firstWhere((c) => c.id == id).name;
+            } catch (_) {
+              return 'תתתת';
+            }
+          }
+
+          return getCategoryName(
+            a.categoryId,
+          ).compareTo(getCategoryName(b.categoryId));
+        });
       }
+
+      // עדכון האינדקס לכל המשימות
       for (int i = 0; i < activeTasks.length; i++) {
         activeTasks[i].orderIndex = i;
       }
@@ -410,17 +430,24 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
         ),
         Padding(
           padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0),
-          child: Row(
-            mainAxisAlignment: MainAxisAlignment.end,
+          child: Wrap(
+            // השתמשנו ב-Wrap במקום Row כדי למנוע גלישה של הכפתורים
+            alignment: WrapAlignment.end,
+            spacing: 8.0, // רווח קל בין הכפתורים
             children: [
               TextButton.icon(
+                icon: const Icon(Icons.category, size: 18),
+                label: const Text('קטגוריה'),
+                onPressed: () => _applySort(TaskSort.category, activeTasks),
+              ),
+              TextButton.icon(
                 icon: const Icon(Icons.sort, size: 18),
-                label: const Text('מיין לפי רמה'),
+                label: const Text('רמה'),
                 onPressed: () => _applySort(TaskSort.level, activeTasks),
               ),
               TextButton.icon(
                 icon: const Icon(Icons.date_range, size: 18),
-                label: const Text('מיין לפי תאריך'),
+                label: const Text('תאריך'),
                 onPressed: () => _applySort(TaskSort.date, activeTasks),
               ),
             ],
