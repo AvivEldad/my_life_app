@@ -32,7 +32,10 @@ void main() async {
     }
   }
   final notificationService = NotificationService();
-  await notificationService.init();
+  await notificationService.init(
+    onNotificationResponse: habitNotificationBackgroundHandler,
+    onBackgroundNotificationResponse: habitNotificationBackgroundHandler,
+  );
   runApp(const TaskApp());
 }
 

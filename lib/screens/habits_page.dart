@@ -89,12 +89,52 @@ class _HabitsPageState extends State<HabitsPage> {
       SnackBar(
         content: Text(
           didSnooze
-              ? 'התזכורת נדחתה ב-30 שעות'
+              ? 'התזכורת נדחתה ב-30 דקות'
               : 'אפשר לדחות הרגל עד פעמיים בלבד',
         ),
         duration: const Duration(seconds: 2),
       ),
     );
+  }
+
+  Future<void> _confirmAndDelete(HabitItem habit) async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (context) {
+        return AlertDialog(
+          backgroundColor: Colors.grey.shade900,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(16.0),
+          ),
+          title: const Text(
+            'מחיקת הרגל',
+            style: TextStyle(color: Colors.white),
+          ),
+          content: Text(
+            'האם אתה בטוח שברצונך למחוק את "${habit.summary}"?\n'
+            'הרצף הנוכחי (${habit.currentStreak}) יימחק לצמיתות.',
+            style: const TextStyle(color: Colors.white70),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(false),
+              child: const Text('ביטול', style: TextStyle(color: Colors.grey)),
+            ),
+            ElevatedButton(
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Colors.redAccent,
+              ),
+              onPressed: () => Navigator.of(context).pop(true),
+              child: const Text('מחק', style: TextStyle(color: Colors.white)),
+            ),
+          ],
+        );
+      },
+    );
+
+    if (confirmed == true) {
+      await context.read<HabitService>().deleteHabit(habit.id);
+    }
   }
 
   @override
@@ -127,8 +167,7 @@ class _HabitsPageState extends State<HabitsPage> {
                         builder: (context) => HabitFormScreen(habit: habit),
                       ),
                     ),
-                    onDelete: () =>
-                        context.read<HabitService>().deleteHabit(habit.id),
+                    onDelete: () => _confirmAndDelete(habit),
                     onMarkDone: () => _markDone(habit),
                     onSnooze: () => _snooze(habit),
                   );
@@ -142,8 +181,6 @@ class _HabitsPageState extends State<HabitsPage> {
           child: const Icon(Icons.add),
         ),
         bottomNavigationBar: BottomNavigationBar(
-          unselectedItemColor: Colors.grey,
-          selectedItemColor: Colors.grey,
           items: const [
             BottomNavigationBarItem(
               icon: Icon(Icons.check_circle_outline),
@@ -189,6 +226,8 @@ class _HabitCard extends StatelessWidget {
   Widget build(BuildContext context) {
     return Card(
       margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
+      clipBehavior: Clip.antiAlias,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12.0)),
       child: Padding(
         padding: const EdgeInsets.all(12),
         child: Column(
@@ -198,7 +237,7 @@ class _HabitCard extends StatelessWidget {
               children: [
                 IconButton(
                   icon: const Icon(Icons.check_circle_outline),
-                  color: Colors.greenAccent,
+                  color: Colors.amber,
                   onPressed: onMarkDone,
                   tooltip: 'סמן כבוצע',
                 ),
@@ -211,6 +250,7 @@ class _HabitCard extends StatelessWidget {
                         style: const TextStyle(
                           fontSize: 16,
                           fontWeight: FontWeight.bold,
+                          color: Colors.white,
                         ),
                         textAlign: TextAlign.right,
                       ),
@@ -218,7 +258,7 @@ class _HabitCard extends StatelessWidget {
                           habit.description!.isNotEmpty)
                         Text(
                           habit.description!,
-                          style: TextStyle(color: Colors.grey[400]),
+                          style: TextStyle(color: Colors.grey.shade400),
                           textAlign: TextAlign.right,
                         ),
                     ],
@@ -226,7 +266,7 @@ class _HabitCard extends StatelessWidget {
                 ),
                 IconButton(
                   icon: const Icon(Icons.snooze),
-                  color: habit.canSnooze ? Colors.amber : Colors.grey[700],
+                  color: habit.canSnooze ? Colors.amber : Colors.grey,
                   onPressed: onSnooze,
                   tooltip: habit.canSnooze
                       ? 'דחה תזכורת ב-30 דקות (${habit.snoozeCount}/${HabitItem.maxSnoozes})'
@@ -242,12 +282,16 @@ class _HabitCard extends StatelessWidget {
                   mainAxisSize: MainAxisSize.min,
                   children: [
                     IconButton(
-                      icon: const Icon(Icons.edit, size: 20),
+                      icon: const Icon(
+                        Icons.edit,
+                        size: 20,
+                        color: Colors.blueAccent,
+                      ),
                       onPressed: onEdit,
                     ),
                     IconButton(
                       icon: const Icon(
-                        Icons.delete,
+                        Icons.delete_outline,
                         size: 20,
                         color: Colors.redAccent,
                       ),
@@ -257,9 +301,13 @@ class _HabitCard extends StatelessWidget {
                 ),
                 Text(
                   recurrenceLabel,
-                  style: TextStyle(fontSize: 12, color: Colors.grey[400]),
+                  style: TextStyle(fontSize: 12, color: Colors.grey.shade400),
                 ),
-                if (habit.currentStreak > 0) Text('🔥 ${habit.currentStreak}'),
+                if (habit.currentStreak > 0)
+                  Text(
+                    '🔥 ${habit.currentStreak}',
+                    style: const TextStyle(color: Colors.white),
+                  ),
               ],
             ),
           ],

@@ -18,7 +18,17 @@ class NotificationService {
   bool _initialized = false;
 
   /// אתחול המערכת (נקרא לזה כשהאפליקציה עולה)
-  Future<void> init() async {
+  ///
+  /// [onNotificationResponse] fires when the user taps the notification or
+  /// one of its action buttons while the app is running or backgrounded.
+  /// [onBackgroundNotificationResponse] fires for the same taps when the
+  /// app process isn't running — it must be a top-level function annotated
+  /// with `@pragma('vm:entry-point')` (Android launches it in a fresh
+  /// isolate). Both can point to the same function.
+  Future<void> init({
+    void Function(NotificationResponse)? onNotificationResponse,
+    void Function(NotificationResponse)? onBackgroundNotificationResponse,
+  }) async {
     if (_initialized) return; // מונע אתחול כפול אם init() נקרא יותר מפעם אחת
 
     // אתחול מסד הנתונים של אזורי הזמן
@@ -43,7 +53,12 @@ class NotificationService {
       android: androidSettings,
     );
 
-    await _notificationsPlugin.initialize(initSettings);
+    await _notificationsPlugin.initialize(
+      initSettings,
+      onDidReceiveNotificationResponse: onNotificationResponse,
+      onDidReceiveBackgroundNotificationResponse:
+          onBackgroundNotificationResponse,
+    );
     _initialized = true;
   }
 
@@ -98,6 +113,8 @@ class NotificationService {
     String channelId = 'daily_reminders',
     String channelName = 'Daily Reminders',
     String channelDescription = 'Reminders for daily tasks and coins',
+    String? payload,
+    List<AndroidNotificationAction>? actions,
   }) async {
     if (!_initialized) {
       debugPrint(
@@ -121,17 +138,19 @@ class NotificationService {
         _nextInstanceOfTime(hour, minute),
         NotificationDetails(
           android: AndroidNotificationDetails(
-            'daily_reminders', // מזהה ערוץ (Channel ID)
-            'Daily Reminders', // שם ערוץ שיופיע בהגדרות המכשיר
-            channelDescription: 'Reminders for daily tasks and coins',
+            channelId,
+            channelName,
+            channelDescription: channelDescription,
             importance: Importance.max,
             priority: Priority.high,
+            actions: actions,
           ),
         ),
         androidScheduleMode: scheduleMode,
         uiLocalNotificationDateInterpretation:
             UILocalNotificationDateInterpretation.absoluteTime,
         matchDateTimeComponents: DateTimeComponents.time,
+        payload: payload,
       );
     } catch (e, st) {
       debugPrint(
@@ -154,6 +173,8 @@ class NotificationService {
     String channelId = 'habit_reminders',
     String channelName = 'Habit Reminders',
     String channelDescription = 'Reminders for weekly and monthly habits',
+    String? payload,
+    List<AndroidNotificationAction>? actions,
   }) async {
     if (!_initialized) await init();
     final bool exactAllowed = await _canScheduleExact();
@@ -173,12 +194,14 @@ class NotificationService {
             channelDescription: channelDescription,
             importance: Importance.max,
             priority: Priority.high,
+            actions: actions,
           ),
         ),
         androidScheduleMode: scheduleMode,
         uiLocalNotificationDateInterpretation:
             UILocalNotificationDateInterpretation.absoluteTime,
         matchDateTimeComponents: DateTimeComponents.dayOfWeekAndTime,
+        payload: payload,
       );
     } catch (e, st) {
       debugPrint(
@@ -201,6 +224,8 @@ class NotificationService {
     String channelId = 'habit_reminders',
     String channelName = 'Habit Reminders',
     String channelDescription = 'Reminders for weekly and monthly habits',
+    String? payload,
+    List<AndroidNotificationAction>? actions,
   }) async {
     if (!_initialized) await init();
     final bool exactAllowed = await _canScheduleExact();
@@ -220,11 +245,13 @@ class NotificationService {
             channelDescription: channelDescription,
             importance: Importance.max,
             priority: Priority.high,
+            actions: actions,
           ),
         ),
         androidScheduleMode: scheduleMode,
         uiLocalNotificationDateInterpretation:
             UILocalNotificationDateInterpretation.absoluteTime,
+        payload: payload,
         // No matchDateTimeComponents -> fires exactly once.
       );
     } catch (e, st) {

@@ -134,7 +134,7 @@ class HabitItem {
   int get _clampedInterval => (monthInterval ?? 1).clamp(1, 24);
 
   static const int maxSnoozes = 2;
-  static const Duration snoozeDuration = Duration(hours: 30);
+  static const Duration snoozeDuration = Duration(minutes: 30);
 
   bool get canSnooze => snoozeCount < maxSnoozes;
 
