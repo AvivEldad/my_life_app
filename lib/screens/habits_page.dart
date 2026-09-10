@@ -155,6 +155,7 @@ class _HabitsPageState extends State<HabitsPage> {
                 ),
               )
             : ListView.builder(
+                padding: const EdgeInsets.only(bottom: 96),
                 itemCount: _habits.length,
                 itemBuilder: (context, index) {
                   final habit = _habits[index];

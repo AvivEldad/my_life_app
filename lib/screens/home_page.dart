@@ -491,7 +491,7 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
 
         Expanded(
           child: ReorderableListView(
-            padding: const EdgeInsets.symmetric(horizontal: 12.0),
+            padding: const EdgeInsets.fromLTRB(12, 0, 12, 96),
             header: Column(
               children: [
                 if (goldenTask != null)

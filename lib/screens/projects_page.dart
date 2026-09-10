@@ -131,6 +131,7 @@ class ProjectsPage extends StatelessWidget {
 
           // Build the list of project cards
           return ListView.builder(
+            padding: const EdgeInsets.only(bottom: 96),
             itemCount: projects.length,
             itemBuilder: (context, index) {
               final project = projects[index];

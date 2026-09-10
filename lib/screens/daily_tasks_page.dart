@@ -115,7 +115,7 @@ class _DailyTasksPageState extends State<DailyTasksPage> {
             }
 
             return ListView.builder(
-              padding: const EdgeInsets.all(16),
+              padding: const EdgeInsets.fromLTRB(16, 16, 16, 96),
               itemCount: tasks.length,
               itemBuilder: (context, index) {
                 final task = tasks[index];

@@ -201,7 +201,7 @@ class PrizesPage extends StatelessWidget {
             }
 
             return ListView.builder(
-              padding: const EdgeInsets.all(12.0),
+              padding: const EdgeInsets.fromLTRB(12, 12, 12, 96),
               itemCount: prizes.length,
               itemBuilder: (context, index) {
                 final prize = prizes[index];

@@ -152,6 +152,7 @@ class _CategoriesPageState extends State<CategoriesPage> {
                 ),
               )
             : ListView.builder(
+                padding: const EdgeInsets.only(bottom: 96),
                 itemCount: _categories.length,
                 itemBuilder: (context, index) {
                   final c = _categories[index];

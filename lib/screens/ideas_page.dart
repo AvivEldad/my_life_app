@@ -127,7 +127,7 @@ class IdeasPage extends StatelessWidget {
 
             // וידג'ט שמאפשר גרירה ושינוי סדר
             return ReorderableListView.builder(
-              padding: const EdgeInsets.all(16),
+              padding: const EdgeInsets.fromLTRB(16, 16, 16, 96),
               itemCount: ideas.length,
               onReorder: (oldIndex, newIndex) {
                 // תיקון האינדקס של פלאטר בגרירה למטה

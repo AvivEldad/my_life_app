@@ -62,6 +62,11 @@ class TaskApp extends StatelessWidget {
       ],
       child: MaterialApp(
         debugShowCheckedModeBanner: false,
+        builder: (context, child) {
+          // Keep every screen, dialog, and bottom action above the phone's
+          // system navigation area, including devices using gesture navigation.
+          return SafeArea(top: false, child: child ?? const SizedBox.shrink());
+        },
         localizationsDelegates: const [
           GlobalMaterialLocalizations.delegate,
           GlobalWidgetsLocalizations.delegate,

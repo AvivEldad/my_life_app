@@ -164,6 +164,7 @@ class _StrikesPageState extends State<StrikesPage> {
           }
 
           return ListView.builder(
+            padding: const EdgeInsets.only(bottom: 96),
             itemCount: strikes.length,
             itemBuilder: (context, index) {
               final strike = strikes[index];

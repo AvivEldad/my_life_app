@@ -427,7 +427,7 @@ class _ProjectDetailsScreenState extends State<ProjectDetailsScreen> {
 
         Expanded(
           child: ReorderableListView(
-            padding: const EdgeInsets.symmetric(horizontal: 12.0),
+            padding: const EdgeInsets.fromLTRB(12, 0, 12, 96),
             onReorder: (oldIndex, newIndex) {
               _onReorder(oldIndex, newIndex, openTasks);
             },
