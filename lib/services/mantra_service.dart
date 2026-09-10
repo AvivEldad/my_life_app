@@ -8,7 +8,7 @@ class MantraService {
   Future<void> saveMantra(MantraItem mantra) async {
     try {
       await _db.collection('mantras').doc(mantra.id).set(mantra.toMap());
-      await _updateNotifications();
+      await refreshNotifications();
     } catch (e) {
       print('Error saving mantra: $e');
     }
@@ -17,7 +17,7 @@ class MantraService {
   Future<void> deleteMantra(String id) async {
     try {
       await _db.collection('mantras').doc(id).delete();
-      await _updateNotifications();
+      await refreshNotifications();
     } catch (e) {
       print('Error deleting mantra: $e');
     }
@@ -31,12 +31,17 @@ class MantraService {
     });
   }
 
-  // פונקציית עזר ששולפת את כל המנטרות כדי לעדכן את ההתראות ברקע
-  Future<void> _updateNotifications() async {
-    final snapshot = await _db.collection('mantras').get();
-    final texts = snapshot.docs
-        .map((doc) => doc.data()['text'] as String)
-        .toList();
-    await NotificationService().scheduleRandomMantras(texts);
+  // שולף את כל המנטרות ומרענן את לוח ההתראות. ציבורי כדי שנוכל
+  // לחדש את ההתראות האקראיות גם בכל הפעלה של האפליקציה.
+  Future<void> refreshNotifications() async {
+    try {
+      final snapshot = await _db.collection('mantras').get();
+      final texts = snapshot.docs
+          .map((doc) => doc.data()['text'] as String)
+          .toList();
+      await NotificationService().scheduleRandomMantras(texts);
+    } catch (e) {
+      print('Error refreshing mantra notifications: $e');
+    }
   }
 }

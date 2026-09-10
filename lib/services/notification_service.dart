@@ -418,44 +418,84 @@ class NotificationService {
   }
 
   Future<void> scheduleRandomMantras(List<String> mantrasTexts) async {
-    // אם אין מנטרות, נבטל התראות קיימות
-    if (mantrasTexts.isEmpty) {
-      await cancelNotification(101);
-      await cancelNotification(102);
-      return;
+    const firstMantraId = 10100;
+    const scheduledDays = 30;
+    const notificationsPerDay = 2;
+    const scheduledNotificationCount =
+        scheduledDays * notificationsPerDay;
+
+    // Remove both the old repeating notifications and the previous rolling
+    // schedule before building a fresh randomized schedule.
+    await cancelNotification(101);
+    await cancelNotification(102);
+    for (int index = 0; index < scheduledNotificationCount; index++) {
+      await cancelNotification(firstMantraId + index);
     }
 
+    final mantras = mantrasTexts
+        .map((text) => text.trim())
+        .where((text) => text.isNotEmpty)
+        .toList();
+    if (mantras.isEmpty) return;
+
     final random = Random();
+    var shuffledMantras = List<String>.from(mantras)..shuffle(random);
+    var mantraIndex = 0;
+    String? previousMantra;
 
-    // נחלק את היום לפעמיים כדי שלא יקפצו שתיהן באותה שעה:
-    // התראה 1: בין 08:00 ל-14:00
-    final hour1 = 8 + random.nextInt(7);
-    final minute1 = random.nextInt(60);
+    String nextMantra() {
+      if (mantraIndex == shuffledMantras.length) {
+        shuffledMantras = List<String>.from(mantras)..shuffle(random);
+        mantraIndex = 0;
 
-    // התראה 2: בין 15:00 ל-20:00 (עד 20:59 שזה מתאים לדרישה של 21:00)
-    final hour2 = 15 + random.nextInt(6);
-    final minute2 = random.nextInt(60);
+        if (shuffledMantras.length > 1 &&
+            shuffledMantras.first == previousMantra) {
+          final replacement = shuffledMantras[1];
+          shuffledMantras[1] = shuffledMantras.first;
+          shuffledMantras[0] = replacement;
+        }
+      }
 
-    // נגריל 2 מנטרות
-    final text1 = mantrasTexts[random.nextInt(mantrasTexts.length)];
-    final text2 = mantrasTexts[random.nextInt(mantrasTexts.length)];
+      final mantra = shuffledMantras[mantraIndex++];
+      previousMantra = mantra;
+      return mantra;
+    }
 
-    // נשתמש בפונקציה הקיימת שלנו כדי לתזמן אותן
-    await scheduleDailyNotification(
-      id: 101, // מזהה קבוע למנטרה הראשונה
-      title: 'מוטיבציה בשבילך 🌟',
-      body: text1,
-      hour: hour1,
-      minute: minute1,
-    );
+    final now = DateTime.now();
+    for (int dayOffset = 0; dayOffset < scheduledDays; dayOffset++) {
+      final date = now.add(Duration(days: dayOffset));
+      final notificationTimes = [
+        DateTime(
+          date.year,
+          date.month,
+          date.day,
+          8 + random.nextInt(7),
+          random.nextInt(60),
+        ),
+        DateTime(
+          date.year,
+          date.month,
+          date.day,
+          15 + random.nextInt(6),
+          random.nextInt(60),
+        ),
+      ];
 
-    await scheduleDailyNotification(
-      id: 102, // מזהה קבוע למנטרה השנייה
-      title: 'רגע של השראה ✨',
-      body: text2,
-      hour: hour2,
-      minute: minute2,
-    );
+      for (int slot = 0; slot < notificationsPerDay; slot++) {
+        final scheduledTime = notificationTimes[slot];
+        if (!scheduledTime.isAfter(now)) continue;
+
+        await scheduleOneShotNotification(
+          id: firstMantraId + (dayOffset * notificationsPerDay) + slot,
+          title: slot == 0 ? 'מוטיבציה בשבילך 🌟' : 'רגע של השראה ✨',
+          body: nextMantra(),
+          dateTime: scheduledTime,
+          channelId: 'mantra_reminders',
+          channelName: 'Mantra Reminders',
+          channelDescription: 'Random motivational mantra reminders',
+        );
+      }
+    }
   }
 
   /// תזכורת לבחירת משימה שבועית בכל שבת ב-21:00

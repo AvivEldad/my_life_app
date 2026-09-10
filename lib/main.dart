@@ -36,6 +36,7 @@ void main() async {
     onNotificationResponse: habitNotificationBackgroundHandler,
     onBackgroundNotificationResponse: habitNotificationBackgroundHandler,
   );
+  await MantraService().refreshNotifications();
   runApp(const TaskApp());
 }
 
