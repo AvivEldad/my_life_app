@@ -3,6 +3,7 @@ class StrikeItem {
   String title;
   int streak;
   String lastIncrementDate;
+  String lastAutoUpdateDate;
   bool isPunishable; // Determines if breaking it early costs coins
   DateTime createdAt;
 
@@ -16,11 +17,13 @@ class StrikeItem {
     required this.title,
     this.streak = 0,
     String? lastIncrementDate,
+    String? lastAutoUpdateDate,
     this.isPunishable = false,
     DateTime? createdAt,
     this.rewardedWeekMilestones = 0,
     this.rewardedMonthMilestones = 0,
   }) : lastIncrementDate = lastIncrementDate ?? '',
+       lastAutoUpdateDate = lastAutoUpdateDate ?? todayString(),
        createdAt = createdAt ?? DateTime.now();
 
   static String todayString() {
@@ -35,6 +38,7 @@ class StrikeItem {
       'title': title,
       'streak': streak,
       'lastIncrementDate': lastIncrementDate,
+      'lastAutoUpdateDate': lastAutoUpdateDate,
       'isPunishable': isPunishable,
       'createdAt': createdAt.millisecondsSinceEpoch,
       'rewardedWeekMilestones': rewardedWeekMilestones,
@@ -50,6 +54,9 @@ class StrikeItem {
       title: map['title'] ?? '',
       streak: (map['streak'] ?? 0).toInt(),
       lastIncrementDate: map['lastIncrementDate'] ?? '',
+      // Existing strikes start accruing from the day they are first loaded
+      // after this field was introduced, keeping their current value intact.
+      lastAutoUpdateDate: map['lastAutoUpdateDate'] ?? todayString(),
       isPunishable: map['isPunishable'] ?? false,
       createdAt: createdAtMs != null
           ? DateTime.fromMillisecondsSinceEpoch(createdAtMs)

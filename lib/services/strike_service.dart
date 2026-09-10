@@ -26,6 +26,62 @@ class StrikeCheckInResult {
 class StrikeService {
   final FirebaseFirestore _db = FirebaseFirestore.instance;
 
+  int _elapsedCalendarDays(String fromDate, String toDate) {
+    DateTime? parseDate(String value) {
+      final parts = value.split('-');
+      if (parts.length != 3) return null;
+
+      final year = int.tryParse(parts[0]);
+      final month = int.tryParse(parts[1]);
+      final day = int.tryParse(parts[2]);
+      if (year == null || month == null || day == null) return null;
+
+      return DateTime.utc(year, month, day);
+    }
+
+    final from = parseDate(fromDate);
+    final to = parseDate(toDate);
+    if (from == null || to == null) return 0;
+
+    final difference = to.difference(from).inDays;
+    return difference > 0 ? difference : 0;
+  }
+
+  /// Advances every strike by the number of local calendar days that passed
+  /// since its previous automatic update. Transactions keep repeated calls or
+  /// multiple devices from incrementing the same day twice.
+  Future<void> syncStrikesForToday() async {
+    final today = StrikeItem.todayString();
+    final snapshot = await _db.collection('strikes').get();
+
+    for (final document in snapshot.docs) {
+      await _db.runTransaction((transaction) async {
+        final freshDocument = await transaction.get(document.reference);
+        if (!freshDocument.exists) return;
+
+        final data = freshDocument.data()!;
+        final lastAutoUpdateDate = data['lastAutoUpdateDate'] as String?;
+
+        // Migrate an existing strike without changing its current count.
+        if (lastAutoUpdateDate == null || lastAutoUpdateDate.isEmpty) {
+          transaction.update(document.reference, {
+            'lastAutoUpdateDate': today,
+          });
+          return;
+        }
+
+        final elapsedDays = _elapsedCalendarDays(lastAutoUpdateDate, today);
+        if (elapsedDays == 0) return;
+
+        final currentStreak = (data['streak'] ?? 0).toInt();
+        transaction.update(document.reference, {
+          'streak': currentStreak + elapsedDays,
+          'lastAutoUpdateDate': today,
+        });
+      });
+    }
+  }
+
   Future<bool> saveStrike(StrikeItem strike) async {
     try {
       if (strike.id.isEmpty) {
@@ -127,6 +183,7 @@ class StrikeService {
     final strike = StrikeItem.fromMap(doc.id, doc.data()!);
     strike.streak = 0;
     strike.lastIncrementDate = '';
+    strike.lastAutoUpdateDate = StrikeItem.todayString();
     strike.rewardedWeekMilestones = 0;
     strike.rewardedMonthMilestones = 0;
 

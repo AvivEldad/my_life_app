@@ -39,6 +39,7 @@ class _CreateStrikeScreenState extends State<CreateStrikeScreen> {
       title: _titleController.text.trim(),
       streak: widget.existingStrike?.streak ?? 0,
       lastIncrementDate: widget.existingStrike?.lastIncrementDate,
+      lastAutoUpdateDate: widget.existingStrike?.lastAutoUpdateDate,
       isPunishable: widget.existingStrike?.isPunishable ?? false,
       createdAt: widget.existingStrike?.createdAt,
       rewardedWeekMilestones:

@@ -1,16 +1,45 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../widgets/app_drawer.dart';
-import '../widgets/floating_reward.dart';
-import '../widgets/confetti_dialog.dart';
 import '../models/strike_item.dart';
 import '../services/strike_service.dart';
-import '../services/gamification_service.dart';
 import 'create_strike_screen.dart';
 import 'main_layout.dart';
 
-class StrikesPage extends StatelessWidget {
+class StrikesPage extends StatefulWidget {
   const StrikesPage({super.key});
+
+  @override
+  State<StrikesPage> createState() => _StrikesPageState();
+}
+
+class _StrikesPageState extends State<StrikesPage> {
+  Timer? _dailySyncTimer;
+
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _syncStrikes();
+    });
+    _dailySyncTimer = Timer.periodic(
+      const Duration(hours: 4),
+      (_) => _syncStrikes(),
+    );
+  }
+
+  Future<void> _syncStrikes() async {
+    if (!mounted) return;
+    await context.read<StrikeService>().syncStrikesForToday();
+  }
+
+  @override
+  void dispose() {
+    _dailySyncTimer?.cancel();
+    super.dispose();
+  }
 
   Future<bool> _confirmDialog(
     BuildContext context, {
@@ -89,53 +118,6 @@ class StrikesPage extends StatelessWidget {
     }
   }
 
-  Future<void> _checkIn(BuildContext context, StrikeItem strike) async {
-    if (strike.incrementedToday) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('כבר סימנת את הסטרייק הזה היום! 🔥')),
-      );
-      return;
-    }
-
-    final strikeService = context.read<StrikeService>();
-    final gamificationService = context.read<GamificationService>();
-
-    final result = await strikeService.checkInStrike(
-      strike.id,
-      gamificationService,
-    );
-
-    if (result == null || !context.mounted) return;
-
-    if (result.earnedAnyReward) {
-      showFloatingReward(context, result.earnedCoins);
-
-      String message;
-      if (result.hitMonthMilestone && result.hitWeekMilestone) {
-        message =
-            'חודש שלם ברצף! קיבלת ${result.earnedCoins} מטבעות ו-${result.earnedXp} XP!';
-      } else if (result.hitMonthMilestone) {
-        message =
-            'חודש שלם ברצף! קיבלת ${result.earnedCoins} מטבעות ו-${result.earnedXp} XP!';
-      } else {
-        message =
-            'שבוע שלם ברצף! קיבלת ${result.earnedCoins} מטבע ו-${result.earnedXp} XP!';
-      }
-
-      await showDialog(
-        context: context,
-        builder: (context) => ConfettiDialog(
-          title: '${result.strike.streak} ימים ברצף! 🔥',
-          message: message,
-        ),
-      );
-    } else {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('סומן! ${result.strike.streak} ימים ברצף 🔥')),
-      );
-    }
-  }
-
   @override
   Widget build(BuildContext context) {
     final strikeService = context.read<StrikeService>();
@@ -185,20 +167,17 @@ class StrikesPage extends StatelessWidget {
             itemCount: strikes.length,
             itemBuilder: (context, index) {
               final strike = strikes[index];
-              final doneToday = strike.incrementedToday;
-
               return Card(
                 margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
                 child: ListTile(
                   leading: Icon(
                     Icons.local_fire_department,
-                    color: doneToday ? Colors.deepOrange : Colors.grey,
+                    color: strike.streak > 0 ? Colors.deepOrange : Colors.grey,
                     size: 32,
                   ),
                   title: Text(strike.title),
                   subtitle: Text(
-                    '${strike.streak} ${strike.streak == 1 ? "יום" : "ימים"} ברצף'
-                    '${doneToday ? " • סומן היום ✓" : ""}',
+                    '${strike.streak} ${strike.streak == 1 ? "יום" : "ימים"} ברצף',
                   ),
                   trailing: Row(
                     mainAxisSize: MainAxisSize.min,
@@ -224,7 +203,6 @@ class StrikesPage extends StatelessWidget {
                       ),
                     ],
                   ),
-                  onTap: () => _checkIn(context, strike),
                 ),
               );
             },
