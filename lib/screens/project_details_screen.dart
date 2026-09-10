@@ -172,10 +172,10 @@ class _ProjectDetailsScreenState extends State<ProjectDetailsScreen> {
     if (isNowCompleted && !task.isCompleted) {
       task.completedAt = DateTime.now();
 
-      final earnedCoins = task.level * 5 * (task.isGolden ? 2 : 1);
-      showFloatingReward(context, earnedCoins);
-
       int? pulledId = await gamificationService.processTaskCompletion(task);
+      if (context.mounted) {
+        showFloatingReward(context, task.awardedCoins ?? 0);
+      }
 
       task.isCompleted = true;
       await taskService.saveTask(task);

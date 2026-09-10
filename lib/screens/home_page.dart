@@ -267,10 +267,10 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
     if (isNowCompleted && !task.isCompleted) {
       task.completedAt = DateTime.now();
 
-      final earnedCoins = task.level * 5 * (task.isGolden ? 2 : 1);
-      showFloatingReward(context, earnedCoins);
-
       int? pulledId = await gamificationService.processTaskCompletion(task);
+      if (context.mounted) {
+        showFloatingReward(context, task.awardedCoins ?? 0);
+      }
 
       if (pulledId != null && context.mounted) {
         await Future.delayed(const Duration(milliseconds: 1000));
