@@ -53,7 +53,15 @@ class _TaskDetailsScreenState extends State<TaskDetailsScreen> {
     _isWeekly = widget.task?.isWeekly ?? false;
 
     if (widget.task != null) {
-      _subTasks = List.from(widget.task!.subTasks);
+      _subTasks = widget.task!.subTasks
+          .map(
+            (subTask) => SubTask(
+              id: subTask.id,
+              title: subTask.title,
+              isCompleted: subTask.isCompleted,
+            ),
+          )
+          .toList();
     }
   }
 
@@ -128,15 +136,66 @@ class _TaskDetailsScreenState extends State<TaskDetailsScreen> {
   }
 
   void _addSubTask() {
-    if (_subTaskController.text.isNotEmpty) {
+    final title = _subTaskController.text.trim();
+    if (title.isNotEmpty) {
       setState(() {
         _subTasks.add(
           SubTask(
             id: DateTime.now().millisecondsSinceEpoch.toString(),
-            title: _subTaskController.text,
+            title: title,
           ),
         );
         _subTaskController.clear();
+      });
+    }
+  }
+
+  Future<void> _editSubTask(SubTask subTask) async {
+    var draftTitle = subTask.title;
+
+    final updatedTitle = await showDialog<String>(
+      context: context,
+      builder: (dialogContext) {
+        return AlertDialog(
+          title: const Text('עריכת תת-משימה'),
+          content: TextFormField(
+            initialValue: subTask.title,
+            autofocus: true,
+            textInputAction: TextInputAction.done,
+            decoration: const InputDecoration(
+              labelText: 'שם תת-המשימה',
+              border: OutlineInputBorder(),
+            ),
+            onChanged: (value) => draftTitle = value,
+            onFieldSubmitted: (value) {
+              final title = value.trim();
+              if (title.isNotEmpty) {
+                Navigator.of(dialogContext).pop(title);
+              }
+            },
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(dialogContext).pop(),
+              child: const Text('ביטול'),
+            ),
+            ElevatedButton(
+              onPressed: () {
+                final title = draftTitle.trim();
+                if (title.isNotEmpty) {
+                  Navigator.of(dialogContext).pop(title);
+                }
+              },
+              child: const Text('שמירה'),
+            ),
+          ],
+        );
+      },
+    );
+
+    if (updatedTitle != null && mounted) {
+      setState(() {
+        subTask.title = updatedTitle;
       });
     }
   }
@@ -365,13 +424,24 @@ class _TaskDetailsScreenState extends State<TaskDetailsScreen> {
                     subTask.isCompleted = value ?? false;
                   });
                 },
-                secondary: IconButton(
-                  icon: const Icon(Icons.delete, color: Colors.red),
-                  onPressed: () {
-                    setState(() {
-                      _subTasks.remove(subTask);
-                    });
-                  },
+                secondary: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    IconButton(
+                      tooltip: 'עריכת תת-משימה',
+                      icon: const Icon(Icons.edit, color: Colors.blueAccent),
+                      onPressed: () => _editSubTask(subTask),
+                    ),
+                    IconButton(
+                      tooltip: 'מחיקת תת-משימה',
+                      icon: const Icon(Icons.delete, color: Colors.red),
+                      onPressed: () {
+                        setState(() {
+                          _subTasks.remove(subTask);
+                        });
+                      },
+                    ),
+                  ],
                 ),
               );
             }).toList(),
