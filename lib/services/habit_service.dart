@@ -13,9 +13,9 @@ class HabitService {
   final NotificationService _notificationService = NotificationService();
 
   /// Action id for the "Snooze" button shown directly on a habit
-  /// notification. Handled by habitNotificationBackgroundHandler below,
-  /// which is wired up in main.dart and works whether the app is open,
-  /// backgrounded, or fully closed.
+  /// notification. The app-level response handler delegates this action to
+  /// habitNotificationBackgroundHandler below, which also handles it from a
+  /// background isolate when the app is closed.
   static const String kSnoozeActionId = 'snooze_habit';
 
   /// Deterministic, positive notification id derived from the habit's
@@ -101,7 +101,7 @@ class HabitService {
         title: habit.summary,
         body: habit.description ?? '',
         dateTime: habit.snoozedUntil!,
-        payload: habit.id,
+        payload: '${NotificationService.habitsPayloadPrefix}${habit.id}',
         actions: _actionsFor(habit),
       );
       return true;
@@ -138,7 +138,7 @@ class HabitService {
           channelId: 'habit_reminders',
           channelName: 'Habit Reminders',
           channelDescription: 'Reminders for daily habits',
-          payload: habit.id,
+          payload: '${NotificationService.habitsPayloadPrefix}${habit.id}',
           actions: actions,
         );
         break;
@@ -150,7 +150,7 @@ class HabitService {
           weekday: habit.weekday ?? DateTime.monday,
           hour: habit.reminderTime.hour,
           minute: habit.reminderTime.minute,
-          payload: habit.id,
+          payload: '${NotificationService.habitsPayloadPrefix}${habit.id}',
           actions: actions,
         );
         break;
@@ -160,7 +160,7 @@ class HabitService {
           title: habit.summary,
           body: body,
           dateTime: habit.nextDueDate,
-          payload: habit.id,
+          payload: '${NotificationService.habitsPayloadPrefix}${habit.id}',
           actions: actions,
         );
         break;
@@ -195,9 +195,9 @@ class HabitService {
   }
 }
 
-/// Handles the "Snooze" button on a habit's notification. Registered as
-/// both the foreground and background notification-response callback in
-/// main.dart's NotificationService.init() call. Must stay a top-level
+/// Handles the "Snooze" button on a habit's notification. Registered as the
+/// background notification-response callback and called by the foreground
+/// app-level handler in main.dart. Must stay a top-level
 /// function (not a class method) and keep the @pragma('vm:entry-point')
 /// annotation — Android invokes it in a fresh, standalone isolate when the
 /// action is tapped while the app process isn't running, so it can't rely
@@ -212,8 +212,12 @@ Future<void> _handleHabitNotificationResponse(
   NotificationResponse response,
 ) async {
   if (response.actionId != HabitService.kSnoozeActionId) return;
-  final habitId = response.payload;
-  if (habitId == null || habitId.isEmpty) return;
+  final payload = response.payload;
+  if (payload == null || payload.isEmpty) return;
+  final habitId = payload.startsWith(NotificationService.habitsPayloadPrefix)
+      ? payload.substring(NotificationService.habitsPayloadPrefix.length)
+      : payload;
+  if (habitId.isEmpty) return;
 
   try {
     if (Firebase.apps.isEmpty) {

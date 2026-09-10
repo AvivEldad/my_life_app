@@ -62,11 +62,11 @@ class SettingsPage extends StatelessWidget {
             ),
           ],
           onTap: (index) {
-            Navigator.pushReplacement(
-              context,
+            Navigator.of(context).pushAndRemoveUntil(
               MaterialPageRoute(
                 builder: (context) => MainLayout(initialIndex: index),
               ),
+              (route) => false,
             );
           },
         ),

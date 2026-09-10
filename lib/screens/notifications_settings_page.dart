@@ -247,6 +247,7 @@ class _NotificationsSettingsPageState extends State<NotificationsSettingsPage> {
       body: 'אל תשכח לבדוק את המשימות הפתוחות שלך!.',
       hour: _morningReminderTime.hour,
       minute: _morningReminderTime.minute,
+      payload: NotificationService.homePayload,
     );
   }
 
@@ -475,11 +476,11 @@ class _NotificationsSettingsPageState extends State<NotificationsSettingsPage> {
             ),
           ],
           onTap: (index) {
-            Navigator.pushReplacement(
-              context,
+            Navigator.of(context).pushAndRemoveUntil(
               MaterialPageRoute(
                 builder: (context) => MainLayout(initialIndex: index),
               ),
+              (route) => false,
             );
           },
         ),

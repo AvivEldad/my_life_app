@@ -15,6 +15,22 @@ import '../screens/strikes_page.dart';
 class AppDrawer extends StatelessWidget {
   const AppDrawer({super.key});
 
+  void _openSecondaryPage(BuildContext context, Widget page) {
+    final navigator = Navigator.of(context);
+    navigator.pop();
+    navigator.pushAndRemoveUntil(
+      MaterialPageRoute(builder: (_) => page),
+      (route) => route.isFirst,
+    );
+  }
+
+  void _openMainPage(BuildContext context, int index) {
+    Navigator.of(context).pushAndRemoveUntil(
+      MaterialPageRoute(builder: (_) => MainLayout(initialIndex: index)),
+      (route) => false,
+    );
+  }
+
   // פונקציה חכמה לחישוב התג הנכון (ספירה מעגלית של 36 תגים)
   String _getBadgePath(int level) {
     // שימוש במודולו (שארית חלוקה):
@@ -86,130 +102,70 @@ class AppDrawer extends StatelessWidget {
                     leading: const Icon(Icons.task),
                     title: const Text('המשימות שלי'),
                     onTap: () {
-                      Navigator.pushReplacement(
-                        context,
-                        MaterialPageRoute(
-                          builder: (context) =>
-                              const MainLayout(initialIndex: 0),
-                        ),
-                      );
+                      _openMainPage(context, 0);
                     },
                   ),
                   ListTile(
                     leading: const Icon(Icons.folder_outlined),
                     title: const Text('הפרויקטים שלי'),
                     onTap: () {
-                      Navigator.pushReplacement(
-                        context,
-                        MaterialPageRoute(
-                          builder: (context) =>
-                              const MainLayout(initialIndex: 1),
-                        ),
-                      );
+                      _openMainPage(context, 1);
                     },
                   ),
                   ListTile(
                     leading: const Icon(Icons.repeat),
                     title: const Text('ההרגלים שלי'),
                     onTap: () {
-                      Navigator.pop(context);
-                      Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                          builder: (context) => const HabitsPage(),
-                        ),
-                      );
+                      _openSecondaryPage(context, const HabitsPage());
                     },
                   ),
                   ListTile(
                     leading: const Icon(Icons.category),
                     title: const Text('קטגוריות'),
                     onTap: () {
-                      Navigator.pop(context);
-                      Navigator.pushReplacement(
-                        context,
-                        MaterialPageRoute(
-                          builder: (context) => const CategoriesPage(),
-                        ),
-                      );
+                      _openSecondaryPage(context, const CategoriesPage());
                     },
                   ),
                   ListTile(
                     leading: const Icon(Icons.local_fire_department),
                     title: const Text('סטרייקים'),
                     onTap: () {
-                      Navigator.pop(context);
-                      Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                          builder: (context) => const StrikesPage(),
-                        ),
-                      );
+                      _openSecondaryPage(context, const StrikesPage());
                     },
                   ),
                   ListTile(
                     leading: const Icon(Icons.list),
                     title: const Text('רשימה יומית'),
                     onTap: () {
-                      Navigator.pop(context);
-                      Navigator.pushReplacement(
-                        context,
-                        MaterialPageRoute(
-                          builder: (context) => const DailyTasksPage(),
-                        ),
-                      );
+                      _openSecondaryPage(context, const DailyTasksPage());
                     },
                   ),
                   ListTile(
                     leading: const Icon(Icons.bolt),
                     title: const Text('מנטרות'),
                     onTap: () {
-                      Navigator.pop(context);
-                      Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                          builder: (context) => const MantrasPage(),
-                        ),
-                      );
+                      _openSecondaryPage(context, const MantrasPage());
                     },
                   ),
                   ListTile(
                     leading: const Icon(Icons.emoji_events),
                     title: const Text('הפרסים שלי'),
                     onTap: () {
-                      Navigator.pop(context);
-                      Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                          builder: (context) => const PrizesPage(),
-                        ),
-                      );
+                      _openSecondaryPage(context, const PrizesPage());
                     },
                   ),
                   ListTile(
                     leading: const Icon(Icons.book),
                     title: const Text('ביינדר'),
                     onTap: () {
-                      Navigator.pop(context);
-                      Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                          builder: (context) => const BinderScreen(),
-                        ),
-                      );
+                      _openSecondaryPage(context, const BinderScreen());
                     },
                   ),
                   ListTile(
                     leading: const Icon(Icons.lightbulb),
                     title: const Text('רעיונות'),
                     onTap: () {
-                      Navigator.pop(context);
-                      Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                          builder: (context) => const IdeasPage(),
-                        ),
-                      );
+                      _openSecondaryPage(context, const IdeasPage());
                     },
                   ),
                 ],
@@ -222,11 +178,7 @@ class AppDrawer extends StatelessWidget {
               leading: const Icon(Icons.settings),
               title: const Text('הגדרות'),
               onTap: () {
-                Navigator.pop(context); // סגירת התפריט הצדדי
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(builder: (context) => const SettingsPage()),
-                );
+                _openSecondaryPage(context, const SettingsPage());
               },
             ),
 

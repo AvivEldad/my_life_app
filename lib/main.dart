@@ -5,6 +5,7 @@ import 'package:provider/provider.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'firebase_options.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'services/notification_service.dart';
 import 'services/task_service.dart';
 import 'services/project_service.dart';
@@ -17,6 +18,67 @@ import 'services/gamification_service.dart';
 import 'services/idea_service.dart';
 
 import 'screens/main_layout.dart';
+import 'screens/habits_page.dart';
+import 'screens/mantras_page.dart';
+import 'screens/prizes_page.dart';
+import 'screens/strikes_page.dart';
+
+final GlobalKey<NavigatorState> appNavigatorKey = GlobalKey<NavigatorState>();
+NotificationResponse? _pendingNotificationResponse;
+
+void appNotificationResponseHandler(NotificationResponse response) {
+  if (response.actionId == HabitService.kSnoozeActionId) {
+    habitNotificationBackgroundHandler(response);
+    return;
+  }
+
+  if (appNavigatorKey.currentState == null) {
+    _pendingNotificationResponse = response;
+    return;
+  }
+  _openNotificationDestination(response);
+}
+
+void _openNotificationDestination(NotificationResponse response) {
+  final navigator = appNavigatorKey.currentState;
+  if (navigator == null) {
+    _pendingNotificationResponse = response;
+    return;
+  }
+
+  final payload = response.payload;
+  final id = response.id;
+  late final Widget destination;
+
+  if (payload == NotificationService.strikesPayload || id == 4) {
+    destination = const StrikesPage();
+  } else if (payload?.startsWith(NotificationService.habitsPayloadPrefix) ==
+          true ||
+      (id != null && id >= 1000000)) {
+    destination = const HabitsPage();
+  } else if (payload == NotificationService.mantrasPayload ||
+      id == 101 ||
+      id == 102 ||
+      (id != null && id >= 10100 && id < 10160)) {
+    destination = const MantrasPage();
+  } else if (payload == NotificationService.prizesPayload || id == 2) {
+    destination = const PrizesPage();
+  } else if (payload == NotificationService.homePayload ||
+      id == 1 ||
+      id == 3 ||
+      id == 5 ||
+      id == 200 ||
+      id == 201) {
+    destination = const MainLayout(initialIndex: 0);
+  } else {
+    return;
+  }
+
+  navigator.pushAndRemoveUntil(
+    MaterialPageRoute(builder: (_) => destination),
+    (route) => route.isFirst,
+  );
+}
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -33,11 +95,22 @@ void main() async {
   }
   final notificationService = NotificationService();
   await notificationService.init(
-    onNotificationResponse: habitNotificationBackgroundHandler,
+    onNotificationResponse: appNotificationResponseHandler,
     onBackgroundNotificationResponse: habitNotificationBackgroundHandler,
   );
+  final launchDetails = await notificationService.getAppLaunchDetails();
+  final launchResponse = launchDetails?.didNotificationLaunchApp == true
+      ? launchDetails?.notificationResponse
+      : null;
   await MantraService().refreshNotifications();
   runApp(const TaskApp());
+  WidgetsBinding.instance.addPostFrameCallback((_) {
+    final response = launchResponse ?? _pendingNotificationResponse;
+    _pendingNotificationResponse = null;
+    if (response != null) {
+      _openNotificationDestination(response);
+    }
+  });
 }
 
 class TaskApp extends StatelessWidget {
@@ -62,6 +135,7 @@ class TaskApp extends StatelessWidget {
         Provider(create: (_) => IdeaService()),
       ],
       child: MaterialApp(
+        navigatorKey: appNavigatorKey,
         debugShowCheckedModeBanner: false,
         builder: (context, child) {
           // Keep every screen, dialog, and bottom action above the phone's

@@ -214,11 +214,11 @@ class _CategoriesPageState extends State<CategoriesPage> {
             ),
           ],
           onTap: (index) {
-            Navigator.pushReplacement(
-              context,
+            Navigator.of(context).pushAndRemoveUntil(
               MaterialPageRoute(
                 builder: (context) => MainLayout(initialIndex: index),
               ),
+              (route) => false,
             );
           },
         ),

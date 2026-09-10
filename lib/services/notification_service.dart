@@ -7,6 +7,12 @@ import 'package:flutter_timezone/flutter_timezone.dart';
 import 'dart:math';
 
 class NotificationService {
+  static const String homePayload = 'screen:home';
+  static const String prizesPayload = 'screen:prizes';
+  static const String strikesPayload = 'screen:strikes';
+  static const String mantrasPayload = 'screen:mantras';
+  static const String habitsPayloadPrefix = 'screen:habits;habitId:';
+
   // יצירת מופע יחיד (Singleton) כדי שנוכל לגשת אליו מכל מקום באפליקציה
   static final NotificationService _instance = NotificationService._internal();
   factory NotificationService() => _instance;
@@ -67,6 +73,10 @@ class NotificationService {
           .resolvePlatformSpecificImplementation<
             AndroidFlutterLocalNotificationsPlugin
           >();
+
+  Future<NotificationAppLaunchDetails?> getAppLaunchDetails() {
+    return _notificationsPlugin.getNotificationAppLaunchDetails();
+  }
 
   /// בקשת הרשאה מהמשתמש באנדרואיד 13 ומעלה.
   /// מחזירה true אם גם הרשאת ההתראות וגם הרשאת ההתראות המדויקות אושרו.
@@ -313,6 +323,7 @@ class NotificationService {
       body: 'יש לך כרגע $currentCoins מטבעות! כנס לראות איזה פרס אפשר לממש.',
       hour: hour,
       minute: minute,
+      payload: prizesPayload,
     );
   }
 
@@ -341,6 +352,7 @@ class NotificationService {
         'בדיקת מערכת 🚀',
         'מעולה! מערכת ההתראות שלך עובדת בצורה מושלמת.',
         platformDetails,
+        payload: homePayload,
       );
     } catch (e) {
       debugPrint('NotificationService: failed to show test notification: $e');
@@ -366,6 +378,7 @@ class NotificationService {
       body: bodyText,
       hour: hour,
       minute: minute,
+      payload: strikesPayload,
     );
   }
 
@@ -391,6 +404,7 @@ class NotificationService {
       body: bodyText,
       hour: hour,
       minute: minute,
+      payload: homePayload,
     );
   }
 
@@ -414,6 +428,7 @@ class NotificationService {
       body: 'יש לך משימת זהב פתוחה, אל תזניח אותה!',
       hour: hour,
       minute: minute,
+      payload: homePayload,
     );
   }
 
@@ -493,6 +508,7 @@ class NotificationService {
           channelId: 'mantra_reminders',
           channelName: 'Mantra Reminders',
           channelDescription: 'Random motivational mantra reminders',
+          payload: mantrasPayload,
         );
       }
     }
@@ -507,6 +523,7 @@ class NotificationService {
       weekday: DateTime.saturday,
       hour: 21,
       minute: 0,
+      payload: homePayload,
     );
   }
 
@@ -529,6 +546,7 @@ class NotificationService {
       body: bodyText,
       hour: 16, // שעת התזכורת היומית
       minute: 0,
+      payload: homePayload,
     );
   }
 }
