@@ -278,13 +278,13 @@ class _NotificationsSettingsPageState extends State<NotificationsSettingsPage> {
                 await NotificationService().requestPermissions();
                 await NotificationService().showImmediateTestNotification();
               },
-              icon: const Icon(Icons.notifications_active, color: Colors.white),
+              icon: const Icon(Icons.notifications_active, color: Colors.black),
               label: const Text(
                 'שלח התראת בדיקה עכשיו',
-                style: TextStyle(fontSize: 16, color: Colors.white),
+                style: TextStyle(fontSize: 16, color: Colors.black),
               ),
               style: ElevatedButton.styleFrom(
-                backgroundColor: Colors.blueAccent,
+                backgroundColor: Colors.amber,
                 padding: const EdgeInsets.symmetric(vertical: 12),
                 shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(12),
@@ -308,7 +308,7 @@ class _NotificationsSettingsPageState extends State<NotificationsSettingsPage> {
                     ListTile(
                       leading: const Icon(
                         Icons.access_time,
-                        color: Colors.blueAccent,
+                        color: Colors.amber,
                       ),
                       title: const Text('שעת התראה'),
                       trailing: Text(
@@ -342,7 +342,7 @@ class _NotificationsSettingsPageState extends State<NotificationsSettingsPage> {
                     ListTile(
                       leading: const Icon(
                         Icons.access_time,
-                        color: Colors.blueAccent,
+                        color: Colors.amber,
                       ),
                       title: const Text('שעת התראה'),
                       trailing: Text(
@@ -376,7 +376,7 @@ class _NotificationsSettingsPageState extends State<NotificationsSettingsPage> {
                     ListTile(
                       leading: const Icon(
                         Icons.access_time,
-                        color: Colors.blueAccent,
+                        color: Colors.amber,
                       ),
                       title: const Text('שעת התראה'),
                       trailing: Text(
@@ -410,7 +410,7 @@ class _NotificationsSettingsPageState extends State<NotificationsSettingsPage> {
                     ListTile(
                       leading: const Icon(
                         Icons.access_time,
-                        color: Colors.blueAccent,
+                        color: Colors.amber,
                       ),
                       title: const Text('שעת התראה'),
                       trailing: Text(
@@ -444,7 +444,7 @@ class _NotificationsSettingsPageState extends State<NotificationsSettingsPage> {
                     ListTile(
                       leading: const Icon(
                         Icons.access_time,
-                        color: Colors.blueAccent,
+                        color: Colors.amber,
                       ),
                       title: const Text('שעת התראה'),
                       trailing: Text(

@@ -226,8 +226,8 @@ class _StrikesPageState extends State<StrikesPage> {
             }
           }
         },
-        backgroundColor: Colors.deepOrange,
-        child: const Icon(Icons.add, color: Colors.white),
+        backgroundColor: Colors.amber,
+        child: const Icon(Icons.add, color: Colors.black),
       ),
       bottomNavigationBar: BottomNavigationBar(
         unselectedItemColor: Colors.grey,

@@ -78,7 +78,60 @@ class TaskApp extends StatelessWidget {
         theme: ThemeData(
           brightness: Brightness.dark,
           useMaterial3: true,
-          primarySwatch: Colors.amber,
+          colorScheme: ColorScheme.fromSeed(
+            seedColor: Colors.amber,
+            brightness: Brightness.dark,
+          ),
+          scaffoldBackgroundColor: const Color(0xFF121212),
+          appBarTheme: const AppBarThemeData(
+            backgroundColor: Color(0xFF121212),
+            foregroundColor: Colors.white,
+            centerTitle: true,
+            elevation: 0,
+          ),
+          cardTheme: CardThemeData(
+            color: Colors.grey.shade900,
+            elevation: 1,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(12),
+            ),
+          ),
+          floatingActionButtonTheme: const FloatingActionButtonThemeData(
+            backgroundColor: Colors.amber,
+            foregroundColor: Colors.black,
+          ),
+          elevatedButtonTheme: ElevatedButtonThemeData(
+            style: ElevatedButton.styleFrom(
+              backgroundColor: Colors.amber,
+              foregroundColor: Colors.black,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(12),
+              ),
+            ),
+          ),
+          textButtonTheme: TextButtonThemeData(
+            style: TextButton.styleFrom(foregroundColor: Colors.amber),
+          ),
+          dialogTheme: DialogThemeData(
+            backgroundColor: Colors.grey.shade900,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(16),
+            ),
+          ),
+          bottomNavigationBarTheme: BottomNavigationBarThemeData(
+            backgroundColor: Colors.grey.shade900,
+            selectedItemColor: Colors.amber,
+            unselectedItemColor: Colors.grey,
+          ),
+          inputDecorationTheme: InputDecorationTheme(
+            border: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(12),
+            ),
+            focusedBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(12),
+              borderSide: const BorderSide(color: Colors.amber, width: 2),
+            ),
+          ),
         ),
         home: const MainLayout(),
       ),

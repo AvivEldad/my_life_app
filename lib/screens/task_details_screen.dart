@@ -469,12 +469,12 @@ class _TaskDetailsScreenState extends State<TaskDetailsScreen> {
             ElevatedButton(
               style: ElevatedButton.styleFrom(
                 padding: const EdgeInsets.symmetric(vertical: 16),
-                backgroundColor: Colors.green,
+                backgroundColor: Colors.amber,
               ),
               onPressed: _saveTask,
               child: const Text(
                 'שמור משימה',
-                style: TextStyle(fontSize: 18, color: Colors.white),
+                style: TextStyle(fontSize: 18, color: Colors.black),
               ),
             ),
           ],

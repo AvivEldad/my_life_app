@@ -150,7 +150,7 @@ class IdeasPage extends StatelessWidget {
                 return Card(
                   // חובה לספק מפתח ייחודי (Key) לכל פריט ברשימה נגררת
                   key: ValueKey(idea.id),
-                  color: Colors.grey.shade800,
+                  color: Colors.grey.shade900,
                   margin: const EdgeInsets.only(bottom: 12),
                   shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(12),

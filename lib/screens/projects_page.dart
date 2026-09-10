@@ -232,8 +232,8 @@ class ProjectsPage extends StatelessWidget {
             }
           }
         },
-        backgroundColor: Colors.blueAccent,
-        child: const Icon(Icons.add, color: Colors.white),
+        backgroundColor: Colors.amber,
+        child: const Icon(Icons.add, color: Colors.black),
       ),
     );
   }

@@ -120,7 +120,7 @@ class _DailyTasksPageState extends State<DailyTasksPage> {
               itemBuilder: (context, index) {
                 final task = tasks[index];
                 return Card(
-                  color: Colors.grey.shade800,
+                  color: Colors.grey.shade900,
                   margin: const EdgeInsets.only(bottom: 8),
                   child: ListTile(
                     leading: Checkbox(

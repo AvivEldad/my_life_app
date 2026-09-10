@@ -79,11 +79,11 @@ class _CreateStrikeScreenState extends State<CreateStrikeScreen> {
               child: ElevatedButton(
                 onPressed: _saveStrike,
                 style: ElevatedButton.styleFrom(
-                  backgroundColor: Colors.deepOrange,
+                  backgroundColor: Colors.amber,
                 ),
                 child: Text(
                   _isEditing ? 'שמור שינויים' : 'שמור סטרייק',
-                  style: const TextStyle(fontSize: 18, color: Colors.white),
+                  style: const TextStyle(fontSize: 18, color: Colors.black),
                 ),
               ),
             ),

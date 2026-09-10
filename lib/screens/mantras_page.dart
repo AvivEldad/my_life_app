@@ -108,8 +108,6 @@ class _MantrasPageState extends State<MantrasPage> {
         appBar: AppBar(
           title: const Text('מנטרות ✨'),
           centerTitle: true,
-          backgroundColor: Colors.transparent,
-          elevation: 0,
         ),
         drawer: const AppDrawer(),
         body: StreamBuilder<List<MantraItem>>(

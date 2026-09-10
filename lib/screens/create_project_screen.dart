@@ -121,11 +121,11 @@ class _CreateProjectScreenState extends State<CreateProjectScreen> {
               child: ElevatedButton(
                 onPressed: _saveProject,
                 style: ElevatedButton.styleFrom(
-                  backgroundColor: Colors.blueAccent,
+                  backgroundColor: Colors.amber,
                 ),
                 child: Text(
                   _isEditing ? 'שמור שינויים' : 'שמור פרויקט',
-                  style: const TextStyle(fontSize: 18, color: Colors.white),
+                  style: const TextStyle(fontSize: 18, color: Colors.black),
                 ),
               ),
             ),
