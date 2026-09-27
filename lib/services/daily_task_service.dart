@@ -1,10 +1,44 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import '../models/daily_task_item.dart';
 import 'gamification_service.dart';
+import 'notification_service.dart';
 
 class DailyTaskService {
   final FirebaseFirestore _db = FirebaseFirestore.instance;
   bool _hasCheckedMidnightReset = false;
+  static Future<void> _reminderRefresh = Future<void>.value();
+
+  Future<void> refreshReminder() {
+    final refresh = _reminderRefresh
+        .then((_) async {
+          final prefs = await SharedPreferences.getInstance();
+          if (!(prefs.getBool('isDailyListReminderEnabled') ?? false)) {
+            await NotificationService().refreshDailyListReminder(false);
+            return;
+          }
+          final now = DateTime.now();
+          final start = DateTime(now.year, now.month, now.day);
+          final end = DateTime(now.year, now.month, now.day + 1);
+          final snapshot = await _db
+              .collection('daily_tasks')
+              .where(
+                'createdAt',
+                isGreaterThanOrEqualTo: start.millisecondsSinceEpoch,
+              )
+              .where('createdAt', isLessThan: end.millisecondsSinceEpoch)
+              .get();
+          final hasPending = snapshot.docs.any(
+            (doc) => doc.data()['isCompleted'] != true,
+          );
+          await NotificationService().refreshDailyListReminder(hasPending);
+        })
+        .catchError((Object error) {
+          print('Error refreshing daily list reminder: $error');
+        });
+    _reminderRefresh = refresh;
+    return refresh;
+  }
 
   // This is called when the page opens to process old tasks and grant rewards
   Future<void> processMidnightReset(
@@ -42,6 +76,7 @@ class DailyTaskService {
       }
 
       await batch.commit(); // Execute all deletions at once
+      await refreshReminder();
     } catch (e) {
       print('Error processing midnight reset: $e');
     }
@@ -61,6 +96,7 @@ class DailyTaskService {
     }
 
     await batch.commit();
+    await refreshReminder();
   }
 
   Future<void> toggleTaskCompletion(DailyTaskItem task) async {
@@ -68,10 +104,12 @@ class DailyTaskService {
     await _db.collection('daily_tasks').doc(task.id).update({
       'isCompleted': task.isCompleted,
     });
+    await refreshReminder();
   }
 
   Future<void> deleteSingleTask(String id) async {
     await _db.collection('daily_tasks').doc(id).delete();
+    await refreshReminder();
   }
 
   // Only streams tasks created from today's midnight onwards

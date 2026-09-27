@@ -10,6 +10,39 @@ import 'mantra_schedule.dart';
 
 class NotificationService {
   static const String homePayload = 'screen:home';
+  static const String dailyListPayload = 'screen:daily-list';
+
+  /// Today's list expires at midnight, so never repeat yesterday's reminder.
+  Future<void> refreshDailyListReminder(bool hasPendingTasks) async {
+    if (!_initialized) await init();
+    final prefs = await SharedPreferences.getInstance();
+    await cancelNotification(6);
+    if (!(prefs.getBool('isDailyListReminderEnabled') ?? false) ||
+        !hasPendingTasks) {
+      return;
+    }
+    final now = tz.TZDateTime.now(tz.local);
+    final time = tz.TZDateTime(
+      tz.local,
+      now.year,
+      now.month,
+      now.day,
+      prefs.getInt('dailyListReminderHour') ?? 18,
+      prefs.getInt('dailyListReminderMinute') ?? 0,
+    );
+    if (!time.isAfter(now)) return;
+    await scheduleOneShotNotification(
+      id: 6,
+      title: 'הרשימה היומית שלך 📝',
+      body: 'נשארו משימות ברשימה היומית. זה הזמן לבדוק ולהשלים אותן!',
+      dateTime: time,
+      channelId: 'daily_reminders',
+      channelName: 'Daily Reminders',
+      channelDescription: 'Reminders for daily tasks and coins',
+      payload: dailyListPayload,
+    );
+  }
+
   static const String prizesPayload = 'screen:prizes';
   static const String strikesPayload = 'screen:strikes';
   static const String mantrasPayload = 'screen:mantras';

@@ -14,6 +14,7 @@ import '../services/notification_service.dart';
 import '../services/strike_service.dart';
 import '../services/mantra_service.dart';
 import '../services/habit_service.dart';
+import '../services/daily_task_service.dart';
 
 import '../widgets/glowing_xp_bar.dart';
 import '../widgets/floating_reward.dart';
@@ -103,6 +104,8 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
     final gamification = context.read<GamificationService>();
     final strikes = context.read<StrikeService>();
     final habits = context.read<HabitService>();
+    final dailyTasks = context.read<DailyTaskService>();
+    await dailyTasks.refreshReminder();
     await tasks.clearCompletedTasks();
     await projects.clearCompletedProjects();
     await gamification.processOverduePenalties();

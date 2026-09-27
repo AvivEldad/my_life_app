@@ -22,6 +22,7 @@ import 'screens/habits_page.dart';
 import 'screens/mantras_page.dart';
 import 'screens/prizes_page.dart';
 import 'screens/strikes_page.dart';
+import 'screens/daily_tasks_page.dart';
 
 final GlobalKey<NavigatorState> appNavigatorKey = GlobalKey<NavigatorState>();
 NotificationResponse? _pendingNotificationResponse;
@@ -50,7 +51,9 @@ void _openNotificationDestination(NotificationResponse response) {
   final id = response.id;
   late final Widget destination;
 
-  if (payload == NotificationService.strikesPayload || id == 4) {
+  if (payload == NotificationService.dailyListPayload || id == 6) {
+    destination = const DailyTasksPage();
+  } else if (payload == NotificationService.strikesPayload || id == 4) {
     destination = const StrikesPage();
   } else if (payload?.startsWith(NotificationService.habitsPayloadPrefix) ==
           true ||
@@ -198,9 +201,7 @@ class TaskApp extends StatelessWidget {
             unselectedItemColor: Colors.grey,
           ),
           inputDecorationTheme: InputDecorationTheme(
-            border: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(12),
-            ),
+            border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
             focusedBorder: OutlineInputBorder(
               borderRadius: BorderRadius.circular(12),
               borderSide: const BorderSide(color: Colors.amber, width: 2),

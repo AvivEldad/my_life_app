@@ -5,10 +5,11 @@ import '../services/notification_service.dart';
 import '../services/gamification_service.dart';
 import '../services/strike_service.dart';
 import '../services/task_service.dart';
+import '../services/daily_task_service.dart';
 import '../widgets/app_drawer.dart';
 import 'main_layout.dart';
 
-enum _ReminderType { morning, coin, due, strike, golden }
+enum _ReminderType { morning, coin, due, strike, golden, dailyList }
 
 class NotificationsSettingsPage extends StatefulWidget {
   const NotificationsSettingsPage({super.key});
@@ -19,6 +20,19 @@ class NotificationsSettingsPage extends StatefulWidget {
 }
 
 class _NotificationsSettingsPageState extends State<NotificationsSettingsPage> {
+  bool _isDailyListReminderEnabled = false;
+  TimeOfDay _dailyListReminderTime = const TimeOfDay(hour: 18, minute: 0);
+
+  Future<void> _toggleDailyListReminder(bool value) async {
+    final service = context.read<DailyTaskService>();
+    final prefs = await SharedPreferences.getInstance();
+    if (!mounted) return;
+    setState(() => _isDailyListReminderEnabled = value);
+    await prefs.setBool('isDailyListReminderEnabled', value);
+    if (value) await _ensurePermissions();
+    await service.refreshReminder();
+  }
+
   bool _isMorningReminderEnabled = false;
   TimeOfDay _morningReminderTime = const TimeOfDay(hour: 8, minute: 0);
 
@@ -45,6 +59,12 @@ class _NotificationsSettingsPageState extends State<NotificationsSettingsPage> {
     final prefs = await SharedPreferences.getInstance();
     if (!mounted) return;
     setState(() {
+      _isDailyListReminderEnabled =
+          prefs.getBool('isDailyListReminderEnabled') ?? false;
+      _dailyListReminderTime = TimeOfDay(
+        hour: prefs.getInt('dailyListReminderHour') ?? 18,
+        minute: prefs.getInt('dailyListReminderMinute') ?? 0,
+      );
       _isMorningReminderEnabled =
           prefs.getBool('isMorningReminderEnabled') ?? false;
       _morningReminderTime = TimeOfDay(
@@ -105,6 +125,7 @@ class _NotificationsSettingsPageState extends State<NotificationsSettingsPage> {
       _ReminderType.due => _dueReminderTime,
       _ReminderType.strike => _strikeReminderTime,
       _ReminderType.golden => _goldenReminderTime,
+      _ReminderType.dailyList => _dailyListReminderTime,
     };
 
     final TimeOfDay? pickedTime = await showTimePicker(
@@ -119,8 +140,19 @@ class _NotificationsSettingsPageState extends State<NotificationsSettingsPage> {
     final prefs = await SharedPreferences.getInstance();
     if (!mounted) return;
 
+    if (type == _ReminderType.dailyList) {
+      final service = this.context.read<DailyTaskService>();
+      setState(() => _dailyListReminderTime = pickedTime);
+      await prefs.setInt('dailyListReminderHour', pickedTime.hour);
+      await prefs.setInt('dailyListReminderMinute', pickedTime.minute);
+      await service.refreshReminder();
+      return;
+    }
+
     setState(() {
       switch (type) {
+        case _ReminderType.dailyList:
+          break; // Persisted and refreshed above.
         case _ReminderType.morning:
           _morningReminderTime = pickedTime;
           prefs.setInt('morningReminderHour', pickedTime.hour);
@@ -455,6 +487,40 @@ class _NotificationsSettingsPageState extends State<NotificationsSettingsPage> {
                         ),
                       ),
                       onTap: () => _selectTime(context, _ReminderType.strike),
+                    ),
+                ],
+              ),
+            ),
+            const SizedBox(height: 16),
+            Card(
+              color: Colors.grey.shade900,
+              child: Column(
+                children: [
+                  SwitchListTile(
+                    activeThumbColor: Colors.amber,
+                    title: const Text('תזכורת לרשימה היומית'),
+                    subtitle: const Text(
+                      'תזכורת כשנשארו משימות להיום ברשימה היומית',
+                    ),
+                    value: _isDailyListReminderEnabled,
+                    onChanged: _toggleDailyListReminder,
+                  ),
+                  if (_isDailyListReminderEnabled)
+                    ListTile(
+                      leading: const Icon(
+                        Icons.access_time,
+                        color: Colors.amber,
+                      ),
+                      title: const Text('שעת התראה'),
+                      trailing: Text(
+                        _dailyListReminderTime.format(context),
+                        style: const TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                      onTap: () =>
+                          _selectTime(context, _ReminderType.dailyList),
                     ),
                 ],
               ),
