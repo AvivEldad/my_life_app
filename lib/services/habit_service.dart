@@ -9,8 +9,11 @@ import 'gamification_service.dart';
 import 'notification_service.dart';
 
 class HabitService {
-  final FirebaseFirestore _db = FirebaseFirestore.instance;
+  final FirebaseFirestore _db;
   final NotificationService _notificationService = NotificationService();
+
+  HabitService({FirebaseFirestore? firestore})
+    : _db = firestore ?? FirebaseFirestore.instance;
 
   /// Action id for the "Snooze" button shown directly on a habit
   /// notification. The app-level response handler delegates this action to
@@ -21,8 +24,34 @@ class HabitService {
   /// Deterministic, positive notification id derived from the habit's
   /// Firestore doc id. Offset so it never collides with the small
   /// hardcoded ids used elsewhere (coin reminder = 2, due-date = 3, ...).
-  int _notificationIdFor(String habitId) =>
-      (1000000 + habitId.hashCode.abs()) & 0x7fffffff;
+  static int notificationIdFor(String habitId) {
+    var hash = 2166136261;
+    for (final unit in habitId.codeUnits) {
+      hash = ((hash ^ unit) * 16777619) & 0xffffffff;
+    }
+    // Reserve 64 IDs per habit for upcoming occurrences and a separate
+    // high range for snoozes. No ID can overlap the app's fixed reminders.
+    return 1000000 + (hash % ((0x40000000 - 1000000) ~/ 64)) * 64;
+  }
+
+  Future<void> _cancelReminders(String habitId) async {
+    for (var slot = 0; slot < 30; slot++) {
+      await _notificationService.cancelNotification(
+        notificationIdFor(habitId) + slot,
+      );
+    }
+    await _notificationService.cancelNotification(
+      notificationIdFor(habitId) + 0x40000000,
+    );
+    // Remove notifications created before stable IDs were introduced.
+    await _notificationService.cancelNotification(
+      (1000000 + habitId.hashCode.abs()) & 0x7fffffff,
+    );
+    await _notificationService.cancelNotificationsForPayload(
+      '${NotificationService.habitsPayloadPrefix}$habitId',
+    );
+    await _notificationService.cancelNotificationsForPayload(habitId);
+  }
 
   /// The action buttons a habit's notification should show. Only offers
   /// "Snooze" while snoozes remain for this occurrence.
@@ -40,7 +69,7 @@ class HabitService {
   Future<bool> saveHabit(HabitItem habit) async {
     try {
       await _db.collection('habits').doc(habit.id).set(habit.toMap());
-      await _scheduleReminder(habit);
+      await refreshReminder(habit);
       return true;
     } catch (e) {
       print('Error saving habit: $e');
@@ -67,9 +96,7 @@ class HabitService {
   Future<bool> deleteHabit(String habitId) async {
     try {
       await _db.collection('habits').doc(habitId).delete();
-      await _notificationService.cancelNotification(
-        _notificationIdFor(habitId),
-      );
+      await _cancelReminders(habitId);
       return true;
     } catch (e) {
       print('Error deleting habit: $e');
@@ -94,16 +121,7 @@ class HabitService {
     habit.snooze();
     try {
       await _db.collection('habits').doc(habit.id).update(habit.toMap());
-      final id = _notificationIdFor(habit.id);
-      await _notificationService.cancelNotification(id);
-      await _notificationService.scheduleOneShotNotification(
-        id: id,
-        title: habit.summary,
-        body: habit.description ?? '',
-        dateTime: habit.snoozedUntil!,
-        payload: '${NotificationService.habitsPayloadPrefix}${habit.id}',
-        actions: _actionsFor(habit),
-      );
+      await refreshReminder(habit);
       return true;
     } catch (e) {
       print('Error snoozing habit: $e');
@@ -123,47 +141,65 @@ class HabitService {
     return snoozeHabit(habit);
   }
 
-  Future<void> _scheduleReminder(HabitItem habit) async {
-    final id = _notificationIdFor(habit.id);
+  Future<void> refreshAllReminders() async {
+    try {
+      final snapshot = await _db.collection('habits').get();
+      for (final doc in snapshot.docs) {
+        await refreshReminder(HabitItem.fromMap(doc.id, doc.data()));
+      }
+    } catch (error) {
+      debugPrint('Error refreshing habit reminders: $error');
+    }
+  }
+
+  Future<void> refreshReminder(HabitItem habit) async {
+    final id = notificationIdFor(habit.id);
     final body = habit.description ?? '';
     final actions = _actionsFor(habit);
-    switch (habit.recurrence) {
-      case HabitRecurrence.daily:
-        await _notificationService.scheduleDailyNotification(
-          id: id,
-          title: habit.summary,
-          body: body,
-          hour: habit.reminderTime.hour,
-          minute: habit.reminderTime.minute,
-          channelId: 'habit_reminders',
-          channelName: 'Habit Reminders',
-          channelDescription: 'Reminders for daily habits',
-          payload: '${NotificationService.habitsPayloadPrefix}${habit.id}',
-          actions: actions,
-        );
-        break;
-      case HabitRecurrence.weekly:
-        await _notificationService.scheduleWeeklyNotification(
-          id: id,
-          title: habit.summary,
-          body: body,
-          weekday: habit.weekday ?? DateTime.monday,
-          hour: habit.reminderTime.hour,
-          minute: habit.reminderTime.minute,
-          payload: '${NotificationService.habitsPayloadPrefix}${habit.id}',
-          actions: actions,
-        );
-        break;
-      case HabitRecurrence.monthly:
+    await _cancelReminders(habit.id);
+    var firstOccurrence = habit.nextDueDate;
+    if (habit.snoozedUntil != null) {
+      if (habit.snoozedUntil!.isAfter(DateTime.now())) {
         await _notificationService.scheduleOneShotNotification(
-          id: id,
+          id: id + 0x40000000,
           title: habit.summary,
           body: body,
-          dateTime: habit.nextDueDate,
+          dateTime: habit.snoozedUntil!,
           payload: '${NotificationService.habitsPayloadPrefix}${habit.id}',
           actions: actions,
         );
-        break;
+      }
+      // Keep the normal recurrence alive independently of this snooze.
+      do {
+        firstOccurrence = habit.computeNextOccurrenceAfter(firstOccurrence);
+      } while (!firstOccurrence.isAfter(habit.snoozedUntil!));
+    }
+    while (!firstOccurrence.isAfter(DateTime.now())) {
+      firstOccurrence = habit.computeNextOccurrenceAfter(firstOccurrence);
+    }
+    // Android's repeating time matching ignores the supplied start date.
+    // Explicit occurrences prevent reminders for an already-completed day.
+    final count = switch (habit.recurrence) {
+      HabitRecurrence.daily => 30,
+      HabitRecurrence.weekly => 8,
+      HabitRecurrence.monthly => 6,
+    };
+    for (var slot = 0; slot < count; slot++) {
+      await _notificationService.scheduleOneShotNotification(
+        id: id + slot,
+        title: habit.summary,
+        body: body,
+        dateTime: firstOccurrence,
+        payload: '${NotificationService.habitsPayloadPrefix}${habit.id}',
+        actions: const [
+          AndroidNotificationAction(
+            kSnoozeActionId,
+            'דחה ⏰',
+            showsUserInterface: false,
+          ),
+        ],
+      );
+      firstOccurrence = habit.computeNextOccurrenceAfter(firstOccurrence);
     }
   }
 

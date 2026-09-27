@@ -4,6 +4,7 @@ import 'notification_service.dart';
 
 class MantraService {
   final FirebaseFirestore _db = FirebaseFirestore.instance;
+  static Future<void> _refresh = Future<void>.value();
 
   Future<void> saveMantra(MantraItem mantra) async {
     try {
@@ -33,7 +34,15 @@ class MantraService {
 
   // שולף את כל המנטרות ומרענן את לוח ההתראות. ציבורי כדי שנוכל
   // לחדש את ההתראות האקראיות גם בכל הפעלה של האפליקציה.
-  Future<void> refreshNotifications() async {
+  Future<void> refreshNotifications() {
+    final refresh = _refresh.then((_) => _loadAndScheduleNotifications());
+    _refresh = refresh.catchError((Object error) {
+      print('Error refreshing mantra notifications: $error');
+    });
+    return refresh;
+  }
+
+  Future<void> _loadAndScheduleNotifications() async {
     try {
       final snapshot = await _db.collection('mantras').get();
       final texts = snapshot.docs

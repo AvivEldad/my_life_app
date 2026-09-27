@@ -5,6 +5,8 @@ import 'package:timezone/timezone.dart' as tz;
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:flutter_timezone/flutter_timezone.dart';
 import 'dart:math';
+import 'dart:convert';
+import 'mantra_schedule.dart';
 
 class NotificationService {
   static const String homePayload = 'screen:home';
@@ -22,6 +24,7 @@ class NotificationService {
       FlutterLocalNotificationsPlugin();
 
   bool _initialized = false;
+  Future<void> _mantraRefresh = Future<void>.value();
 
   /// אתחול המערכת (נקרא לזה כשהאפליקציה עולה)
   ///
@@ -275,7 +278,14 @@ class NotificationService {
   tz.TZDateTime _nextInstanceOfWeekday(int weekday, int hour, int minute) {
     var scheduled = _nextInstanceOfTime(hour, minute);
     while (scheduled.weekday != weekday) {
-      scheduled = scheduled.add(const Duration(days: 1));
+      scheduled = tz.TZDateTime(
+        tz.local,
+        scheduled.year,
+        scheduled.month,
+        scheduled.day + 1,
+        hour,
+        minute,
+      );
     }
     return scheduled;
   }
@@ -293,14 +303,28 @@ class NotificationService {
     );
 
     // אם השעה הזו כבר עברה היום, נתזמן למחר
-    if (scheduledDate.isBefore(now)) {
-      scheduledDate = scheduledDate.add(const Duration(days: 1));
+    if (!scheduledDate.isAfter(now)) {
+      scheduledDate = tz.TZDateTime(
+        tz.local,
+        now.year,
+        now.month,
+        now.day + 1,
+        hour,
+        minute,
+      );
     }
     return scheduledDate;
   }
 
   Future<void> cancelNotification(int id) async {
     await _notificationsPlugin.cancel(id);
+  }
+
+  Future<void> cancelNotificationsForPayload(String payload) async {
+    final pending = await _notificationsPlugin.pendingNotificationRequests();
+    for (final request in pending) {
+      if (request.payload == payload) await cancelNotification(request.id);
+    }
   }
 
   /// פונקציה חכמה לרענון התראת המטבעות
@@ -369,9 +393,8 @@ class NotificationService {
     }
     final hour = prefs.getInt('strikeReminderHour') ?? 20;
     final minute = prefs.getInt('strikeReminderMinute') ?? 0;
-    final bodyText = pendingStrikesCount > 0
-        ? 'יש לך $pendingStrikesCount סטרייקים שעדיין לא סימנת היום! אל תשבור את הרצף 🔥'
-        : 'כל הכבוד! כל הסטרייקים שלך מסומנים להיום 🔥';
+    // Repeating notification bodies are snapshots, not live database reads.
+    const bodyText = 'בדוק אילו סטרייקים נשארו לסמן היום ושמור על הרצף 🔥';
     await scheduleDailyNotification(
       id: 4, // מזהה ייחודי להתראת סטרייקים
       title: 'בדוק את הסטרייקים שלך 🔥',
@@ -394,9 +417,7 @@ class NotificationService {
     final hour = prefs.getInt('dueReminderHour') ?? 17;
     final minute = prefs.getInt('dueReminderMinute') ?? 0;
 
-    final bodyText = dueTasksCount > 0
-        ? 'יש לך $dueTasksCount משימות עם תאריך יעד קרוב! כדאי להעיף מבט.'
-        : 'אין לך משימות עם תאריכי יעד דחופים, אפשר להיות רגועים! ☕';
+    const bodyText = 'בדוק את המשימות ואת תאריכי היעד הקרובים שלך.';
 
     await scheduleDailyNotification(
       id: 3, // מזהה ייחודי להתראת תאריכי יעד
@@ -432,12 +453,52 @@ class NotificationService {
     );
   }
 
-  Future<void> scheduleRandomMantras(List<String> mantrasTexts) async {
+  Future<void> scheduleRandomMantras(List<String> mantrasTexts) {
+    final refresh = _mantraRefresh.then(
+      (_) => _scheduleRandomMantras(mantrasTexts),
+    );
+    // Serialize cancellation and scheduling even when several edits overlap.
+    _mantraRefresh = refresh.catchError((Object error, StackTrace stack) {
+      debugPrint('Failed to refresh mantra schedule: $error');
+    });
+    return refresh;
+  }
+
+  Future<void> _scheduleRandomMantras(List<String> mantrasTexts) async {
+    if (!_initialized) await init();
     const firstMantraId = 10100;
     const scheduledDays = 30;
     const notificationsPerDay = 2;
-    const scheduledNotificationCount =
-        scheduledDays * notificationsPerDay;
+    const scheduledNotificationCount = scheduledDays * notificationsPerDay;
+
+    final prefs = await SharedPreferences.getInstance();
+    final saved = prefs.getString('mantraScheduleTimesV1');
+    final previous = saved == null
+        ? <String, List<int>>{}
+        : (jsonDecode(saved) as Map<String, dynamic>).map(
+            (key, value) => MapEntry(key, List<int>.from(value as List)),
+          );
+    final pending = await _notificationsPlugin.pendingNotificationRequests();
+    final hasLegacySchedule = pending.any(
+      (request) =>
+          request.id == 101 ||
+          request.id == 102 ||
+          (request.id >= firstMantraId &&
+              request.id < firstMantraId + scheduledNotificationCount),
+    );
+    final random = Random();
+    final now = tz.TZDateTime.now(tz.local);
+    final times = MantraSchedule.refresh(
+      now: now,
+      previous: previous,
+      random: random,
+      // Old versions did not track delivered slots. Avoid extra deliveries
+      // on the migration day; normal delivery resumes tomorrow.
+      skipToday: saved == null && hasLegacySchedule,
+    );
+    if (!await prefs.setString('mantraScheduleTimesV1', jsonEncode(times))) {
+      throw StateError('Could not persist mantra notification times');
+    }
 
     // Remove both the old repeating notifications and the previous rolling
     // schedule before building a fresh randomized schedule.
@@ -453,7 +514,6 @@ class NotificationService {
         .toList();
     if (mantras.isEmpty) return;
 
-    final random = Random();
     var shuffledMantras = List<String>.from(mantras)..shuffle(random);
     var mantraIndex = 0;
     String? previousMantra;
@@ -476,32 +536,29 @@ class NotificationService {
       return mantra;
     }
 
-    final now = DateTime.now();
     for (int dayOffset = 0; dayOffset < scheduledDays; dayOffset++) {
-      final date = now.add(Duration(days: dayOffset));
-      final notificationTimes = [
-        DateTime(
-          date.year,
-          date.month,
-          date.day,
-          8 + random.nextInt(7),
-          random.nextInt(60),
-        ),
-        DateTime(
-          date.year,
-          date.month,
-          date.day,
-          15 + random.nextInt(6),
-          random.nextInt(60),
-        ),
-      ];
+      final date = tz.TZDateTime(
+        tz.local,
+        now.year,
+        now.month,
+        now.day + dayOffset,
+      );
+      final minutes = times[MantraSchedule.dateKey(date)]!;
 
       for (int slot = 0; slot < notificationsPerDay; slot++) {
-        final scheduledTime = notificationTimes[slot];
-        if (!scheduledTime.isAfter(now)) continue;
+        if (minutes[slot] < 0) continue;
+        final scheduledTime = tz.TZDateTime(
+          tz.local,
+          date.year,
+          date.month,
+          date.day,
+          minutes[slot] ~/ 60,
+          minutes[slot] % 60,
+        );
+        if (!scheduledTime.isAfter(tz.TZDateTime.now(tz.local))) continue;
 
         await scheduleOneShotNotification(
-          id: firstMantraId + (dayOffset * notificationsPerDay) + slot,
+          id: MantraSchedule.idFor(date, slot),
           title: slot == 0 ? 'מוטיבציה בשבילך 🌟' : 'רגע של השראה ✨',
           body: nextMantra(),
           dateTime: scheduledTime,
@@ -528,25 +585,42 @@ class NotificationService {
   }
 
   /// תזכורת יומית למשימה השבועית הפעילה
-  Future<void> refreshWeeklyTaskReminder(bool hasWeeklyTask) async {
-    if (!hasWeeklyTask) {
-      await cancelNotification(201);
-      return;
+  Future<void> refreshWeeklyTaskReminder(
+    bool hasWeeklyTask, {
+    DateTime? deadline,
+  }) async {
+    for (var id = 201; id <= 207; id++) {
+      await cancelNotification(id);
     }
+    if (!hasWeeklyTask || deadline == null) return;
 
-    int currentDay = DateTime.now().weekday;
-    int daysLeft = currentDay == 7 ? 6 : 6 - currentDay;
-    String bodyText = daysLeft > 0
-        ? 'נשארו לך עוד $daysLeft ימים להשלים את המשימה השבועית ולהרוויח את הבונוס!'
-        : 'זה היום האחרון! סיים את המשימה השבועית היום לפני חצות.';
-
-    await scheduleDailyNotification(
-      id: 201,
-      title: 'המשימה השבועית שלך ⏳',
-      body: bodyText,
-      hour: 16, // שעת התזכורת היומית
-      minute: 0,
-      payload: homePayload,
-    );
+    final now = tz.TZDateTime.now(tz.local);
+    for (var offset = 0; offset < 7; offset++) {
+      final date = tz.TZDateTime(
+        tz.local,
+        now.year,
+        now.month,
+        now.day + offset,
+        16,
+      );
+      if (!date.isAfter(now) || date.isAfter(deadline)) continue;
+      final daysLeft = DateTime.utc(
+        deadline.year,
+        deadline.month,
+        deadline.day,
+      ).difference(DateTime.utc(date.year, date.month, date.day)).inDays;
+      await scheduleOneShotNotification(
+        id: 201 + offset,
+        title: 'המשימה השבועית שלך ⏳',
+        body: daysLeft > 0
+            ? 'נשארו לך עוד $daysLeft ימים להשלים את המשימה השבועית ולהרוויח את הבונוס!'
+            : 'זה היום האחרון! סיים את המשימה השבועית היום לפני חצות.',
+        dateTime: date,
+        channelId: 'daily_reminders',
+        channelName: 'Daily Reminders',
+        channelDescription: 'Reminders for daily tasks and coins',
+        payload: homePayload,
+      );
+    }
   }
 }

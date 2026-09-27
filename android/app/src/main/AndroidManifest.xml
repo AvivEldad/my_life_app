@@ -28,6 +28,8 @@
         <!-- ADDED: required for flutter_local_notifications to receive
              AlarmManager callbacks and actually show scheduled notifications -->
         <receiver android:exported="false"
+            android:name="com.dexterous.flutterlocalnotifications.ActionBroadcastReceiver" />
+        <receiver android:exported="false"
             android:name="com.dexterous.flutterlocalnotifications.ScheduledNotificationReceiver" />
         <receiver android:exported="false"
             android:name="com.dexterous.flutterlocalnotifications.ScheduledNotificationBootReceiver">

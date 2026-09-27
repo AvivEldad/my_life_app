@@ -4,6 +4,7 @@ import 'package:provider/provider.dart';
 import '../services/notification_service.dart';
 import '../services/gamification_service.dart';
 import '../services/strike_service.dart';
+import '../services/task_service.dart';
 import '../widgets/app_drawer.dart';
 import 'main_layout.dart';
 
@@ -227,13 +228,11 @@ class _NotificationsSettingsPageState extends State<NotificationsSettingsPage> {
   }
 
   void _refreshGoldenReminderViaService() {
-    // מפעיל את ההתראה (מניח כברירת מחדל שיש משימה כשהמשתמש מדליק מההגדרות)
-    NotificationService().refreshGoldenTaskReminder(true);
+    context.read<TaskService>().updateDueTasksNotification();
   }
 
   void _refreshDueReminderViaService() {
-    // כאן בעתיד נוכל למשוך מ-TaskService את המספר המדויק. בינתיים נעביר 1 לצורך ההדגמה.
-    NotificationService().refreshDueDateReminder(1);
+    context.read<TaskService>().updateDueTasksNotification();
   }
 
   void _refreshStrikeReminderViaService() {

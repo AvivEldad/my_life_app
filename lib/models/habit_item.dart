@@ -34,7 +34,7 @@ class HabitItem {
   int currentStreak;
   int longestStreak;
 
-  // Snooze: pushes the reminder 30 hours later, up to 2 times per
+  // Snooze: pushes the reminder 30 minutes later, up to 2 times per
   // occurrence. Snoozing never cancels the eventual miss penalty if the
   // habit still isn't marked done once the (possibly snoozed) deadline
   // passes — see effectiveDeadline / markMissed().
@@ -77,7 +77,7 @@ class HabitItem {
           reminderTime.minute,
         );
         if (!candidate.isAfter(now)) {
-          candidate = candidate.add(const Duration(days: 1));
+          candidate = _calendarDaysAfter(candidate, 1);
         }
         return candidate;
 
@@ -91,9 +91,9 @@ class HabitItem {
           reminderTime.minute,
         );
         final diff = (targetWeekday - candidate.weekday) % 7;
-        candidate = candidate.add(Duration(days: diff));
+        candidate = _calendarDaysAfter(candidate, diff);
         if (!candidate.isAfter(now)) {
-          candidate = candidate.add(const Duration(days: 7));
+          candidate = _calendarDaysAfter(candidate, 7);
         }
         return candidate;
 
@@ -112,9 +112,9 @@ class HabitItem {
   DateTime computeNextOccurrenceAfter(DateTime date) {
     switch (recurrence) {
       case HabitRecurrence.daily:
-        return date.add(const Duration(days: 1));
+        return _calendarDaysAfter(date, 1);
       case HabitRecurrence.weekly:
-        return date.add(const Duration(days: 7));
+        return _calendarDaysAfter(date, 7);
       case HabitRecurrence.monthly:
         return _addMonthsClamped(date, _clampedInterval);
     }
@@ -123,15 +123,23 @@ class HabitItem {
   DateTime _previousOccurrenceBefore(DateTime date) {
     switch (recurrence) {
       case HabitRecurrence.daily:
-        return date.subtract(const Duration(days: 1));
+        return _calendarDaysAfter(date, -1);
       case HabitRecurrence.weekly:
-        return date.subtract(const Duration(days: 7));
+        return _calendarDaysAfter(date, -7);
       case HabitRecurrence.monthly:
         return _addMonthsClamped(date, -_clampedInterval);
     }
   }
 
   int get _clampedInterval => (monthInterval ?? 1).clamp(1, 24);
+
+  DateTime _calendarDaysAfter(DateTime date, int days) => DateTime(
+    date.year,
+    date.month,
+    date.day + days,
+    reminderTime.hour,
+    reminderTime.minute,
+  );
 
   static const int maxSnoozes = 2;
   static const Duration snoozeDuration = Duration(minutes: 30);
@@ -142,7 +150,7 @@ class HabitItem {
   /// pushed back by any snoozes still in effect.
   DateTime get effectiveDeadline => snoozedUntil ?? nextDueDate;
 
-  /// Pushes the reminder 30 hours later. No-ops past [maxSnoozes] — check
+  /// Pushes the reminder 30 minutes later. No-ops past [maxSnoozes] — check
   /// [canSnooze] first if you want to disable the button instead.
   void snooze({DateTime? now}) {
     if (!canSnooze) return;
@@ -194,17 +202,12 @@ class HabitItem {
 
   /// Adds (or subtracts, for negative [months]) whole months to [date],
   /// clamping the day-of-month to the last valid day of the target month.
-  static DateTime _addMonthsClamped(DateTime date, int months) {
+  DateTime _addMonthsClamped(DateTime date, int months) {
     final totalMonths = date.month - 1 + months;
     final remainder = totalMonths % 12; // Dart's % on int is always >= 0
     final year = date.year + (totalMonths - remainder) ~/ 12;
     final month = remainder + 1;
-    return _dateForMonth(
-      year,
-      month,
-      date.day,
-      TimeOfDay(hour: date.hour, minute: date.minute),
-    );
+    return _dateForMonth(year, month, monthDay ?? date.day, reminderTime);
   }
 
   Map<String, dynamic> toMap() {

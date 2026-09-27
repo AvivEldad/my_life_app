@@ -4,9 +4,18 @@ import 'notification_service.dart';
 
 class TaskService {
   final FirebaseFirestore _db = FirebaseFirestore.instance;
+  static Future<void> _reminderRefresh = Future<void>.value();
 
   /// סורק את המשימות הפתוחות ומעדכן את כמות המשימות הדחופות בהתראות
-  Future<void> updateDueTasksNotification() async {
+  Future<void> updateDueTasksNotification() {
+    final refresh = _reminderRefresh.then((_) => _refreshTaskReminders());
+    _reminderRefresh = refresh.catchError((Object error) {
+      print('Error refreshing task reminders: $error');
+    });
+    return refresh;
+  }
+
+  Future<void> _refreshTaskReminders() async {
     try {
       // משיכת כל המשימות שעדיין לא הושלמו ממסד הנתונים
       final snapshot = await _db
@@ -15,6 +24,8 @@ class TaskService {
           .get();
 
       int dueTasksCount = 0;
+      bool hasGoldenTask = false;
+      DateTime? weeklyDeadline;
       final now = DateTime.now();
 
       // נגדיר "קרוב" כמשימה שפגת תוקף או שתאריך היעד שלה הוא עד 48 שעות מעכשיו
@@ -22,6 +33,10 @@ class TaskService {
 
       for (var doc in snapshot.docs) {
         final task = TaskItem.fromMap(doc.id, doc.data());
+        hasGoldenTask = hasGoldenTask || task.isGolden;
+        if (task.isWeekly && task.weeklyDeadline?.isAfter(now) == true) {
+          weeklyDeadline = task.weeklyDeadline;
+        }
 
         // אם יש תאריך יעד והוא לפני "עוד יומיים" (כולל משימות שכבר באיחור)
         if (task.dueDate != null && task.dueDate!.isBefore(inTwoDays)) {
@@ -31,6 +46,11 @@ class TaskService {
 
       // מעדכן את ההתראה עם המספר האמיתי
       await NotificationService().refreshDueDateReminder(dueTasksCount);
+      await NotificationService().refreshGoldenTaskReminder(hasGoldenTask);
+      await NotificationService().refreshWeeklyTaskReminder(
+        weeklyDeadline != null,
+        deadline: weeklyDeadline,
+      );
     } catch (e) {
       print('Error updating due tasks notification: $e');
     }
@@ -61,6 +81,7 @@ class TaskService {
         batch.set(_db.collection('tasks').doc(task.id), task.toMap());
       }
       await batch.commit();
+      await updateDueTasksNotification();
       return true;
     } catch (e) {
       print('Error saving tasks batch: $e');

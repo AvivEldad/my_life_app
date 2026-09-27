@@ -11,6 +11,9 @@ import '../widgets/task_card.dart';
 import 'task_details_screen.dart';
 import '../widgets/app_drawer.dart';
 import '../services/notification_service.dart';
+import '../services/strike_service.dart';
+import '../services/mantra_service.dart';
+import '../services/habit_service.dart';
 
 import '../widgets/glowing_xp_bar.dart';
 import '../widgets/floating_reward.dart';
@@ -90,13 +93,23 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
   void didChangeAppLifecycleState(AppLifecycleState state) {
     if (state == AppLifecycleState.resumed) {
       _runDailyChecks();
+      context.read<MantraService>().refreshNotifications();
     }
   }
 
-  void _runDailyChecks() {
-    context.read<TaskService>().clearCompletedTasks();
-    context.read<ProjectService>().clearCompletedProjects();
-    context.read<GamificationService>().processOverduePenalties();
+  Future<void> _runDailyChecks() async {
+    final tasks = context.read<TaskService>();
+    final projects = context.read<ProjectService>();
+    final gamification = context.read<GamificationService>();
+    final strikes = context.read<StrikeService>();
+    final habits = context.read<HabitService>();
+    await tasks.clearCompletedTasks();
+    await projects.clearCompletedProjects();
+    await gamification.processOverduePenalties();
+    await tasks.updateDueTasksNotification();
+    await strikes.updateStrikeReminderNotification();
+    await NotificationService().scheduleWeeklySelectionReminder();
+    await habits.refreshAllReminders();
   }
 
   void _showTaskDetails(BuildContext context, TaskItem? task) {
@@ -128,7 +141,6 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
 
     try {
       await taskService.saveTasksBatch(changedTasks);
-      await NotificationService().refreshGoldenTaskReminder(task.isGolden);
     } finally {
       if (mounted) {
         setState(() => _suppressStreamUpdates = false);
@@ -175,7 +187,6 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
 
     try {
       await taskService.saveTasksBatch(changedTasks);
-      await NotificationService().refreshWeeklyTaskReminder(task.isWeekly);
     } finally {
       if (mounted) {
         setState(() => _suppressStreamUpdates = false);
