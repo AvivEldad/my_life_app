@@ -59,6 +59,12 @@ class GamificationService extends ChangeNotifier {
           data['completedCategoriesCount'] ?? {},
         );
 
+        // Repair saved overflow from daily rewards that skipped level-ups.
+        if (currentXpThreshold > 0 && currentXp >= currentXpThreshold) {
+          _applyPendingLevelUps();
+          await _saveData();
+        }
+
         notifyListeners();
       }
     } catch (e) {
@@ -252,22 +258,27 @@ class GamificationService extends ChangeNotifier {
     notifyListeners();
   }
 
-  Future<int?> addCoinsAndXp(int coins, int xp) async {
+  Future<int?> addCoinsAndXp(num coins, int xp) async {
     currentCoins += coins;
     currentXp += xp;
     totalXpEarned += xp;
 
+    final pulledPokemonId = _applyPendingLevelUps();
+
+    await _saveData();
+    notifyListeners();
+
+    return pulledPokemonId;
+  }
+
+  int? _applyPendingLevelUps() {
     int? pulledPokemonId;
-    while (currentXp >= currentXpThreshold) {
+    while (currentXpThreshold > 0 && currentXp >= currentXpThreshold) {
       currentXp -= currentXpThreshold;
       currentXpThreshold = (currentXpThreshold * 1.1).toInt();
       currentLevel++;
       pulledPokemonId = _pullPokemon();
     }
-
-    await _saveData();
-    notifyListeners();
-
     return pulledPokemonId;
   }
 
@@ -520,9 +531,6 @@ class GamificationService extends ChangeNotifier {
   }
 
   Future<void> addDailyRewards(double coins, int xp) async {
-    currentCoins += coins;
-    currentXp += xp;
-    await _saveData(); // Assuming you have a function that saves to Firebase
-    notifyListeners();
+    await addCoinsAndXp(coins, xp);
   }
 }
