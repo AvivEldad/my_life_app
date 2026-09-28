@@ -26,7 +26,7 @@ class _HabitsPageState extends State<HabitsPage> {
     super.initState();
     final habitService = context.read<HabitService>();
     final gamificationService = context.read<GamificationService>();
-    _habitsSub = habitService.streamHabits().listen((habits) {
+    _habitsSub = habitService.streamHabits().listen((habits) async {
       setState(() {
         _habits = habits;
         _isLoading = false;
@@ -38,7 +38,17 @@ class _HabitsPageState extends State<HabitsPage> {
       // is pushed on to its next occurrence.
       if (!_hasProcessedMissed) {
         _hasProcessedMissed = true;
-        habitService.processDueAndMissedHabits(habits, gamificationService);
+        try {
+          await habitService.processDueAndMissedHabits(
+            habits,
+            gamificationService,
+          );
+        } catch (error) {
+          // No transaction was partially committed. Allow a later snapshot
+          // (for example, reconnecting) to retry the missed-occurrence check.
+          _hasProcessedMissed = false;
+          debugPrint('Could not process missed habits: $error');
+        }
       }
     });
   }

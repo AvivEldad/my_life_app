@@ -1,6 +1,5 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_core/firebase_core.dart';
-import 'package:flutter/foundation.dart';
 import 'package:flutter/widgets.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import '../firebase_options.dart';
@@ -72,7 +71,7 @@ class HabitService {
       await refreshReminder(habit);
       return true;
     } catch (e) {
-      print('Error saving habit: $e');
+      debugPrint('Error saving habit: $e');
       throw Exception('error saving habit');
     }
   }
@@ -88,7 +87,7 @@ class HabitService {
                 .toList(),
           );
     } catch (e) {
-      print('Error streaming habits: $e');
+      debugPrint('Error streaming habits: $e');
       return const Stream.empty();
     }
   }
@@ -99,7 +98,7 @@ class HabitService {
       await _cancelReminders(habitId);
       return true;
     } catch (e) {
-      print('Error deleting habit: $e');
+      debugPrint('Error deleting habit: $e');
       throw Exception('habit deletion failed');
     }
   }
@@ -124,7 +123,7 @@ class HabitService {
       await refreshReminder(habit);
       return true;
     } catch (e) {
-      print('Error snoozing habit: $e');
+      debugPrint('Error snoozing habit: $e');
       throw Exception('error snoozing habit');
     }
   }
@@ -203,30 +202,14 @@ class HabitService {
     }
   }
 
-  /// Call this once when the habits list loads (e.g. in
-  /// HabitsPage.initState). For every habit whose effectiveDeadline
-  /// (nextDueDate, pushed back by any snoozes) has passed without being
-  /// marked done, this applies the coin/XP miss penalty via
-  /// [gamificationService], breaks the streak, and advances the habit to
-  /// its next occurrence — looping per habit in case more than one
-  /// occurrence was missed while the app was closed (e.g. several days of
-  /// a daily habit). This also covers monthly habits' one-shot reminders,
-  /// which otherwise would never get their next notification scheduled.
+  /// Reconcile misses atomically, then update reminders from committed data.
   Future<void> processDueAndMissedHabits(
     List<HabitItem> habits,
     GamificationService gamificationService,
   ) async {
-    final now = DateTime.now();
     for (final habit in habits) {
-      var missed = false;
-      while (now.isAfter(habit.effectiveDeadline)) {
-        missed = true;
-        habit.markMissed();
-        await gamificationService.processHabitMiss();
-      }
-      if (missed) {
-        await saveHabit(habit);
-      }
+      final updated = await gamificationService.processMissedHabit(habit.id);
+      if (updated != null) await refreshReminder(updated);
     }
   }
 }

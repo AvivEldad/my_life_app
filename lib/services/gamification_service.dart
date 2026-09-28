@@ -2,6 +2,8 @@ import 'dart:math';
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import '../models/task_item.dart';
+import '../models/habit_item.dart';
+import 'penalty_policy.dart';
 import '../constants/pokemon_constants.dart';
 import 'notification_service.dart';
 import '../models/project_item.dart';
@@ -20,7 +22,9 @@ class BinderConfig {
 
 class GamificationService extends ChangeNotifier {
   // Database instance for saving our gamification stats
-  final FirebaseFirestore _db = FirebaseFirestore.instance;
+  final FirebaseFirestore _db;
+  final Future<void> Function(double) _coinReminder;
+  Future<void> _operations = Future<void>.value();
 
   int currentXp = 0;
   double currentCoins = 0.0;
@@ -34,14 +38,39 @@ class GamificationService extends ChangeNotifier {
   Map<String, dynamic> completedCategoriesCount = {};
 
   // The constructor runs automatically when the service is initialized
-  GamificationService() {
-    _loadGamificationData();
+  GamificationService({
+    FirebaseFirestore? firestore,
+    Future<void> Function(double)? refreshCoinReminder,
+  }) : _db = firestore ?? FirebaseFirestore.instance,
+       _coinReminder =
+           refreshCoinReminder ?? NotificationService().refreshCoinReminder {
+    _serialize(_loadGamificationData).catchError((Object error) {
+      debugPrint('Error loading gamification data: $error');
+    });
   }
+
+  Future<T> _serialize<T>(Future<T> Function() action) {
+    final result = _operations.then((_) => action());
+    _operations = result.then<void>(
+      (_) {},
+      onError: (Object error, StackTrace stackTrace) {},
+    );
+    return result;
+  }
+
+  Future<T> _mutate<T>(Future<T> Function() action) => _serialize(() async {
+    // A failed read must never turn default values into a saved balance.
+    await _loadGamificationData();
+    return action();
+  });
 
   /// Pulls existing data from Firebase when the app starts
   Future<void> _loadGamificationData() async {
     try {
-      final doc = await _db.collection('gamification').doc('user_stats').get();
+      final doc = await _db
+          .collection('gamification')
+          .doc('user_stats')
+          .get(const GetOptions(source: Source.server));
       if (doc.exists) {
         final data = doc.data()!;
         currentXp = data['currentXp'] ?? 0;
@@ -68,7 +97,7 @@ class GamificationService extends ChangeNotifier {
         notifyListeners();
       }
     } catch (e) {
-      print('Error loading gamification data: $e');
+      rethrow;
     }
   }
 
@@ -87,15 +116,24 @@ class GamificationService extends ChangeNotifier {
         'totalXpEarned': totalXpEarned,
         'totalTasksCompleted': totalTasksCompleted,
         'completedCategoriesCount': completedCategoriesCount,
-      });
+      }, SetOptions(merge: true));
 
-      await NotificationService().refreshCoinReminder(currentCoins);
+      await _refreshCoinReminder();
     } catch (e) {
-      print('Error saving gamification data: $e');
+      rethrow;
     }
   }
 
-  Future<bool> spendCoins(int amount) async {
+  Future<void> _refreshCoinReminder() async {
+    try {
+      await _coinReminder(currentCoins);
+    } catch (error) {
+      // Reminder failures must not make a committed balance change look failed.
+      debugPrint('Could not refresh coin reminder: $error');
+    }
+  }
+
+  Future<bool> spendCoins(int amount) => _mutate(() async {
     if (currentCoins >= amount) {
       currentCoins -= amount;
       totalCoinsSpent += amount;
@@ -104,10 +142,10 @@ class GamificationService extends ChangeNotifier {
       return true;
     }
     return false;
-  }
+  });
 
   /// Triggered when a task is checked off
-  Future<int?> processTaskCompletion(TaskItem task) async {
+  Future<int?> processTaskCompletion(TaskItem task) => _mutate(() async {
     final multiplier = task.isGolden ? 2 : 1;
     int earnedXp = task.level * 10 * multiplier;
     int earnedCoins = task.level * 5 * multiplier;
@@ -155,78 +193,82 @@ class GamificationService extends ChangeNotifier {
     notifyListeners();
 
     return pulledPokemonId;
-  }
+  });
 
   /// Triggered when every task in a project has been completed.
   /// Grants a flat 100 coins / 200 xp bonus (on top of whatever each task
   /// already granted individually).
-  Future<int?> processProjectCompletion(ProjectItem project) async {
-    const earnedXp = 200;
-    const earnedCoins = 100;
-    currentXp += earnedXp;
-    currentCoins += earnedCoins;
-    totalXpEarned += earnedXp;
-    int? pulledPokemonId;
-    bool leveledUp = false;
-    int? thresholdBeforeLevelUp;
-    if (currentXp >= currentXpThreshold) {
-      thresholdBeforeLevelUp = currentXpThreshold;
-      currentXp -= currentXpThreshold;
-      currentXpThreshold = (currentXpThreshold * 1.1).toInt();
-      currentLevel++;
-      leveledUp = true;
-      pulledPokemonId = _pullPokemon();
-    }
-    // Stamp what this completion granted onto the project itself, so
-    // un-completing it later (e.g. re-opening one of its tasks) can
-    // reverse it precisely — same pattern as processTaskCompletion.
-    project.awardedXp = earnedXp;
-    project.awardedCoins = earnedCoins;
-    project.causedLevelUp = leveledUp;
-    project.xpThresholdBeforeLevelUp = thresholdBeforeLevelUp;
-    project.awardedPokemonId = pulledPokemonId;
-    await _saveData();
-    notifyListeners();
-    return pulledPokemonId;
-  }
+  Future<int?> processProjectCompletion(ProjectItem project) =>
+      _mutate(() async {
+        const earnedXp = 200;
+        const earnedCoins = 100;
+        currentXp += earnedXp;
+        currentCoins += earnedCoins;
+        totalXpEarned += earnedXp;
+        int? pulledPokemonId;
+        bool leveledUp = false;
+        int? thresholdBeforeLevelUp;
+        if (currentXp >= currentXpThreshold) {
+          thresholdBeforeLevelUp = currentXpThreshold;
+          currentXp -= currentXpThreshold;
+          currentXpThreshold = (currentXpThreshold * 1.1).toInt();
+          currentLevel++;
+          leveledUp = true;
+          pulledPokemonId = _pullPokemon();
+        }
+        // Stamp what this completion granted onto the project itself, so
+        // un-completing it later (e.g. re-opening one of its tasks) can
+        // reverse it precisely — same pattern as processTaskCompletion.
+        project.awardedXp = earnedXp;
+        project.awardedCoins = earnedCoins;
+        project.causedLevelUp = leveledUp;
+        project.xpThresholdBeforeLevelUp = thresholdBeforeLevelUp;
+        project.awardedPokemonId = pulledPokemonId;
+        await _saveData();
+        notifyListeners();
+        return pulledPokemonId;
+      });
 
   /// Reverses a project-completion reward — used if a task inside an
   /// already-completed project gets un-checked again.
-  Future<void> processProjectUncompletion(ProjectItem project) async {
-    if (project.awardedXp == null && project.awardedCoins == null) return;
-    final xpToRemove = project.awardedXp ?? 0;
-    final coinsToRemove = project.awardedCoins ?? 0;
-    if (project.causedLevelUp) {
-      currentLevel = currentLevel > 1 ? currentLevel - 1 : 1;
-      currentXp += project.xpThresholdBeforeLevelUp ?? 0;
-      if (project.xpThresholdBeforeLevelUp != null) {
-        currentXpThreshold = project.xpThresholdBeforeLevelUp!;
-      }
-      if (project.awardedPokemonId != null) {
-        unlockedPokemons.remove(project.awardedPokemonId);
-      }
-    }
-    currentXp -= xpToRemove;
-    if (currentXp < 0) currentXp = 0;
-    totalXpEarned -= xpToRemove;
-    if (totalXpEarned < 0) totalXpEarned = 0;
-    currentCoins -= coinsToRemove;
-    if (currentCoins < 0) currentCoins = 0;
-    project.awardedXp = null;
-    project.awardedCoins = null;
-    project.causedLevelUp = false;
-    project.xpThresholdBeforeLevelUp = null;
-    project.awardedPokemonId = null;
-    await _saveData();
-    notifyListeners();
-  }
+  Future<void> processProjectUncompletion(ProjectItem project) =>
+      _mutate(() async {
+        if (project.awardedXp == null && project.awardedCoins == null) return;
+        final xpToRemove = project.awardedXp ?? 0;
+        final coinsToRemove = project.awardedCoins ?? 0;
+        if (project.causedLevelUp) {
+          currentLevel = currentLevel > 1 ? currentLevel - 1 : 1;
+          currentXp += project.xpThresholdBeforeLevelUp ?? 0;
+          if (project.xpThresholdBeforeLevelUp != null) {
+            currentXpThreshold = project.xpThresholdBeforeLevelUp!;
+          }
+          if (project.awardedPokemonId != null) {
+            unlockedPokemons.remove(project.awardedPokemonId);
+          }
+        }
+        currentXp -= xpToRemove;
+        if (currentXp < 0) currentXp = 0;
+        totalXpEarned -= xpToRemove;
+        if (totalXpEarned < 0) totalXpEarned = 0;
+        currentCoins -= coinsToRemove;
+        if (currentCoins < 0) currentCoins = 0;
+        project.awardedXp = null;
+        project.awardedCoins = null;
+        project.causedLevelUp = false;
+        project.xpThresholdBeforeLevelUp = null;
+        project.awardedPokemonId = null;
+        await _saveData();
+        notifyListeners();
+      });
 
   // A habit is worth the same as a level-1 task.
   static const int habitXpValue = 10;
   static const int habitCoinsValue = 5;
+  static const double habitMissCoins = 0.5;
+  static const int habitMissXp = 2;
 
   /// Triggered when a habit is marked done.
-  Future<int?> processHabitCompletion() async {
+  Future<int?> processHabitCompletion() => _mutate(() async {
     currentXp += habitXpValue;
     currentCoins += habitCoinsValue;
     totalXpEarned += habitXpValue;
@@ -243,22 +285,9 @@ class GamificationService extends ChangeNotifier {
     notifyListeners();
 
     return pulledPokemonId;
-  }
+  });
 
-  /// Triggered when a habit's occurrence deadline (including any snoozes)
-  /// passes without it being marked done — with or without snoozing along
-  /// the way, an incomplete habit still costs the same coins/XP.
-  Future<void> processHabitMiss() async {
-    currentXp -= habitXpValue;
-    if (currentXp < 0) currentXp = 0;
-    currentCoins -= habitCoinsValue;
-    if (currentCoins < 0) currentCoins = 0;
-
-    await _saveData();
-    notifyListeners();
-  }
-
-  Future<int?> addCoinsAndXp(num coins, int xp) async {
+  Future<int?> addCoinsAndXp(num coins, int xp) => _mutate(() async {
     currentCoins += coins;
     currentXp += xp;
     totalXpEarned += xp;
@@ -269,7 +298,7 @@ class GamificationService extends ChangeNotifier {
     notifyListeners();
 
     return pulledPokemonId;
-  }
+  });
 
   int? _applyPendingLevelUps() {
     int? pulledPokemonId;
@@ -334,7 +363,7 @@ class GamificationService extends ChangeNotifier {
   /// exactly what processTaskCompletion granted for THIS task — using the
   /// amounts stamped on the task at completion time, not whatever
   /// task.level/isGolden happen to be now.
-  Future<void> processTaskUncompletion(TaskItem task) async {
+  Future<void> processTaskUncompletion(TaskItem task) => _mutate(() async {
     // This task was never completed through processTaskCompletion (e.g.
     // legacy data from before this feature), so there's nothing to undo.
     if (task.awardedXp == null && task.awardedCoins == null) return;
@@ -381,7 +410,7 @@ class GamificationService extends ChangeNotifier {
 
     await _saveData();
     notifyListeners();
-  }
+  });
 
   String getItemName(int id) {
     return pokemonNames[id] ?? 'Pokemon #$id';
@@ -412,12 +441,12 @@ class GamificationService extends ChangeNotifier {
       // 4. אם האלבום מלא, עוברים אוטומטית לאלבום הבא
       if (currentBinder < binderConfigs.length) {
         currentBinder++; // מעלים רמה לאלבום הבא
-        print(
+        debugPrint(
           '🎉 מזל טוב! פתחת את אלבום: ${binderConfigs[currentBinder - 1].theme}',
         );
         return _pullPokemon(); // מנסים למשוך שוב מיד מהאלבום החדש
       } else {
-        print('מדהים! סיימת את כל האלבומים באפליקציה!');
+        debugPrint('מדהים! סיימת את כל האלבומים באפליקציה!');
         return null;
       }
     }
@@ -430,105 +459,72 @@ class GamificationService extends ChangeNotifier {
     return difference >= cooldownDuration;
   }
 
-  Future<void> processOverduePenalties() async {
-    try {
-      final now = DateTime.now();
-      // יצירת תאריך מדויק של חצות היום, כדי שחישוב הימים יהיה נקי משעות
-      final startOfToday = DateTime(now.year, now.month, now.day);
-
-      // משיכת כל המשימות הפעילות ממסד הנתונים
-      final snapshot = await _db
-          .collection('tasks')
-          .where('isCompleted', isEqualTo: false)
-          .get();
-
-      bool gamificationChanged = false;
-
-      for (var doc in snapshot.docs) {
-        final data = doc.data();
-        final dueDateMs = data['dueDate'] as int?;
-        final lastPenaltyMs = data['lastPenaltyDate'] as int?;
-
-        // אם אין תאריך יעד, מדלגים על המשימה
-        if (dueDateMs == null) continue;
-
-        final dueDate = DateTime.fromMillisecondsSinceEpoch(dueDateMs);
-        final startOfDueDate = DateTime(
-          dueDate.year,
-          dueDate.month,
-          dueDate.day,
+  Future<void> processOverduePenalties() => _mutate(() async {
+    final now = DateTime.now();
+    final snapshot = await _db
+        .collection('tasks')
+        .where('isCompleted', isEqualTo: false)
+        .get();
+    for (final document in snapshot.docs) {
+      await _db.runTransaction((transaction) async {
+        final fresh = await transaction.get(document.reference);
+        final statsRef = _db.collection('gamification').doc('user_stats');
+        final stats = await transaction.get(statsRef);
+        final data = fresh.data();
+        if (data == null || data['isCompleted'] == true) return;
+        final penalty = PenaltyPolicy.task(data, now);
+        if (penalty.updates.isEmpty) return;
+        transaction.update(document.reference, penalty.updates);
+        transaction.set(
+          statsRef,
+          PenaltyPolicy.apply(
+            stats.data() ?? {},
+            penalty.coins,
+            penalty.xp,
+            now,
+          ),
+          SetOptions(merge: true),
         );
-        // בדיקת קנס למשימה שבועית שפגה תוקפה
-        if (data['isWeekly'] == true && data['weeklyDeadline'] != null) {
-          final deadlineMs = data['weeklyDeadline'] as int;
-          final deadlineDate = DateTime.fromMillisecondsSinceEpoch(deadlineMs);
-
-          if (startOfToday.isAfter(deadlineDate)) {
-            int xpPenalty = (data['level'] ?? 1) * 10;
-            int coinsPenalty = (data['level'] ?? 1) * 5;
-
-            currentXp -= xpPenalty;
-            if (currentXp < 0) currentXp = 0;
-            currentCoins -= coinsPenalty;
-            if (currentCoins < 0) currentCoins = 0;
-
-            // ביטול סטטוס המשימה השבועית כדי לא לקנוס שוב
-            await _db.collection('tasks').doc(doc.id).update({
-              'isWeekly': false,
-              'weeklyDeadline': null,
-            });
-            gamificationChanged = true;
-          }
-        }
-        // בודקים אם תאריך היעד עבר
-        if (startOfDueDate.isBefore(startOfToday)) {
-          // מחשבים ממתי צריך לקנוס - מתאריך היעד, או מהפעם האחרונה שקנסנו
-          DateTime calculationDate = startOfDueDate;
-          if (lastPenaltyMs != null) {
-            calculationDate = DateTime.fromMillisecondsSinceEpoch(
-              lastPenaltyMs,
-            );
-            calculationDate = DateTime(
-              calculationDate.year,
-              calculationDate.month,
-              calculationDate.day,
-            );
-          }
-
-          // חישוב מספר הימים שעברו
-          int daysLate = startOfToday.difference(calculationDate).inDays;
-
-          if (daysLate > 0) {
-            // החלת הקנסות
-            int xpPenalty = daysLate * 5;
-            int coinsPenalty = daysLate * 1;
-
-            currentXp -= xpPenalty;
-            if (currentXp < 0) currentXp = 0; // מונע מ-XP לרדת מתחת לאפס
-
-            currentCoins -= coinsPenalty;
-            if (currentCoins < 0) {
-              currentCoins = 0;
-            }
-            // עדכון תאריך הקנס האחרון למשימה במסד הנתונים
-            await _db.collection('tasks').doc(doc.id).update({
-              'lastPenaltyDate': startOfToday.millisecondsSinceEpoch,
-            });
-
-            gamificationChanged = true;
-          }
-        }
-      }
-
-      // אם היו שינויים, שומרים ומודיעים למסך להתעדכן
-      if (gamificationChanged) {
-        await _saveData();
-        notifyListeners();
-      }
-    } catch (e) {
-      print('שגיאה בחישוב קנסות: $e');
+      });
     }
-  }
+    await _loadGamificationData();
+    await _refreshCoinReminder();
+  });
+
+  /// Read the occurrence again inside the transaction: a stale screen or
+  /// another device must not charge the same miss twice.
+  Future<HabitItem?> processMissedHabit(String habitId) => _mutate(() async {
+    final now = DateTime.now();
+    final habitRef = _db.collection('habits').doc(habitId);
+    final result = await _db.runTransaction<HabitItem?>((transaction) async {
+      final document = await transaction.get(habitRef);
+      final statsRef = _db.collection('gamification').doc('user_stats');
+      final stats = await transaction.get(statsRef);
+      final data = document.data();
+      if (data == null) return null;
+      final habit = HabitItem.fromMap(habitId, data);
+      if (now.isBefore(habit.missDeadline)) return null;
+      // Skip the historical backlog, charging at most one occurrence.
+      do {
+        habit.markMissed();
+      } while (!now.isBefore(habit.missDeadline));
+      transaction.update(habitRef, habit.toMap());
+      transaction.set(
+        statsRef,
+        PenaltyPolicy.apply(
+          stats.data() ?? {},
+          habitMissCoins,
+          habitMissXp,
+          now,
+        ),
+        SetOptions(merge: true),
+      );
+      return habit;
+    });
+    await _loadGamificationData();
+    if (result != null) await _refreshCoinReminder();
+    return result;
+  });
 
   Future<void> addDailyRewards(double coins, int xp) async {
     await addCoinsAndXp(coins, xp);

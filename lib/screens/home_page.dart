@@ -108,7 +108,13 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
     await dailyTasks.refreshReminder();
     await tasks.clearCompletedTasks();
     await projects.clearCompletedProjects();
-    await gamification.processOverduePenalties();
+    try {
+      await gamification.processOverduePenalties();
+    } catch (error) {
+      // Failed reads/transactions leave saved balances intact. Retry on the
+      // next resume, and still refresh the other reminders below.
+      debugPrint('Could not process overdue penalties: $error');
+    }
     await tasks.updateDueTasksNotification();
     await strikes.updateStrikeReminderNotification();
     await NotificationService().scheduleWeeklySelectionReminder();

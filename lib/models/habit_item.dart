@@ -26,8 +26,7 @@ class HabitItem {
   int? monthInterval; // every N months (1, 2, 3, ...)
 
   // The next time this habit is due to fire/be completed. Advances only
-  // when the habit is marked done (see markDone()), so it can sit in the
-  // past for an overdue habit until the user checks it off.
+  // when the habit is marked done or a missed occurrence is processed.
   DateTime nextDueDate;
 
   DateTime? lastCompletedDate;
@@ -150,6 +149,16 @@ class HabitItem {
   /// pushed back by any snoozes still in effect.
   DateTime get effectiveDeadline => snoozedUntil ?? nextDueDate;
 
+  /// Allow completion throughout the due day, and honor a later snooze.
+  DateTime get missDeadline {
+    final midnight = DateTime(
+      nextDueDate.year,
+      nextDueDate.month,
+      nextDueDate.day + 1,
+    );
+    return effectiveDeadline.isAfter(midnight) ? effectiveDeadline : midnight;
+  }
+
   /// Pushes the reminder 30 minutes later. No-ops past [maxSnoozes] — check
   /// [canSnooze] first if you want to disable the button instead.
   void snooze({DateTime? now}) {
@@ -158,7 +167,7 @@ class HabitItem {
     snoozedUntil = (now ?? DateTime.now()).add(snoozeDuration);
   }
 
-  /// Called when [effectiveDeadline] has passed without the habit being
+  /// Called when [missDeadline] has passed without the habit being
   /// marked done: breaks the streak and advances to the next occurrence.
   /// The coin/XP penalty itself is applied by the caller (it needs
   /// GamificationService, which this model doesn't depend on).
