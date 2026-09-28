@@ -293,14 +293,14 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
       task.completedAt = DateTime.now();
 
       int? pulledId = await gamificationService.processTaskCompletion(task);
-      if (context.mounted) {
+      if (mounted) {
         showFloatingReward(context, task.awardedCoins ?? 0);
       }
 
-      if (pulledId != null && context.mounted) {
+      if (pulledId != null && mounted) {
         await Future.delayed(const Duration(milliseconds: 1000));
 
-        if (context.mounted) {
+        if (mounted) {
           await showDialog(
             context: context,
             builder: (context) => ConfettiDialog(
@@ -311,7 +311,7 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
           );
         }
 
-        if (context.mounted) {
+        if (mounted) {
           final pulledName = gamificationService.getItemName(pulledId);
           final imageUrl =
               'https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/other/official-artwork/$pulledId.png';
@@ -334,7 +334,7 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
               gamificationService,
             );
 
-        if (completedProject != null && context.mounted) {
+        if (completedProject != null && mounted) {
           showFloatingReward(context, completedProject.awardedCoins ?? 100);
           await showDialog(
             context: context,
@@ -391,7 +391,7 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
       final completedProject = await projectService
           .checkAndAwardProjectCompletion(task.projectId!, gamificationService);
 
-      if (completedProject != null && context.mounted) {
+      if (completedProject != null && mounted) {
         showFloatingReward(context, completedProject.awardedCoins ?? 100);
         await showDialog(
           context: context,
@@ -533,7 +533,7 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
                           _toggleWeekly(goldenTask!, _allTasks),
                       onStatusChanged: (isCompleted) =>
                           _handleTaskStatusChanged(goldenTask!, isCompleted),
-                      onDelete: goldenTask!.projectId != null
+                      onDelete: goldenTask.projectId != null
                           ? () => _handleProjectTaskDelete(goldenTask!)
                           : null,
                     ),
@@ -553,7 +553,7 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
                           _toggleWeekly(weeklyTask!, _allTasks),
                       onStatusChanged: (isCompleted) =>
                           _handleTaskStatusChanged(weeklyTask!, isCompleted),
-                      onDelete: weeklyTask!.projectId != null
+                      onDelete: weeklyTask.projectId != null
                           ? () => _handleProjectTaskDelete(weeklyTask!)
                           : null,
                     ),

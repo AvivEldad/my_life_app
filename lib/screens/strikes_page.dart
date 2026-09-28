@@ -86,6 +86,7 @@ class _StrikesPageState extends State<StrikesPage> {
   }
 
   Future<void> _deleteStrike(BuildContext context, StrikeItem strike) async {
+    final strikeService = context.read<StrikeService>();
     final confirmed = await _confirmDialog(
       context,
       title: 'מחיקת סטרייק',
@@ -96,11 +97,12 @@ class _StrikesPageState extends State<StrikesPage> {
       confirmColor: Colors.redAccent,
     );
     if (confirmed) {
-      await context.read<StrikeService>().deleteStrike(strike.id);
+      await strikeService.deleteStrike(strike.id);
     }
   }
 
   Future<void> _resetStrike(BuildContext context, StrikeItem strike) async {
+    final strikeService = context.read<StrikeService>();
     final confirmed = await _confirmDialog(
       context,
       title: 'איפוס סטרייק',
@@ -109,11 +111,12 @@ class _StrikesPageState extends State<StrikesPage> {
       confirmColor: Colors.orange,
     );
     if (confirmed) {
-      await context.read<StrikeService>().resetStrike(strike.id);
+      await strikeService.resetStrike(strike.id);
     }
   }
 
   Future<void> _editStrike(BuildContext context, StrikeItem strike) async {
+    final strikeService = context.read<StrikeService>();
     final edited = await Navigator.push(
       context,
       MaterialPageRoute(
@@ -121,7 +124,7 @@ class _StrikesPageState extends State<StrikesPage> {
       ),
     );
     if (edited != null && edited is StrikeItem) {
-      await context.read<StrikeService>().saveStrike(edited);
+      await strikeService.saveStrike(edited);
     }
   }
 

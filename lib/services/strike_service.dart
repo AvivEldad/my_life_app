@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import '../models/strike_item.dart';
 import 'gamification_service.dart';
@@ -25,7 +26,7 @@ class StrikeService {
       await updateStrikeReminderNotification();
       return true;
     } catch (e) {
-      print('Error saving strike: $e');
+      debugPrint('Error saving strike: $e');
       throw Exception('error saving strike');
     }
   }
@@ -41,7 +42,7 @@ class StrikeService {
                 .toList(),
           );
     } catch (e) {
-      print('Error streaming strikes: $e');
+      debugPrint('Error streaming strikes: $e');
       return const Stream.empty();
     }
   }
@@ -52,7 +53,7 @@ class StrikeService {
       await updateStrikeReminderNotification();
       return true;
     } catch (e) {
-      print('Error deleting strike: $e');
+      debugPrint('Error deleting strike: $e');
       throw Exception('strike deletion faild');
     }
   }
@@ -80,7 +81,7 @@ class StrikeService {
       }
       await NotificationService().refreshStrikeReminder(pendingCount);
     } catch (e) {
-      print('Error updating strike reminder notification: $e');
+      debugPrint('Error updating strike reminder notification: $e');
     }
   }
 }
