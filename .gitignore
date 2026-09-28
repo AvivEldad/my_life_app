@@ -37,9 +37,8 @@ migrate_working_dir/
 /coverage/
 
 # Local notification regression tests
-/test/habit_dates_test.dart
-/test/mantra_schedule_test.dart
-/test/notification_service_test.dart
+
+/test/
 
 # Symbolication related
 app.*.symbols
