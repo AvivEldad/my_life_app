@@ -529,4 +529,96 @@ class GamificationService extends ChangeNotifier {
   Future<void> addDailyRewards(double coins, int xp) async {
     await addCoinsAndXp(coins, xp);
   }
+
+  /// Count elapsed calendar days and pay each milestone exactly once.
+  Future<void> processStrikeSync(String strikeId, {DateTime? at}) =>
+      _mutate(() async {
+        final now = at ?? DateTime.now();
+        final today = '${now.year}-${now.month}-${now.day}';
+        final strikeRef = _db.collection('strikes').doc(strikeId);
+        final statsRef = _db.collection('gamification').doc('user_stats');
+        await _db.runTransaction((transaction) async {
+          final strikeDoc = await transaction.get(strikeRef);
+          final statsDoc = await transaction.get(statsRef);
+          final strike = strikeDoc.data();
+          if (strike == null) return;
+          final previous = (strike['lastAutoUpdateDate'] as String? ?? '')
+              .split('-')
+              .map(int.tryParse)
+              .toList();
+          var elapsed = 0;
+          if (previous.length == 3 && previous.every((part) => part != null)) {
+            elapsed = max(
+              0,
+              DateTime.utc(now.year, now.month, now.day)
+                  .difference(
+                    DateTime.utc(previous[0]!, previous[1]!, previous[2]!),
+                  )
+                  .inDays,
+            );
+          }
+          final streak = (strike['streak'] as num? ?? 0).toInt() + elapsed;
+          final paidWeeks = (strike['rewardedWeekMilestones'] as num? ?? 0)
+              .toInt();
+          final paidMonths = (strike['rewardedMonthMilestones'] as num? ?? 0)
+              .toInt();
+          final weeks = max(0, streak ~/ 7 - paidWeeks);
+          final months = max(0, streak ~/ 30 - paidMonths);
+          transaction.update(strikeRef, {
+            'streak': streak,
+            'lastAutoUpdateDate':
+                elapsed > 0 ||
+                    previous.length != 3 ||
+                    previous.any((part) => part == null)
+                ? today
+                : strike['lastAutoUpdateDate'],
+            'rewardedWeekMilestones': paidWeeks + weeks,
+            'rewardedMonthMilestones': paidMonths + months,
+          });
+          final earnedXp = weeks * 5 + months * 15;
+          if (earnedXp == 0) return;
+          final stats = statsDoc.data() ?? {};
+          var xp = (stats['currentXp'] as num? ?? 0).toInt() + earnedXp;
+          var threshold = (stats['currentXpThreshold'] as num? ?? 100).toInt();
+          var level = (stats['currentLevel'] as num? ?? 1).toInt();
+          var binder = (stats['currentBinder'] as num? ?? 1).toInt();
+          final unlocked = List<int>.from(stats['unlockedPokemons'] ?? []);
+          while (threshold > 0 && xp >= threshold) {
+            xp -= threshold;
+            threshold = (threshold * 1.1).toInt();
+            level++;
+            while (true) {
+              final config = binderConfigs.firstWhere(
+                (config) => config.level == binder,
+                orElse: () => binderConfigs.last,
+              );
+              final available = config.itemIds
+                  .where((id) => !unlocked.contains(id))
+                  .toList();
+              if (available.isNotEmpty) {
+                unlocked.add(available[Random().nextInt(available.length)]);
+                break;
+              }
+              if (binder >= binderConfigs.length) break;
+              binder++;
+            }
+          }
+          transaction.set(statsRef, {
+            'currentCoins':
+                (stats['currentCoins'] as num? ?? 0) + weeks + months * 3,
+            'currentXp': xp,
+            'totalXpEarned':
+                (stats['totalXpEarned'] as num? ??
+                    stats['currentXp'] as num? ??
+                    0) +
+                earnedXp,
+            'currentLevel': level,
+            'currentXpThreshold': threshold,
+            'currentBinder': binder,
+            'unlockedPokemons': unlocked,
+          }, SetOptions(merge: true));
+        });
+        await _loadGamificationData();
+        await _refreshCoinReminder();
+      });
 }

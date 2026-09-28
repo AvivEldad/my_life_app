@@ -3,82 +3,14 @@ import '../models/strike_item.dart';
 import 'gamification_service.dart';
 import 'notification_service.dart';
 
-/// תוצאת סימון "בוצע היום" עבור סטרייק - כולל את הבונוס (אם היה) כדי
-/// שהמסך יוכל להציג חגיגה מתאימה.
-class StrikeCheckInResult {
-  final StrikeItem strike;
-  final int earnedCoins;
-  final int earnedXp;
-  final bool hitWeekMilestone;
-  final bool hitMonthMilestone;
-
-  StrikeCheckInResult({
-    required this.strike,
-    required this.earnedCoins,
-    required this.earnedXp,
-    required this.hitWeekMilestone,
-    required this.hitMonthMilestone,
-  });
-
-  bool get earnedAnyReward => earnedCoins > 0 || earnedXp > 0;
-}
-
 class StrikeService {
   final FirebaseFirestore _db = FirebaseFirestore.instance;
 
-  int _elapsedCalendarDays(String fromDate, String toDate) {
-    DateTime? parseDate(String value) {
-      final parts = value.split('-');
-      if (parts.length != 3) return null;
-
-      final year = int.tryParse(parts[0]);
-      final month = int.tryParse(parts[1]);
-      final day = int.tryParse(parts[2]);
-      if (year == null || month == null || day == null) return null;
-
-      return DateTime.utc(year, month, day);
-    }
-
-    final from = parseDate(fromDate);
-    final to = parseDate(toDate);
-    if (from == null || to == null) return 0;
-
-    final difference = to.difference(from).inDays;
-    return difference > 0 ? difference : 0;
-  }
-
-  /// Advances every strike by the number of local calendar days that passed
-  /// since its previous automatic update. Transactions keep repeated calls or
-  /// multiple devices from incrementing the same day twice.
-  Future<void> syncStrikesForToday() async {
-    final today = StrikeItem.todayString();
+  /// Advance elapsed days and award unpaid milestones atomically.
+  Future<void> syncStrikesForToday(GamificationService gamification) async {
     final snapshot = await _db.collection('strikes').get();
-
     for (final document in snapshot.docs) {
-      await _db.runTransaction((transaction) async {
-        final freshDocument = await transaction.get(document.reference);
-        if (!freshDocument.exists) return;
-
-        final data = freshDocument.data()!;
-        final lastAutoUpdateDate = data['lastAutoUpdateDate'] as String?;
-
-        // Migrate an existing strike without changing its current count.
-        if (lastAutoUpdateDate == null || lastAutoUpdateDate.isEmpty) {
-          transaction.update(document.reference, {
-            'lastAutoUpdateDate': today,
-          });
-          return;
-        }
-
-        final elapsedDays = _elapsedCalendarDays(lastAutoUpdateDate, today);
-        if (elapsedDays == 0) return;
-
-        final currentStreak = (data['streak'] ?? 0).toInt();
-        transaction.update(document.reference, {
-          'streak': currentStreak + elapsedDays,
-          'lastAutoUpdateDate': today,
-        });
-      });
+      await gamification.processStrikeSync(document.id);
     }
   }
 
@@ -125,73 +57,19 @@ class StrikeService {
     }
   }
 
-  /// מסמן שהסטרייק "בוצע" היום: מעלה את המונה ב-1 ומעניק בונוס אם עברנו
-  /// רף של שבוע (כל 7 ימים, 1 מטבע + 5 XP) ו/או רף של חודש (כל 30 יום,
-  /// 3 מטבעות + 15 XP). לא עושה כלום אם הסטרייק כבר סומן היום.
-  Future<StrikeCheckInResult?> checkInStrike(
-    String strikeId,
-    GamificationService gamificationService,
-  ) async {
-    final doc = await _db.collection('strikes').doc(strikeId).get();
-    if (!doc.exists) return null;
-
-    final strike = StrikeItem.fromMap(doc.id, doc.data()!);
-    if (strike.incrementedToday) return null;
-
-    strike.streak += 1;
-    strike.lastIncrementDate = StrikeItem.todayString();
-
-    final weekMilestones = strike.streak ~/ 7;
-    final monthMilestones = strike.streak ~/ 30;
-    final newWeeks = weekMilestones - strike.rewardedWeekMilestones;
-    final newMonths = monthMilestones - strike.rewardedMonthMilestones;
-
-    int earnedCoins = 0;
-    int earnedXp = 0;
-    if (newWeeks > 0) {
-      earnedCoins += newWeeks * 1;
-      earnedXp += newWeeks * 5;
-      strike.rewardedWeekMilestones = weekMilestones;
-    }
-    if (newMonths > 0) {
-      earnedCoins += newMonths * 3;
-      earnedXp += newMonths * 15;
-      strike.rewardedMonthMilestones = monthMilestones;
-    }
-
-    if (earnedCoins > 0 || earnedXp > 0) {
-      await gamificationService.addCoinsAndXp(earnedCoins, earnedXp);
-    }
-
-    await saveStrike(strike);
-
-    return StrikeCheckInResult(
-      strike: strike,
-      earnedCoins: earnedCoins,
-      earnedXp: earnedXp,
-      hitWeekMilestone: newWeeks > 0,
-      hitMonthMilestone: newMonths > 0,
-    );
-  }
-
-  /// מאפס את המונה של הסטרייק ל-0 (לחיצת המשתמש על כפתור האיפוס).
-  /// לא גורע בונוסים שכבר הוענקו על ימים שכבר עברו בפועל.
+  /// Reset the counter without taking away previously earned rewards.
   Future<void> resetStrike(String strikeId) async {
     final doc = await _db.collection('strikes').doc(strikeId).get();
     if (!doc.exists) return;
-
     final strike = StrikeItem.fromMap(doc.id, doc.data()!);
     strike.streak = 0;
     strike.lastIncrementDate = '';
     strike.lastAutoUpdateDate = StrikeItem.todayString();
     strike.rewardedWeekMilestones = 0;
     strike.rewardedMonthMilestones = 0;
-
     await saveStrike(strike);
   }
 
-  /// סורק את כל הסטרייקים ומעדכן את התראת התזכורת עם מספר הסטרייקים
-  /// שעדיין לא סומנו היום.
   Future<void> updateStrikeReminderNotification() async {
     try {
       final snapshot = await _db.collection('strikes').get();

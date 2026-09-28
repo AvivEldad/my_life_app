@@ -116,6 +116,11 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
       debugPrint('Could not process overdue penalties: $error');
     }
     await tasks.updateDueTasksNotification();
+    try {
+      await strikes.syncStrikesForToday(gamification);
+    } catch (error) {
+      debugPrint('Could not sync strike rewards: $error');
+    }
     await strikes.updateStrikeReminderNotification();
     await NotificationService().scheduleWeeklySelectionReminder();
     await habits.refreshAllReminders();

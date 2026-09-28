@@ -5,6 +5,7 @@ import 'package:provider/provider.dart';
 import '../widgets/app_drawer.dart';
 import '../models/strike_item.dart';
 import '../services/strike_service.dart';
+import '../services/gamification_service.dart';
 import 'create_strike_screen.dart';
 import 'main_layout.dart';
 
@@ -32,7 +33,13 @@ class _StrikesPageState extends State<StrikesPage> {
 
   Future<void> _syncStrikes() async {
     if (!mounted) return;
-    await context.read<StrikeService>().syncStrikesForToday();
+    try {
+      await context.read<StrikeService>().syncStrikesForToday(
+        context.read<GamificationService>(),
+      );
+    } catch (error) {
+      debugPrint('Could not sync strike rewards: $error');
+    }
   }
 
   @override
