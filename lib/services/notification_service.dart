@@ -634,7 +634,7 @@ class NotificationService {
         now.year,
         now.month,
         now.day + offset,
-        16,
+        17,
       );
       if (!date.isAfter(now) || date.isAfter(deadline)) continue;
       final daysLeft = DateTime.utc(

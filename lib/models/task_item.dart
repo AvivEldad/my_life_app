@@ -73,7 +73,7 @@ class TaskItem {
     this.xpThresholdBeforeLevelUp,
     this.awardedPokemonId,
     this.isWeekly = false,
-    DateTime? weeklyDeadline,
+    this.weeklyDeadline,
   }) : subTasks = subTasks ?? [],
        this.createdAt = createdAt ?? DateTime.now();
 
