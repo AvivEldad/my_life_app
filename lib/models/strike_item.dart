@@ -1,7 +1,10 @@
+import 'dart:math';
+
 class StrikeItem {
   final String id;
   String title;
   int streak;
+  int longestStreak;
   String lastIncrementDate;
   String lastAutoUpdateDate;
   bool isPunishable; // Determines if breaking it early costs coins
@@ -16,13 +19,15 @@ class StrikeItem {
     required this.id,
     required this.title,
     this.streak = 0,
+    int longestStreak = 0,
     String? lastIncrementDate,
     String? lastAutoUpdateDate,
     this.isPunishable = false,
     DateTime? createdAt,
     this.rewardedWeekMilestones = 0,
     this.rewardedMonthMilestones = 0,
-  }) : lastIncrementDate = lastIncrementDate ?? '',
+  }) : longestStreak = max(longestStreak, streak),
+       lastIncrementDate = lastIncrementDate ?? '',
        lastAutoUpdateDate = lastAutoUpdateDate ?? todayString(),
        createdAt = createdAt ?? DateTime.now();
 
@@ -34,9 +39,11 @@ class StrikeItem {
   bool get incrementedToday => lastIncrementDate == todayString();
 
   Map<String, dynamic> toMap() {
+    longestStreak = max(longestStreak, streak);
     return {
       'title': title,
       'streak': streak,
+      'longestStreak': longestStreak,
       'lastIncrementDate': lastIncrementDate,
       'lastAutoUpdateDate': lastAutoUpdateDate,
       'isPunishable': isPunishable,
@@ -53,6 +60,7 @@ class StrikeItem {
       id: id,
       title: map['title'] ?? '',
       streak: (map['streak'] ?? 0).toInt(),
+      longestStreak: (map['longestStreak'] as num? ?? 0).toInt(),
       lastIncrementDate: map['lastIncrementDate'] ?? '',
       // Existing strikes start accruing from the day they are first loaded
       // after this field was introduced, keeping their current value intact.

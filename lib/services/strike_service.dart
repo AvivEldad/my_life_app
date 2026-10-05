@@ -1,4 +1,5 @@
 import 'package:flutter/foundation.dart';
+import 'dart:math';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import '../models/strike_item.dart';
 import 'gamification_service.dart';
@@ -21,7 +22,19 @@ class StrikeService {
         // סטרייק חדש: ניתן ל-Firebase לייצר מזהה ייחודי באופן אוטומטי
         await _db.collection('strikes').add(strike.toMap());
       } else {
-        await _db.collection('strikes').doc(strike.id).set(strike.toMap());
+        final reference = _db.collection('strikes').doc(strike.id);
+        await _db.runTransaction((transaction) async {
+          final existing = await transaction.get(reference);
+          final data = existing.data() ?? {};
+          strike.longestStreak = max(
+            strike.longestStreak,
+            max(
+              (data['longestStreak'] as num? ?? 0).toInt(),
+              (data['streak'] as num? ?? 0).toInt(),
+            ),
+          );
+          transaction.set(reference, strike.toMap());
+        });
       }
       await updateStrikeReminderNotification();
       return true;

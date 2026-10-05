@@ -187,8 +187,10 @@ class _StrikesPageState extends State<StrikesPage> {
                     size: 32,
                   ),
                   title: Text(strike.title),
+                  isThreeLine: true,
                   subtitle: Text(
-                    '${strike.streak} ${strike.streak == 1 ? "יום" : "ימים"} ברצף',
+                    '${strike.streak} ${strike.streak == 1 ? "יום" : "ימים"} ברצף\n'
+                    '🏆 שיא: ${strike.longestStreak} ${strike.longestStreak == 1 ? "יום" : "ימים"}',
                   ),
                   trailing: Row(
                     mainAxisSize: MainAxisSize.min,

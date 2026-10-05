@@ -566,6 +566,10 @@ class GamificationService extends ChangeNotifier {
           final months = max(0, streak ~/ 30 - paidMonths);
           transaction.update(strikeRef, {
             'streak': streak,
+            'longestStreak': max(
+              (strike['longestStreak'] as num? ?? 0).toInt(),
+              streak,
+            ),
             'lastAutoUpdateDate':
                 elapsed > 0 ||
                     previous.length != 3 ||

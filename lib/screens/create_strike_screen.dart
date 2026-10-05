@@ -38,6 +38,7 @@ class _CreateStrikeScreenState extends State<CreateStrikeScreen> {
       id: widget.existingStrike?.id ?? '',
       title: _titleController.text.trim(),
       streak: widget.existingStrike?.streak ?? 0,
+      longestStreak: widget.existingStrike?.longestStreak ?? 0,
       lastIncrementDate: widget.existingStrike?.lastIncrementDate,
       lastAutoUpdateDate: widget.existingStrike?.lastAutoUpdateDate,
       isPunishable: widget.existingStrike?.isPunishable ?? false,
@@ -78,9 +79,7 @@ class _CreateStrikeScreenState extends State<CreateStrikeScreen> {
               height: 50,
               child: ElevatedButton(
                 onPressed: _saveStrike,
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: Colors.amber,
-                ),
+                style: ElevatedButton.styleFrom(backgroundColor: Colors.amber),
                 child: Text(
                   _isEditing ? 'שמור שינויים' : 'שמור סטרייק',
                   style: const TextStyle(fontSize: 18, color: Colors.black),
