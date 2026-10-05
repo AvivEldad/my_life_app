@@ -275,7 +275,7 @@ class _NotificationsSettingsPageState extends State<NotificationsSettingsPage> {
     NotificationService().scheduleDailyNotification(
       id: 1,
       title: 'בוקר טוב! ☀️',
-      body: 'אל תשכח לבדוק את המשימות הפתוחות שלך!.',
+      body: 'אל תשכח לבדוק את המשימות הפתוחות שלך!',
       hour: _morningReminderTime.hour,
       minute: _morningReminderTime.minute,
       payload: NotificationService.homePayload,
