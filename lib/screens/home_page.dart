@@ -453,7 +453,11 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
         completedTasks.add(task);
         continue;
       }
-      if (task.projectId != null && !projectCurrentTaskIds.contains(task.id)) {
+      // Featured tasks remain visible even when they are later in a project.
+      if (task.projectId != null &&
+          !projectCurrentTaskIds.contains(task.id) &&
+          !task.isGolden &&
+          !task.isWeekly) {
         continue;
       }
 

@@ -6,6 +6,48 @@ class TaskService {
   final FirebaseFirestore _db = FirebaseFirestore.instance;
   static Future<void> _reminderRefresh = Future<void>.value();
 
+  /// Toggle a designation while replacing the previous selection app-wide.
+  Future<void> toggleTaskDesignation(
+    TaskItem task, {
+    required bool weekly,
+  }) async {
+    final field = weekly ? 'isWeekly' : 'isGolden';
+    final selected = weekly ? task.isWeekly : task.isGolden;
+    final batch = _db.batch();
+    if (!selected) {
+      final previous = await _db
+          .collection('tasks')
+          .where(field, isEqualTo: true)
+          .get();
+      for (final document in previous.docs) {
+        if (document.id == task.id) continue;
+        batch.update(document.reference, {
+          field: false,
+          if (weekly) 'weeklyDeadline': null,
+        });
+      }
+    }
+    DateTime? deadline;
+    if (weekly && !selected) {
+      final now = DateTime.now();
+      final daysUntilSaturday = (DateTime.saturday - now.weekday + 7) % 7;
+      deadline = DateTime(
+        now.year,
+        now.month,
+        now.day + daysUntilSaturday,
+        23,
+        59,
+        59,
+      );
+    }
+    batch.update(_db.collection('tasks').doc(task.id), {
+      field: !selected,
+      if (weekly) 'weeklyDeadline': deadline?.millisecondsSinceEpoch,
+    });
+    await batch.commit();
+    await updateDueTasksNotification();
+  }
+
   /// סורק את המשימות הפתוחות ומעדכן את כמות המשימות הדחופות בהתראות
   Future<void> updateDueTasksNotification() {
     final refresh = _reminderRefresh.then((_) => _refreshTaskReminders());

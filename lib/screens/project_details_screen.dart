@@ -132,6 +132,23 @@ class _ProjectDetailsScreenState extends State<ProjectDetailsScreen> {
     );
   }
 
+  Future<void> _toggleTaskDesignation(
+    TaskItem task, {
+    required bool weekly,
+  }) async {
+    try {
+      await context.read<TaskService>().toggleTaskDesignation(
+        task,
+        weekly: weekly,
+      );
+    } catch (error) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('לא ניתן לעדכן את המשימה. נסה שוב.')),
+      );
+    }
+  }
+
   /// גרירה ידנית של משימות בתוך הפרויקט - קובעת גם את הסדר הטורי.
   Future<void> _onReorder(
     int oldIndex,
@@ -446,8 +463,10 @@ class _ProjectDetailsScreenState extends State<ProjectDetailsScreen> {
                           task: task,
                           category: catById[task.categoryId],
                           onTap: () => _addOrEditTask(task, nextOrderIndex),
-                          onToggleGolden: () {},
-                          onToggleWeekly: () => {},
+                          onToggleGolden: () =>
+                              _toggleTaskDesignation(task, weekly: false),
+                          onToggleWeekly: () =>
+                              _toggleTaskDesignation(task, weekly: true),
                           onStatusChanged: (isCompleted) =>
                               _handleTaskStatusChanged(task, isCompleted),
                           onDelete: () => _handleTaskDelete(task),
@@ -465,8 +484,10 @@ class _ProjectDetailsScreenState extends State<ProjectDetailsScreen> {
                 category: catById[task.categoryId],
                 locked: locked,
                 onTap: () => _addOrEditTask(task, nextOrderIndex),
-                onToggleGolden: () {},
-                onToggleWeekly: () => {},
+                onToggleGolden: () =>
+                    _toggleTaskDesignation(task, weekly: false),
+                onToggleWeekly: () =>
+                    _toggleTaskDesignation(task, weekly: true),
                 onStatusChanged: (isCompleted) =>
                     _handleTaskStatusChanged(task, isCompleted),
                 onDelete: () => _handleTaskDelete(task),
