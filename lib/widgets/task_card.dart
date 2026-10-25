@@ -36,6 +36,11 @@ class TaskCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final taskService = context.read<TaskService>();
+    final ageInDays = DateTime.now()
+        .difference(task.createdAt)
+        .inDays
+        .clamp(0, double.infinity)
+        .toInt();
 
     bool isOverdue =
         task.dueDate != null &&
@@ -151,6 +156,17 @@ class TaskCard extends StatelessWidget {
                                       color: task.isCompleted
                                           ? Colors.grey
                                           : Colors.white,
+                                    ),
+                                  ),
+                                  Padding(
+                                    padding: const EdgeInsets.only(top: 4.0),
+                                    child: Text(
+                                      '$ageInDays ימים',
+                                      textDirection: TextDirection.rtl,
+                                      style: TextStyle(
+                                        fontSize: 12,
+                                        color: Colors.grey.shade400,
+                                      ),
                                     ),
                                   ),
                                   // חיווי מאיזה פרויקט המשימה הגיעה (אם בכלל)
