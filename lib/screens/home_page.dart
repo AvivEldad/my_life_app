@@ -20,7 +20,7 @@ import '../widgets/glowing_xp_bar.dart';
 import '../widgets/floating_reward.dart';
 import '../widgets/confetti_dialog.dart';
 
-enum TaskSort { level, date, category }
+enum TaskSort { level, date, category, days }
 
 class HomePage extends StatefulWidget {
   const HomePage({super.key});
@@ -210,15 +210,28 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
 
   Future<void> _applySort(TaskSort sortType, List<TaskItem> activeTasks) async {
     final taskService = context.read<TaskService>();
+    // Only standalone, ordinary tasks participate in sorting. Reuse
+    // their existing positions so project and featured tasks stay untouched.
+    final tasksToSave = activeTasks
+        .where(
+          (task) => task.projectId == null && !task.isGolden && !task.isWeekly,
+        )
+        .toList();
+    final sortPositions = tasksToSave.map((task) => task.orderIndex).toList();
 
     setState(() {
       _suppressStreamUpdates = true;
-      if (sortType == TaskSort.level) {
-        activeTasks.sort((a, b) => b.level.compareTo(a.level));
+      if (sortType == TaskSort.days) {
+        tasksToSave.sort((a, b) {
+          final byAge = a.createdAt.compareTo(b.createdAt);
+          return byAge != 0 ? byAge : a.orderIndex.compareTo(b.orderIndex);
+        });
+      } else if (sortType == TaskSort.level) {
+        tasksToSave.sort((a, b) => b.level.compareTo(a.level));
       } else if (sortType == TaskSort.date) {
-        activeTasks.sort((a, b) => b.createdAt.compareTo(a.createdAt));
+        tasksToSave.sort((a, b) => b.createdAt.compareTo(a.createdAt));
       } else if (sortType == TaskSort.category) {
-        activeTasks.sort((a, b) {
+        tasksToSave.sort((a, b) {
           String getCategoryName(String? id) {
             if (id == null) return 'תתתת';
             try {
@@ -233,13 +246,13 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
           ).compareTo(getCategoryName(b.categoryId));
         });
       }
-      for (int i = 0; i < activeTasks.length; i++) {
-        activeTasks[i].orderIndex = i;
+      for (int i = 0; i < tasksToSave.length; i++) {
+        tasksToSave[i].orderIndex = sortPositions[i];
       }
     });
 
     try {
-      await taskService.saveTasksBatch(activeTasks);
+      await taskService.saveTasksBatch(tasksToSave);
     } finally {
       if (mounted) {
         setState(() => _suppressStreamUpdates = false);
@@ -494,27 +507,44 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
           ),
         ),
         Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0),
-          child: Wrap(
-            alignment: WrapAlignment.end,
-            spacing: 8.0,
-            children: [
-              TextButton.icon(
-                icon: const Icon(Icons.category, size: 18),
-                label: const Text('קטגוריה'),
-                onPressed: () => _applySort(TaskSort.category, activeTasks),
-              ),
-              TextButton.icon(
-                icon: const Icon(Icons.sort, size: 18),
-                label: const Text('רמה'),
-                onPressed: () => _applySort(TaskSort.level, activeTasks),
-              ),
-              TextButton.icon(
-                icon: const Icon(Icons.date_range, size: 18),
-                label: const Text('תאריך'),
-                onPressed: () => _applySort(TaskSort.date, activeTasks),
-              ),
-            ],
+          padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 4.0),
+          child: LayoutBuilder(
+            builder: (context, constraints) {
+              final columns = constraints.maxWidth >= 400 ? 4 : 2;
+              final buttonWidth =
+                  (constraints.maxWidth - (columns - 1) * 8) / columns;
+              final buttons = <Widget>[
+                TextButton.icon(
+                  icon: const Icon(Icons.category, size: 18),
+                  label: const Text('קטגוריה'),
+                  onPressed: () => _applySort(TaskSort.category, activeTasks),
+                ),
+                TextButton.icon(
+                  icon: const Icon(Icons.sort, size: 18),
+                  label: const Text('רמה'),
+                  onPressed: () => _applySort(TaskSort.level, activeTasks),
+                ),
+                TextButton.icon(
+                  icon: const Icon(Icons.date_range, size: 18),
+                  label: const Text('תאריך'),
+                  onPressed: () => _applySort(TaskSort.date, activeTasks),
+                ),
+                TextButton.icon(
+                  icon: const Icon(Icons.history, size: 18),
+                  label: const Text('ימים'),
+                  onPressed: () => _applySort(TaskSort.days, activeTasks),
+                ),
+              ];
+              return Wrap(
+                alignment: WrapAlignment.end,
+                spacing: 8.0,
+                children: buttons
+                    .map(
+                      (button) => SizedBox(width: buttonWidth, child: button),
+                    )
+                    .toList(),
+              );
+            },
           ),
         ),
 
